@@ -1,0 +1,18 @@
+{
+  "name": "smart-contractor-backend",
+  "version": "2.1.0",
+  "description": "Backend bridge for XPR, Google Drive and Email Integration",
+  "main": "smart-contractor-backend.js",
+  "scripts": {
+    "start": "node smart-contractor-backend.js",
+    "dev": "nodemon smart-contractor-backend.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^140.0.0",
+    "nodemailer": "^6.9.13",
+    "open": "^9.1.0"
+  }
+}
