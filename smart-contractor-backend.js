@@ -12,6 +12,10 @@
 //           + CORS support for frontend
 //           + startup env validation
 //           + frontend connected (no more mock)
+//   v3.0 — Vergent AI Verification Layer
+//           + /api/verify/scope  — Verify→Discover→Prove for AI scopes
+//           + /api/verify/bid    — market rate validation + risk discovery
+//           + /api/verify/contractor — on-chain trust score + audit trail
 // =============================================================
 
 const express    = require('express');
@@ -20,6 +24,7 @@ const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const crypto     = require('crypto');   // built-in Node.js — no extra install
 const { Readable } = require('stream');
+const { verifyBid, verifyScope, verifyContractor } = require('./vergent-verify');
 require('dotenv').config();
 
 // =============================================================
@@ -486,11 +491,76 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 // =============================================================
+// SECTION 6: VERGENT AI VERIFICATION LAYER (v3.0)
+// Implements: Verify → Discover → Prove pipeline
+// Inspired by Vergent AI's "Trusted AI" approach
+// Every answer includes an auditable proof chain.
+// =============================================================
+
+// POST /api/verify/scope
+// Body: { items: string[], category: string, projectDescription: string }
+app.post('/api/verify/scope', (req, res) => {
+    const { items, category, projectDescription } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: '"items" must be a non-empty array of scope strings.' });
+    }
+    if (!category) {
+        return res.status(400).json({ error: '"category" is required.' });
+    }
+
+    console.log(`[GCSC Verify] Scope verification: category=${category}, items=${items.length}`);
+    const result = verifyScope({ items, category, projectDescription: projectDescription || '' });
+    return res.status(200).json(result);
+});
+
+// POST /api/verify/bid
+// Body: { contractorName, stakeAmount, bidAmount, category, location }
+app.post('/api/verify/bid', (req, res) => {
+    const { contractorName, stakeAmount, bidAmount, category, location } = req.body;
+
+    if (!bidAmount || !category) {
+        return res.status(400).json({ error: '"bidAmount" and "category" are required.' });
+    }
+
+    const parsedBid   = parseFloat(bidAmount);
+    const parsedStake = parseFloat(stakeAmount) || 0;
+
+    if (isNaN(parsedBid) || parsedBid <= 0) {
+        return res.status(400).json({ error: '"bidAmount" must be a positive number.' });
+    }
+
+    console.log(`[GCSC Verify] Bid verification: ${contractorName || 'anonymous'} — $${parsedBid} — ${category}`);
+    const result = verifyBid({
+        contractorName: contractorName || 'Anonymous',
+        stakeAmount:    parsedStake,
+        bidAmount:      parsedBid,
+        category,
+        location:       location || '',
+    });
+    return res.status(200).json(result);
+});
+
+// POST /api/verify/contractor
+// Body: { name: string, stakeAmount: number }
+app.post('/api/verify/contractor', (req, res) => {
+    const { name, stakeAmount } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ error: '"name" is required.' });
+    }
+
+    console.log(`[GCSC Verify] Contractor verification: ${name} — stake=${stakeAmount}`);
+    const result = verifyContractor({ name, stakeAmount: stakeAmount || 0 });
+    return res.status(200).json(result);
+});
+
+// =============================================================
 // HEALTH CHECK
 // =============================================================
 
 app.get('/health', (_req, res) =>
-    res.json({ status: 'ok', version: '2.1', network: 'XPR Network (Proton)' })
+    res.json({ status: 'ok', version: '3.0', network: 'XPR Network (Proton)', verification: 'Vergent-Inspired Verify→Discover→Prove' })
 );
 
 // =============================================================
@@ -499,9 +569,13 @@ app.get('/health', (_req, res) =>
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`\n[GCSC] ✅  Backend v2.1 running on http://localhost:${PORT}`);
-    console.log(`[GCSC]     Network : XPR Network (Proton)`);
-    console.log(`[GCSC]     Drive   : OAuth2 (auto-refresh)`);
-    console.log(`[GCSC]     Email   : ${process.env.SYSTEM_EMAIL}`);
-    console.log(`[GCSC]     Health  : http://localhost:${PORT}/health\n`);
+    console.log(`\n[GCSC] ✅  Backend v3.0 running on http://localhost:${PORT}`);
+    console.log(`[GCSC]     Network  : XPR Network (Proton)`);
+    console.log(`[GCSC]     Drive    : OAuth2 (auto-refresh)`);
+    console.log(`[GCSC]     Email    : ${process.env.SYSTEM_EMAIL}`);
+    console.log(`[GCSC]     Verify   : Vergent-Inspired Verify→Discover→Prove`);
+    console.log(`[GCSC]       → POST /api/verify/scope`);
+    console.log(`[GCSC]       → POST /api/verify/bid`);
+    console.log(`[GCSC]       → POST /api/verify/contractor`);
+    console.log(`[GCSC]     Health   : http://localhost:${PORT}/health\n`);
 });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart ContractOR | Web3 General Contracting</title>
+<title>Smart ContractOR | Trusted Web3 General Contracting</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
 <script>
@@ -24,6 +24,17 @@
     .page.active { display: block; animation: fadeIn 0.4s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .nav-link.active { color: #fff; border-bottom: 2px solid #8b5cf6; padding-bottom: 2px; }
+    /* Vergent verification styles */
+    .verify-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; }
+    .verify-trusted  { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+    .verify-review   { background: rgba(234,179,8,.15);  color: #fbbf24; border: 1px solid rgba(234,179,8,.3); }
+    .verify-flagged  { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+    .verify-unverified { background: rgba(148,163,184,.1); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+    .audit-trail { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .confidence-bar { height: 3px; border-radius: 999px; background: rgba(255,255,255,.08); }
+    .confidence-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+    .scope-item-verified { border-left: 2px solid rgba(34,197,94,.5); }
+    .scope-item-recommended { border-left: 2px solid rgba(234,179,8,.5); opacity: .8; }
 </style>
 </head>
 <body class="min-h-screen relative overflow-x-hidden">
@@ -47,6 +58,9 @@
                 <a href="#" onclick="switchTab('page-board', this)" class="nav-link hover:text-white transition-colors">Bidding Board</a>
                 <a href="#" onclick="switchTab('page-ai', this)" class="nav-link hover:text-white transition-colors">Post a Project</a>
                 <a href="#" onclick="switchTab('page-escrow', this)" class="nav-link hover:text-white transition-colors">Trust & Escrow</a>
+                <a href="#" onclick="switchTab('page-vergent', this)" class="nav-link hover:text-white transition-colors flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> AI Verify
+                </a>
             </div>
 
             <div class="flex items-center gap-4">
@@ -106,7 +120,12 @@
                     The Smart Way To <br>
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-xpr-light to-blue-400 glow-text font-bold">Build & Remodel</span>
                 </h2>
-                <p class="text-slate-400 text-lg max-w-2xl mx-auto">Post a project. Our AI creates the Scope of Work. Top contractors stake tokens to bid transparently. Smart contracts enforce trust.</p>
+                <p class="text-slate-400 text-lg max-w-2xl mx-auto">Post a project. Our AI creates a <span class="text-green-400 font-medium">verified</span> Scope of Work. Top contractors stake tokens to bid transparently. Smart contracts enforce trust.</p>
+                <div class="flex justify-center gap-6 pt-2 text-xs text-slate-500">
+                    <span class="flex items-center gap-1"><span class="text-green-400">✓</span> Verified Scopes</span>
+                    <span class="flex items-center gap-1"><span class="text-green-400">✓</span> Proven Bids</span>
+                    <span class="flex items-center gap-1"><span class="text-green-400">✓</span> Full Audit Trail</span>
+                </div>
                 <div class="flex justify-center gap-4 pt-4">
                     <button onclick="switchTab('page-ai')" class="bg-white hover:bg-slate-200 text-slate-900 px-8 py-3 rounded-full font-bold transition-colors">Post a Project</button>
                     <button onclick="switchTab('page-board')" class="bg-xpr/20 border border-xpr hover:bg-xpr text-white px-8 py-3 rounded-full font-bold transition-colors">Contractor Board</button>
@@ -149,14 +168,28 @@
                         <p class="text-slate-300 text-lg leading-relaxed mb-6" id="ld-desc">Full description of the project goes here. The homeowner requires specific expertise in modern methods.</p>
                         
                         <div class="bg-slate-900 border border-surface-border rounded-xl p-6">
-                            <h3 class="text-sm font-bold text-xpr-light uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-xpr-light"></span> GCSC AI Smart Scope
+                            <h3 class="text-sm font-bold text-xpr-light uppercase tracking-widest mb-4 flex items-center gap-2 justify-between">
+                                <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-xpr-light"></span> GCSC AI Smart Scope</span>
+                                <span id="ld-scope-verdict" class="verify-badge verify-unverified hidden">Unverified</span>
                             </h3>
-                            <ul class="space-y-3 font-mono text-sm text-slate-300" id="ld-ai-scope">
+                            <ul class="space-y-2 font-mono text-sm text-slate-300" id="ld-ai-scope">
                                 <li>Demolition & Disposal</li>
                                 <li>Underlayment Inspection</li>
                                 <li>Material Installation</li>
                             </ul>
+                        </div>
+
+                        <!-- Vergent Audit Trail Panel -->
+                        <div id="ld-audit-panel" class="hidden bg-slate-950 border border-slate-800 rounded-xl p-6">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                Verify → Discover → Prove — Audit Trail
+                            </h3>
+                            <div id="ld-audit-entries" class="space-y-2 audit-trail"></div>
+                            <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-600">
+                                <span id="ld-audit-pipeline">GCSC Vergent Engine</span>
+                                <span id="ld-audit-time"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -219,12 +252,106 @@
             </div>
         </div>
 
+        <!-- PAGE: VERGENT AI VERIFY -->
+        <div id="page-vergent" class="page">
+            <div class="max-w-4xl mx-auto mt-10 space-y-10">
+                <div class="text-center space-y-3">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-medium uppercase tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Vergent-Inspired Verification
+                    </div>
+                    <h2 class="text-3xl font-bold text-white">Trusted Construction AI</h2>
+                    <p class="text-slate-400 max-w-2xl mx-auto">Every answer is a <strong class="text-white">proven</strong> answer. Our Verify → Discover → Prove pipeline checks scopes, validates bids, and produces auditable trust scores — so a mistake never becomes a lawsuit.</p>
+                </div>
+
+                <!-- Pipeline explanation -->
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="glass-card rounded-xl p-5 border-green-500/20">
+                        <div class="text-2xl mb-2">🔍</div>
+                        <h3 class="font-bold text-white text-sm mb-1">1. VERIFY</h3>
+                        <p class="text-xs text-slate-400">Filter false data, remove contradictions, tag sources. Every fact is checked against construction standards.</p>
+                    </div>
+                    <div class="glass-card rounded-xl p-5 border-xpr-light/20">
+                        <div class="text-2xl mb-2">🧠</div>
+                        <h3 class="font-bold text-white text-sm mb-1">2. DISCOVER</h3>
+                        <p class="text-xs text-slate-400">Cross-reference signals. Find bid anomalies, risk patterns, and hidden project complexities.</p>
+                    </div>
+                    <div class="glass-card rounded-xl p-5 border-blue-500/20">
+                        <div class="text-2xl mb-2">📋</div>
+                        <h3 class="font-bold text-white text-sm mb-1">3. PROVE</h3>
+                        <p class="text-xs text-slate-400">Full audit trail. Every conclusion has a source, a confidence score, and a timestamp.</p>
+                    </div>
+                </div>
+
+                <!-- Live Bid Verifier -->
+                <div class="glass-card rounded-2xl p-8 space-y-6">
+                    <h3 class="text-xl font-bold text-white">Live Bid Verifier</h3>
+                    <p class="text-sm text-slate-400">Enter any bid to get a verified market analysis with full audit trail.</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-widest">Bid Amount ($)</label>
+                            <input id="vfy-bid-amount" type="number" placeholder="25000" class="w-full bg-slate-900 border border-surface-border rounded-lg px-4 py-3 text-white mt-1 focus:outline-none focus:border-xpr-light">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-widest">Category</label>
+                            <select id="vfy-category" class="w-full bg-slate-900 border border-surface-border rounded-lg px-4 py-3 text-white mt-1 focus:outline-none focus:border-xpr-light">
+                                <option>Roofing</option><option>Windows & Doors</option><option>Landscaping</option>
+                                <option>Siding</option><option>Plumbing</option><option>Electrical</option>
+                                <option>HVAC</option><option>Remodeling</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-widest">Location</label>
+                            <select id="vfy-location" class="w-full bg-slate-900 border border-surface-border rounded-lg px-4 py-3 text-white mt-1 focus:outline-none focus:border-xpr-light">
+                                <option>Austin, TX</option><option>Seattle, WA</option><option>Miami, FL</option>
+                                <option>Denver, CO</option><option>Chicago, IL</option><option>Boston, MA</option><option>San Jose, CA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-widest">Contractor Name</label>
+                            <input id="vfy-contractor" type="text" placeholder="Apex Builders" class="w-full bg-slate-900 border border-surface-border rounded-lg px-4 py-3 text-white mt-1 focus:outline-none focus:border-xpr-light">
+                        </div>
+                    </div>
+                    <button onclick="runBidVerification()" class="glow-btn bg-xpr hover:bg-xpr-light text-white font-bold py-3 px-8 rounded-xl">
+                        Run Verification
+                    </button>
+
+                    <!-- Result Panel -->
+                    <div id="vfy-result" class="hidden">
+                        <div class="border-t border-surface-border pt-6 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-bold text-white">Verification Result</h4>
+                                <span id="vfy-verdict-badge" class="verify-badge">—</span>
+                            </div>
+                            <!-- Trust Score Bar -->
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span>Trust Score</span>
+                                    <span id="vfy-score-val">—</span>
+                                </div>
+                                <div class="confidence-bar">
+                                    <div id="vfy-score-bar" class="confidence-fill bg-green-500 w-0"></div>
+                                </div>
+                            </div>
+                            <!-- Market Range -->
+                            <div id="vfy-market-info" class="bg-slate-900 rounded-lg p-4 text-sm space-y-1"></div>
+                            <!-- Audit Trail -->
+                            <details class="cursor-pointer">
+                                <summary class="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-white">View Audit Trail</summary>
+                                <div id="vfy-audit-trail" class="mt-3 space-y-2 audit-trail"></div>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script>
         // --- DATA & STATE ---
         let currentRole = 'visitor'; // 'visitor', 'contractor', 'homeowner'
         let currentOpenedLeadId = null;
+        const BACKEND = 'http://localhost:3000';
         
         // Generate 15 Realistic Orders
         const categories = ["Roofing", "Windows & Doors", "Landscaping", "Siding", "Plumbing", "Electrical", "HVAC"];
@@ -372,12 +499,20 @@
                 card.className = "glass-card rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 hover:border-xpr-light/50 transition-colors cursor-pointer";
                 card.onclick = () => openLeadDetail(lead.id); // Click anywhere opens the detail view
                 
+                const hasHighStake = lead.bids.some(b => b.stake >= 10000);
+                const trustBadge = lead.bids.length === 0
+                    ? `<span class="verify-badge verify-unverified">No Bids</span>`
+                    : hasHighStake
+                        ? `<span class="verify-badge verify-trusted">✓ Verified Bids</span>`
+                        : `<span class="verify-badge verify-review">~ Review Bids</span>`;
+
                 card.innerHTML = `
                     <div class="flex-grow">
                         <div class="flex flex-wrap items-center gap-3 mb-2">
                             <h4 class="text-lg font-semibold text-white">${lead.title}</h4>
                             <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest">${lead.cat}</span>
                             <span class="text-slate-500 text-sm">${lead.loc}</span>
+                            ${trustBadge}
                         </div>
                         <p class="text-sm text-slate-400 mb-2 truncate max-w-2xl">${lead.desc}</p>
                     </div>
@@ -390,44 +525,98 @@
             });
         }
 
+        // --- VERGENT VERIFICATION HELPERS ---
+        function verdictClass(verdict) {
+            if (verdict === 'TRUSTED') return 'verify-trusted';
+            if (verdict === 'REVIEW')  return 'verify-review';
+            if (verdict === 'FLAGGED') return 'verify-flagged';
+            return 'verify-unverified';
+        }
+
+        function renderAuditTrail(entries, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = entries.map(e => `
+                <div class="flex gap-3 p-2 rounded bg-slate-900/50 border border-slate-800/60">
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded self-start mt-0.5 ${
+                        e.step === 'VERIFY' ? 'bg-blue-500/20 text-blue-400' :
+                        e.step === 'DISCOVER' ? 'bg-xpr-light/20 text-xpr-light' :
+                        'bg-green-500/20 text-green-400'
+                    }">${e.step}</span>
+                    <div class="flex-grow min-w-0">
+                        <p class="text-slate-300 text-[11px] leading-snug">${e.claim}</p>
+                        <p class="text-slate-600 text-[10px] mt-0.5 truncate">${e.source}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-[10px] font-bold ${e.confidence >= 80 ? 'text-green-400' : e.confidence >= 60 ? 'text-yellow-400' : 'text-red-400'}">${e.confidence}%</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function verifyScopeForLead(lead, scopeItems) {
+            try {
+                const resp = await fetch(`${BACKEND}/api/verify/scope`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: scopeItems, category: lead.cat, projectDescription: lead.desc }),
+                });
+                if (!resp.ok) return null;
+                return await resp.json();
+            } catch { return null; }
+        }
+
         // --- BLIND BIDDING GAME THEORY VIEWS ---
-        function openLeadDetail(id) {
+        async function openLeadDetail(id) {
             currentOpenedLeadId = id;
             const lead = MOCK_LEADS.find(l => l.id === id);
-            
+
             document.getElementById('ld-category').textContent = lead.cat;
             document.getElementById('ld-location').textContent = lead.loc;
             document.getElementById('ld-title').textContent = lead.title;
             document.getElementById('ld-desc').textContent = lead.desc;
-            
+
+            // Reset verification UI
+            const verdictEl = document.getElementById('ld-scope-verdict');
+            const auditPanel = document.getElementById('ld-audit-panel');
+            verdictEl.className = 'verify-badge verify-unverified hidden';
+            auditPanel.classList.add('hidden');
+
             // Build the bids logic
             const bidsContainer = document.getElementById('competitor-bids');
             bidsContainer.innerHTML = '';
-            
+
             if(lead.bids.length === 0) {
                 bidsContainer.innerHTML = `<div class="text-sm text-slate-500 italic p-4 bg-slate-900/50 rounded-lg text-center border border-surface-border">No bids placed yet. Be the first to win this contract!</div>`;
             } else {
                 lead.bids.forEach((bid, index) => {
                     const bidCard = document.createElement('div');
+                    // Calculate simple trust tier from stake
+                    const trustTier = bid.stake >= 10000 ? 'trusted' : bid.stake >= 5000 ? 'review' : 'flagged';
+                    const trustLabel = bid.stake >= 10000 ? '✓ High Trust' : bid.stake >= 5000 ? '~ Med Trust' : '! Low Trust';
                     bidCard.className = "flex justify-between items-center bg-slate-900 border border-surface-border p-4 rounded-lg";
-                    
+
                     if (currentRole === 'homeowner') {
-                        // Homeowners see everything immediately
                         bidCard.innerHTML = `
                             <div>
                                 <span class="text-white block font-semibold">${bid.name}</span>
-                                <span class="text-xs text-xpr-light">Staked: ${bid.stake.toLocaleString()} XPR</span>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs text-xpr-light">Staked: ${bid.stake.toLocaleString()} XPR</span>
+                                    <span class="verify-badge verify-${trustTier}">${trustLabel}</span>
+                                </div>
                             </div>
                             <div class="text-xl font-mono text-white">${bid.price}</div>
                         `;
                     } else {
-                        // Contractors see LOCKED bids unless they stake
                         bidCard.innerHTML = `
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg></div>
                                 <div>
                                     <span class="text-slate-400 block font-semibold">Competitor Bid Locked</span>
-                                    <span class="text-xs text-xpr-light">They Staked: ${bid.stake.toLocaleString()} XPR</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs text-xpr-light">They Staked: ${bid.stake.toLocaleString()} XPR</span>
+                                        <span class="verify-badge verify-${trustTier}">${trustLabel}</span>
+                                    </div>
                                 </div>
                             </div>
                             <button onclick="revealBid(this, ${bid.stake}, '${bid.price}')" class="bg-xpr/20 hover:bg-xpr text-xpr-light hover:text-white border border-xpr/50 px-4 py-2 rounded text-xs font-bold transition-colors uppercase tracking-widest">
@@ -438,7 +627,52 @@
                     bidsContainer.appendChild(bidCard);
                 });
             }
+
+            // Generate a default AI scope for this lead, then verify it
+            const defaultScopes = {
+                'Roofing':         ['Permit & Inspection', 'Tear-off & Disposal', 'Underlayment Installation', 'Material Installation', 'Ridge Cap & Flashing'],
+                'Windows & Doors': ['Measurements & Permit', 'Removal & Disposal', 'Frame Preparation', 'Window/Door Installation', 'Weatherproofing & Seal'],
+                'Landscaping':     ['Site Assessment', 'Grading & Leveling', 'Drainage Setup', 'Material Installation', 'Final Cleanup'],
+                'Siding':          ['Permit & Inspection', 'Moisture Barrier Install', 'Removal & Disposal', 'Siding Installation', 'Trim & Caulking'],
+                'Plumbing':        ['Shut-off & Permit', 'Pressure Test', 'Pipe Removal', 'New Pipe Installation', 'Inspection & Sign-off'],
+                'Electrical':      ['Load Calculation & Permit', 'Panel Prep', 'Wiring Installation', 'Grounding & Safety', 'Inspection & Commissioning'],
+                'HVAC':            ['Load Calculation & Permit', 'Equipment Selection', 'Removal of Old Unit', 'New Unit Installation', 'Refrigerant & Commissioning'],
+                'Remodeling':      ['Permit & Structural Check', 'Demo & Disposal', 'Rough-in Work', 'Finish Work', 'Final Inspection'],
+            };
+            const scopeItems = defaultScopes[lead.cat] || ['Site Assessment', 'Material Procurement', 'Installation', 'Cleanup & Inspection'];
+
+            // Render default scope first
+            const scopeList = document.getElementById('ld-ai-scope');
+            scopeList.innerHTML = scopeItems.map(item =>
+                `<li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-xpr-light/50 shrink-0"></span>${item}</li>`
+            ).join('');
+
             switchTab('page-lead-detail');
+
+            // Then call verification in background
+            verifyScopeForLead(lead, scopeItems).then(result => {
+                if (!result) return;
+                // Re-render scope with verified annotations
+                const allItems = [...(result.annotatedItems || []), ...(result.recommendations || [])];
+                scopeList.innerHTML = allItems.map(item => `
+                    <li class="flex items-center gap-2 py-1 px-2 rounded ${item.verified ? 'scope-item-verified' : 'scope-item-recommended'}">
+                        <span class="w-1.5 h-1.5 rounded-full ${item.verified ? 'bg-green-400' : 'bg-yellow-400'} shrink-0"></span>
+                        <span class="${item.verified ? 'text-slate-200' : 'text-yellow-300/80'}">${item.text}</span>
+                        <span class="ml-auto text-[10px] font-bold ${item.confidence >= 80 ? 'text-green-400/70' : 'text-yellow-400/70'}">${item.confidence}%</span>
+                    </li>
+                `).join('');
+
+                // Show verdict badge
+                verdictEl.className = `verify-badge ${verdictClass(result.verdict)}`;
+                verdictEl.textContent = result.verdict === 'TRUSTED' ? '✓ Verified' : result.verdict === 'REVIEW' ? '~ Review' : '! Flagged';
+                verdictEl.classList.remove('hidden');
+
+                // Show audit panel
+                renderAuditTrail(result.auditTrail || [], 'ld-audit-entries');
+                document.getElementById('ld-audit-pipeline').textContent = result.pipeline || '';
+                document.getElementById('ld-audit-time').textContent = result.provedAt ? new Date(result.provedAt).toLocaleTimeString() : '';
+                auditPanel.classList.remove('hidden');
+            });
         }
 
         // Stake tokens to unlock competitor price
@@ -472,7 +706,7 @@
             if (currentRole !== 'contractor') return alert("Please Login as a Contractor first!");
             const val = document.getElementById('my-bid-val').value;
             if(!val) return alert("Enter your bid amount.");
-            
+
             const bidContainer = document.getElementById('competitor-bids');
             bidContainer.innerHTML += `
                 <div class="flex justify-between items-center bg-blue-500/10 border border-blue-500/50 p-4 rounded-lg mt-4">
@@ -483,6 +717,140 @@
                      <div class="text-xl font-mono text-white">$${parseInt(val).toLocaleString()}</div>
                 </div>
             `;
+        }
+
+        // --- AI PROTOCOL GENERATOR (Post a Project page) ---
+        const AI_SCOPE_TEMPLATES = {
+            'roof':    { cat: 'Roofing',        items: ['Permit & Inspection', 'Tear-off & Disposal', 'Underlayment', 'Shingle Installation', 'Ridge Cap & Flashing', 'Final Cleanup'] },
+            'window':  { cat: 'Windows & Doors', items: ['Measurements & Permit', 'Old Frame Removal', 'Weatherproofing', 'New Install', 'Caulking & Seal', 'Cleanup'] },
+            'plumb':   { cat: 'Plumbing',        items: ['Shut-off & Permit', 'Pressure Test', 'Pipe Removal', 'New Pipe Install', 'Inspection'] },
+            'electr':  { cat: 'Electrical',      items: ['Load Calculation & Permit', 'Panel Prep', 'Wiring', 'Grounding', 'Inspection'] },
+            'hvac':    { cat: 'HVAC',            items: ['Load Calc & Permit', 'Old Unit Removal', 'New Unit Install', 'Refrigerant Charge', 'Commissioning'] },
+            'siding':  { cat: 'Siding',          items: ['Permit', 'Moisture Barrier', 'Old Siding Removal', 'New Siding Install', 'Trim & Caulking'] },
+            'landscap':{ cat: 'Landscaping',     items: ['Site Assessment', 'Grading', 'Drainage', 'Material Install', 'Cleanup'] },
+            'kitchen': { cat: 'Remodeling',      items: ['Permit & Structural Check', 'Demo', 'Cabinet Install', 'Countertop', 'Plumbing/Electrical', 'Inspection'] },
+        };
+
+        function detectCategory(text) {
+            const t = text.toLowerCase();
+            for (const [key, val] of Object.entries(AI_SCOPE_TEMPLATES)) {
+                if (t.includes(key)) return val;
+            }
+            return { cat: 'General', items: ['Site Assessment', 'Permit Review', 'Material Procurement', 'Installation', 'Final Inspection'] };
+        }
+
+        async function generateAIProtocol() {
+            const text = (document.getElementById('ai-input').value || '').trim();
+            if (!text) return alert('Please describe your project first.');
+
+            const btn = document.querySelector('#page-ai button[onclick="generateAIProtocol()"]');
+            btn.textContent = 'Verifying...';
+            btn.disabled = true;
+
+            const { cat, items } = detectCategory(text);
+
+            try {
+                const resp = await fetch(`${BACKEND}/api/verify/scope`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items, category: cat, projectDescription: text }),
+                });
+
+                const list = document.getElementById('ai-list');
+                const preview = document.getElementById('ai-preview');
+
+                if (resp.ok) {
+                    const result = await resp.json();
+                    const all = [...(result.annotatedItems || []), ...(result.recommendations || [])];
+
+                    list.innerHTML = all.map(item => `
+                        <li class="flex items-start gap-3 ${item.verified ? 'scope-item-verified' : 'scope-item-recommended'} pl-2 py-1 rounded">
+                            <span class="w-2 h-2 rounded-full mt-1.5 ${item.verified ? 'bg-green-400' : 'bg-yellow-400'} shrink-0"></span>
+                            <span class="flex-grow ${item.verified ? '' : 'text-yellow-300/80'}">${item.text}</span>
+                            <span class="text-[10px] font-bold ${item.confidence >= 80 ? 'text-green-400/70' : 'text-yellow-400/70'} shrink-0">${item.confidence}%</span>
+                        </li>
+                    `).join('');
+
+                    // Show verdict below scope
+                    const verdictHtml = `
+                        <div class="mt-4 pt-4 border-t border-slate-800 flex items-center gap-3 text-xs">
+                            <span class="verify-badge ${verdictClass(result.verdict)}">${result.verdict}</span>
+                            <span class="text-slate-500">Trust Score: <strong class="text-slate-300">${result.overallScore}/100</strong></span>
+                            <span class="text-slate-500 ml-auto">${result.summary?.totalClaims || 0} claims verified</span>
+                        </div>
+                    `;
+                    list.insertAdjacentHTML('afterend', verdictHtml);
+                } else {
+                    // Fallback: render unverified
+                    list.innerHTML = items.map(i => `<li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-xpr-light/50"></span>${i}</li>`).join('');
+                }
+
+                preview.classList.remove('hidden');
+            } catch {
+                // Offline fallback
+                const list = document.getElementById('ai-list');
+                list.innerHTML = items.map(i => `<li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-xpr-light/50"></span>${i}</li>`).join('');
+                document.getElementById('ai-preview').classList.remove('hidden');
+            } finally {
+                btn.textContent = 'Generate AI Protocol';
+                btn.disabled = false;
+            }
+        }
+
+        function publishLeadToBoard() {
+            alert('Lead published to the Contractor Board!');
+            switchTab('page-board');
+        }
+
+        // --- VERGENT LIVE BID VERIFIER (page-vergent) ---
+        async function runBidVerification() {
+            const bidAmount   = parseFloat(document.getElementById('vfy-bid-amount').value);
+            const category    = document.getElementById('vfy-category').value;
+            const location    = document.getElementById('vfy-location').value;
+            const contractor  = document.getElementById('vfy-contractor').value || 'Anonymous';
+
+            if (!bidAmount || bidAmount <= 0) return alert('Enter a valid bid amount.');
+
+            const resultEl = document.getElementById('vfy-result');
+            resultEl.classList.remove('hidden');
+
+            try {
+                const resp = await fetch(`${BACKEND}/api/verify/bid`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contractorName: contractor, bidAmount, category, location, stakeAmount: 0 }),
+                });
+
+                if (!resp.ok) throw new Error('Server error');
+                const data = await resp.json();
+
+                // Verdict badge
+                const badge = document.getElementById('vfy-verdict-badge');
+                badge.className = `verify-badge ${verdictClass(data.verdict)}`;
+                badge.textContent = data.verdict;
+
+                // Score bar
+                document.getElementById('vfy-score-val').textContent = `${data.overallScore}/100`;
+                const bar = document.getElementById('vfy-score-bar');
+                bar.style.width = data.overallScore + '%';
+                bar.className = `confidence-fill ${data.overallScore >= 80 ? 'bg-green-500' : data.overallScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`;
+
+                // Market info
+                const m = data.details?.market;
+                if (m) {
+                    document.getElementById('vfy-market-info').innerHTML = `
+                        <div class="flex justify-between"><span class="text-slate-500">Market Range (${m.locationLabel})</span><span class="text-white">$${m.adjustedMin.toLocaleString()} – $${m.adjustedMax.toLocaleString()}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Location Factor</span><span class="text-white">${m.locationFactor}×</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Verdict</span><span class="font-bold ${m.verdict === 'MARKET_RATE' ? 'text-green-400' : m.verdict === 'BELOW_MARKET' ? 'text-red-400' : 'text-yellow-400'}">${m.verdict.replace(/_/g, ' ')}</span></div>
+                    `;
+                }
+
+                // Audit trail
+                renderAuditTrail(data.auditTrail || [], 'vfy-audit-trail');
+
+            } catch {
+                document.getElementById('vfy-market-info').innerHTML = `<p class="text-red-400 text-xs">Backend offline — start the server with <code>npm start</code> to enable live verification.</p>`;
+            }
         }
     </script>
 </body>
