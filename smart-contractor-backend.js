@@ -25,6 +25,7 @@ const { google } = require('googleapis');
 const crypto     = require('crypto');   // built-in Node.js — no extra install
 const { Readable } = require('stream');
 const { verifyBid, verifyScope, verifyContractor } = require('./vergent-verify');
+const { createEscrow, submitMilestone, approveMilestone, raiseDispute, getEscrow, listEscrows } = require('./escrow-engine');
 require('dotenv').config();
 
 // =============================================================
@@ -556,6 +557,97 @@ app.post('/api/verify/contractor', (req, res) => {
 });
 
 // =============================================================
+// SECTION 7: ESCROW SMART CONTRACT ENGINE (v3.0)
+// All financial actions are AI-gated — no money moves without
+// a TRUSTED verdict from the Vergent verification layer.
+// Anti-manipulation: no skipping milestones, identity checks,
+// dispute freezes all payments, AI arbitration on disputes.
+// =============================================================
+
+// POST /api/escrow/create
+// Body: { customerEmail, contractorName, contractorStake, category,
+//         location, totalAmount, scopeItems[], projectDescription }
+app.post('/api/escrow/create', (req, res) => {
+    const { customerEmail, contractorName, contractorStake,
+            category, location, totalAmount, scopeItems, projectDescription } = req.body;
+
+    if (!customerEmail || !contractorName || !category || !totalAmount) {
+        return res.status(400).json({ error: 'customerEmail, contractorName, category and totalAmount are required.' });
+    }
+    const amount = parseFloat(totalAmount);
+    if (isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'totalAmount must be a positive number.' });
+    }
+
+    console.log(`[GCSC Escrow] Creating: ${customerEmail} → ${contractorName} | $${amount} | ${category}`);
+    const result = createEscrow({
+        customerEmail, contractorName,
+        contractorStake: parseFloat(contractorStake) || 0,
+        category, location: location || '',
+        totalAmount: amount,
+        scopeItems: scopeItems || [],
+        projectDescription: projectDescription || '',
+    });
+
+    if (!result.success && result.blocked) {
+        console.warn(`[GCSC Escrow] BLOCKED: AI score ${result.combinedScore}/100`);
+        return res.status(403).json(result);
+    }
+
+    console.log(`[GCSC Escrow] Created: ${result.escrowId} | Score: ${result.verification.combinedScore}/100`);
+    return res.status(201).json(result);
+});
+
+// POST /api/escrow/:id/submit-milestone
+// Body: { milestoneId, contractorName, evidence[] }
+app.post('/api/escrow/:id/submit-milestone', (req, res) => {
+    const { milestoneId, contractorName, evidence } = req.body;
+    if (!milestoneId || !contractorName) {
+        return res.status(400).json({ error: 'milestoneId and contractorName are required.' });
+    }
+    console.log(`[GCSC Escrow] Milestone ${milestoneId} submitted for ${req.params.id} by ${contractorName}`);
+    const result = submitMilestone(req.params.id, parseInt(milestoneId), contractorName, evidence || []);
+    return result.success ? res.status(200).json(result) : res.status(400).json(result);
+});
+
+// POST /api/escrow/:id/approve-milestone
+// Body: { milestoneId, customerEmail }
+app.post('/api/escrow/:id/approve-milestone', (req, res) => {
+    const { milestoneId, customerEmail } = req.body;
+    if (!milestoneId || !customerEmail) {
+        return res.status(400).json({ error: 'milestoneId and customerEmail are required.' });
+    }
+    console.log(`[GCSC Escrow] Milestone ${milestoneId} approval for ${req.params.id} by ${customerEmail}`);
+    const result = approveMilestone(req.params.id, parseInt(milestoneId), customerEmail);
+    if (!result.success && result.blocked) return res.status(403).json(result);
+    return result.success ? res.status(200).json(result) : res.status(400).json(result);
+});
+
+// POST /api/escrow/:id/dispute
+// Body: { raisedBy, reason, evidence[] }
+app.post('/api/escrow/:id/dispute', (req, res) => {
+    const { raisedBy, reason, evidence } = req.body;
+    if (!raisedBy || !reason) {
+        return res.status(400).json({ error: 'raisedBy and reason are required.' });
+    }
+    console.log(`[GCSC Escrow] DISPUTE raised for ${req.params.id} by ${raisedBy}`);
+    const result = raiseDispute(req.params.id, raisedBy, reason, evidence || []);
+    return result.success ? res.status(200).json(result) : res.status(400).json(result);
+});
+
+// GET /api/escrow/:id
+app.get('/api/escrow/:id', (req, res) => {
+    const escrow = getEscrow(req.params.id);
+    if (!escrow) return res.status(404).json({ error: 'Escrow not found.' });
+    return res.status(200).json(escrow);
+});
+
+// GET /api/escrow
+app.get('/api/escrow', (_req, res) => {
+    return res.status(200).json(listEscrows());
+});
+
+// =============================================================
 // HEALTH CHECK
 // =============================================================
 
@@ -577,5 +669,11 @@ app.listen(PORT, () => {
     console.log(`[GCSC]       → POST /api/verify/scope`);
     console.log(`[GCSC]       → POST /api/verify/bid`);
     console.log(`[GCSC]       → POST /api/verify/contractor`);
+    console.log(`[GCSC]     Escrow   : AI-Gated Smart Contract Engine`);
+    console.log(`[GCSC]       → POST /api/escrow/create`);
+    console.log(`[GCSC]       → POST /api/escrow/:id/submit-milestone`);
+    console.log(`[GCSC]       → POST /api/escrow/:id/approve-milestone`);
+    console.log(`[GCSC]       → POST /api/escrow/:id/dispute`);
+    console.log(`[GCSC]       → GET  /api/escrow/:id`);
     console.log(`[GCSC]     Health   : http://localhost:${PORT}/health\n`);
 });
