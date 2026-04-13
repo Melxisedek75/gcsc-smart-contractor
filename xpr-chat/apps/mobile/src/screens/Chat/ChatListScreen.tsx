@@ -100,6 +100,12 @@ export const ChatListScreen: React.FC = () => {
           <WalletBalance compact onPress={handleWalletPress} />
           <TouchableOpacity
             style={styles.iconButton}
+            onPress={() => navigation.navigate('Channels')}
+          >
+            <Text style={styles.iconButtonText}>#</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
             onPress={() => navigation.navigate('Profile')}
           >
             <Text style={styles.iconButtonText}>⚙</Text>

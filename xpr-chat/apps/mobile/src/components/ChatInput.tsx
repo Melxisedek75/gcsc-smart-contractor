@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,18 @@ interface ChatInputProps {
   onSendText: (text: string) => void;
   onSendXPR: () => void;
   onSendMedia: () => void;
+  onTypingChange?: (isTyping: boolean) => void;
   disabled?: boolean;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat Input
+// ─────────────────────────────────────────────────────────────────────────────
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendText,
   onSendXPR,
   onSendMedia,
+  onTypingChange,
   disabled = false,
 }) => {
   const [text, setText] = useState('');
@@ -28,67 +33,69 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const expandAnim = useRef(new Animated.Value(0)).current;
 
   const toggleExpand = () => {
-    const toValue = isExpanded ? 0 : 1;
-    setIsExpanded(!isExpanded);
+    const next = !isExpanded;
+    setIsExpanded(next);
     Animated.spring(expandAnim, {
-      toValue,
+      toValue: next ? 1 : 0,
       tension: 60,
       friction: 10,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
     onSendText(trimmed);
     setText('');
-  };
+    onTypingChange?.(false);
+  }, [text, onSendText, onTypingChange]);
+
+  const handleChangeText = useCallback(
+    (val: string) => {
+      setText(val);
+      onTypingChange?.(val.trim().length > 0);
+    },
+    [onTypingChange]
+  );
 
   const hasText = text.trim().length > 0;
 
-  // Extra action buttons scale animation
-  const actionsScale = expandAnim.interpolate({
+  const trayHeight = expandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.8, 1],
+    outputRange: [0, 88],
   });
-  const actionsOpacity = expandAnim;
+
+  const actionItems = [
+    { icon: '⚡', label: 'Send XPR', onPress: onSendXPR },
+    { icon: '🖼', label: 'Photo', onPress: onSendMedia },
+    { icon: '📷', label: 'Camera', onPress: () => {} },
+    { icon: '📁', label: 'File', onPress: () => {} },
+    { icon: '🎤', label: 'Voice', onPress: () => {} },
+  ];
 
   return (
     <View style={styles.container}>
-      {/* Extra actions tray */}
-      <Animated.View
-        style={[
-          styles.actionsTray,
-          { opacity: actionsOpacity, transform: [{ scale: actionsScale }] },
-          !isExpanded && styles.actionsTrayHidden,
-        ]}
-        pointerEvents={isExpanded ? 'auto' : 'none'}
-      >
-        <TouchableOpacity style={styles.actionTile} onPress={onSendXPR}>
-          <Text style={styles.actionTileIcon}>⚡</Text>
-          <Text style={styles.actionTileLabel}>Send XPR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionTile} onPress={onSendMedia}>
-          <Text style={styles.actionTileIcon}>🖼</Text>
-          <Text style={styles.actionTileLabel}>Photo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionTile} onPress={() => {}}>
-          <Text style={styles.actionTileIcon}>📁</Text>
-          <Text style={styles.actionTileLabel}>File</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionTile} onPress={() => {}}>
-          <Text style={styles.actionTileIcon}>🎤</Text>
-          <Text style={styles.actionTileLabel}>Voice</Text>
-        </TouchableOpacity>
+      {/* Expandable action tray */}
+      <Animated.View style={[styles.actionsTray, { height: trayHeight, overflow: 'hidden' }]}>
+        <View style={styles.actionsTrayInner}>
+          {actionItems.map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              style={styles.actionTile}
+              onPress={() => { item.onPress(); setIsExpanded(false); expandAnim.setValue(0); }}
+              disabled={disabled}
+            >
+              <Text style={styles.actionTileIcon}>{item.icon}</Text>
+              <Text style={styles.actionTileLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </Animated.View>
 
-      {/* Main input row */}
+      {/* Input row */}
       <View style={styles.inputRow}>
-        {/* Plus / close button */}
+        {/* Plus / close */}
         <TouchableOpacity
           style={[styles.iconButton, isExpanded && styles.iconButtonActive]}
           onPress={toggleExpand}
@@ -96,7 +103,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         >
           <Animated.Text
             style={[
-              styles.iconButtonText,
+              styles.plusIcon,
               {
                 transform: [{
                   rotate: expandAnim.interpolate({
@@ -115,16 +122,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <TextInput
           style={styles.input}
           value={text}
-          onChangeText={setText}
+          onChangeText={handleChangeText}
           placeholder="Message..."
           placeholderTextColor={Colors.textMuted}
           multiline
           maxLength={4096}
           editable={!disabled}
-          onFocus={() => setIsExpanded(false)}
+          onFocus={() => { if (isExpanded) { setIsExpanded(false); expandAnim.setValue(0); } }}
+          onBlur={() => onTypingChange?.(false)}
         />
 
-        {/* Send / XPR button */}
+        {/* Right button: send OR $ */}
         {hasText ? (
           <TouchableOpacity
             style={styles.sendButton}
@@ -152,40 +160,34 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
     backgroundColor: Colors.surface,
-    paddingBottom: Platform.OS === 'ios' ? 0 : Spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 0 : Spacing.xs,
   },
-
-  // Actions tray
   actionsTray: {
-    flexDirection: 'row',
-    padding: Spacing.base,
-    gap: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
-  actionsTrayHidden: {
-    height: 0,
-    padding: 0,
-    overflow: 'hidden',
+  actionsTrayInner: {
+    flexDirection: 'row',
+    padding: Spacing.sm,
+    gap: Spacing.xs,
   },
   actionTile: {
-    flex: 1,
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 4,
     backgroundColor: Colors.background,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    flex: 1,
   },
-  actionTileIcon: { fontSize: 22 },
+  actionTileIcon: { fontSize: 20 },
   actionTileLabel: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: Typography.fontSize.xs - 1,
     fontFamily: Typography.fontFamily.mono,
     color: Colors.textSecondary,
   },
-
-  // Input row
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -194,13 +196,11 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 36, height: 36,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.background,
     marginBottom: 1,
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryDim,
   },
-  iconButtonText: {
+  plusIcon: {
     fontSize: 22,
     color: Colors.primary,
     fontFamily: Typography.fontFamily.monoBold,
@@ -224,19 +224,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
     fontSize: Typography.fontSize.md,
     fontFamily: Typography.fontFamily.mono,
     color: Colors.textPrimary,
     textAlignVertical: 'center',
   },
   sendButton: {
-    width: 36,
-    height: 36,
+    width: 36, height: 36,
     borderRadius: 18,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 1,
   },
   sendIcon: {
@@ -245,13 +244,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.monoBold,
   },
   xprButton: {
-    width: 36,
-    height: 36,
+    width: 36, height: 36,
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.primaryDim,
     marginBottom: 1,
   },

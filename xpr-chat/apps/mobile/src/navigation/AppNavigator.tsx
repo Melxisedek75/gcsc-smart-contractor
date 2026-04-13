@@ -1,28 +1,76 @@
+import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { useAuthStore } from '../store/authStore';
+import { notificationService } from '../services/notificationService';
 import { Colors, Typography } from '../utils/theme';
 
-// Auth screens
+// Auth
 import { WelcomeScreen } from '../screens/Auth/WelcomeScreen';
 import { LoginScreen } from '../screens/Auth/LoginScreen';
 import { RegisterScreen } from '../screens/Auth/RegisterScreen';
 
-// Main screens
+// Chat
 import { ChatListScreen } from '../screens/Chat/ChatListScreen';
 import { ChatRoomScreen } from '../screens/Chat/ChatRoomScreen';
 import { NewChatScreen } from '../screens/Chat/NewChatScreen';
+import { ChannelsScreen } from '../screens/Chat/ChannelsScreen';
+import { GroupInfoScreen } from '../screens/Chat/GroupInfoScreen';
+
+// Wallet
 import { WalletScreen } from '../screens/Wallet/WalletScreen';
+import { SendTokenScreen } from '../screens/Wallet/SendTokenScreen';
+import { TransactionHistoryScreen } from '../screens/Wallet/TransactionHistoryScreen';
+
+// Profile
 import { ProfileScreen } from '../screens/Profile/ProfileScreen';
+
+// ─── Navigation Theme ─────────────────────────────────────────────────────────
+const XPRTheme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.primary,
+    background: Colors.background,
+    card: Colors.surface,
+    text: Colors.textPrimary,
+    border: Colors.borderSubtle,
+    notification: Colors.primary,
+  },
+};
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// ─── Bottom Tab Navigator ────────────────────────────────────────────────────
+// ─── Tab bar icon ─────────────────────────────────────────────────────────────
+const TabIcon: React.FC<{
+  icon: string;
+  focused: boolean;
+  label: string;
+}> = ({ icon, focused }) => (
+  <View style={[tabStyles.icon, focused && tabStyles.iconActive]}>
+    <Text style={tabStyles.iconText}>{icon}</Text>
+  </View>
+);
+
+const tabStyles = StyleSheet.create({
+  icon: {
+    width: 30, height: 30,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 8,
+  },
+  iconActive: {
+    backgroundColor: Colors.primaryDim,
+  },
+  iconText: { fontSize: 18 },
+});
+
+// ─── Bottom Tab Navigator ─────────────────────────────────────────────────────
 const MainTabs: React.FC = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
@@ -31,30 +79,29 @@ const MainTabs: React.FC = () => (
         backgroundColor: Colors.surface,
         borderTopColor: Colors.borderSubtle,
         borderTopWidth: 1,
-        paddingBottom: 4,
-        height: 56,
+        height: 60,
+        paddingBottom: 6,
+        paddingTop: 4,
       },
       tabBarActiveTintColor: Colors.primary,
       tabBarInactiveTintColor: Colors.textMuted,
       tabBarLabelStyle: {
         fontFamily: Typography.fontFamily.mono,
-        fontSize: 10,
+        fontSize: 9,
         letterSpacing: 0.5,
       },
-      tabBarIcon: ({ color, focused }) => {
+      tabBarIcon: ({ focused }) => {
         const icons: Record<string, string> = {
           Chats: '💬',
           Wallet: '⚡',
           Profile: '◉',
         };
-        const icon = icons[route.name] ?? '•';
         return (
-          <View style={[
-            tabIconStyles.container,
-            focused && tabIconStyles.active,
-          ]}>
-            <React.Fragment>{icon}</React.Fragment>
-          </View>
+          <TabIcon
+            icon={icons[route.name] ?? '•'}
+            focused={focused}
+            label={route.name}
+          />
         );
       },
     })}
@@ -65,27 +112,20 @@ const MainTabs: React.FC = () => (
   </Tab.Navigator>
 );
 
-const tabIconStyles = StyleSheet.create({
-  container: {
-    width: 28, height: 28,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  active: {},
-});
-
-// ─── Root Navigator ──────────────────────────────────────────────────────────
+// ─── Root Navigator ───────────────────────────────────────────────────────────
 const AppNavigator: React.FC = () => {
   const { status, initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
+    notificationService.initialize();
   }, []);
 
-  // Splash / loading state
   if (status === 'idle' || status === 'initializing') {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingBrand}>XPR Chat</Text>
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 24 }} />
       </View>
     );
   }
@@ -93,23 +133,31 @@ const AppNavigator: React.FC = () => {
   const isAuth = status === 'authenticated';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={XPRTheme}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: Colors.background },
-          animationEnabled: true,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
         }}
       >
         {isAuth ? (
-          // ── Authenticated stack ──────────────────────────────────────────
           <>
+            {/* Main tabs */}
             <Stack.Screen name="Main" component={MainTabs} />
+
+            {/* Chat */}
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
             <Stack.Screen name="NewChat" component={NewChatScreen} />
+            <Stack.Screen name="Channels" component={ChannelsScreen} />
+            <Stack.Screen name="GroupInfo" component={GroupInfoScreen} />
+
+            {/* Wallet */}
+            <Stack.Screen name="SendToken" component={SendTokenScreen} />
+            <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />
           </>
         ) : (
-          // ── Auth stack ───────────────────────────────────────────────────
           <>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -127,6 +175,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loadingBrand: {
+    fontSize: 32,
+    fontFamily: Typography.fontFamily.monoBold,
+    color: Colors.primary,
+    letterSpacing: 4,
   },
 });
 

@@ -1,11 +1,12 @@
 import { Platform } from 'react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
 
-const IPFS_CONFIG = {
-  gateway: 'https://ipfs.io/ipfs/',
-  uploadEndpoint: 'https://api.web3.storage/upload',
-  pinataEndpoint: 'https://api.pinata.cloud/pinning/pinFileToIPFS',
-  cloudflareGateway: 'https://cloudflare-ipfs.com/ipfs/',
-};
+const GATEWAYS = [
+  'https://ipfs.io/ipfs/',
+  'https://cloudflare-ipfs.com/ipfs/',
+  'https://gateway.pinata.cloud/ipfs/',
+  'https://ipfs.fleek.co/ipfs/',
+];
 
 export interface IPFSUploadResult {
   hash: string;
@@ -13,86 +14,127 @@ export interface IPFSUploadResult {
   size: number;
 }
 
+export interface MediaInfo {
+  uri: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  size?: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// IPFS Service — Media storage via IPFS
+// IPFS Service
 // ─────────────────────────────────────────────────────────────────────────────
 class IPFSService {
-  private apiKey: string = '';
+  private apiKey = '';
+  private uploadUrl = 'https://api.web3.storage/upload';
 
-  setApiKey(key: string): void {
-    this.apiKey = key;
-  }
+  setApiKey(key: string): void { this.apiKey = key; }
 
-  // ── Upload file to IPFS ────────────────────────────────────────────────────
-  async uploadFile(uri: string, mimeType: string): Promise<IPFSUploadResult> {
-    const filename = uri.split('/').pop() ?? 'file';
-
+  // ── Upload any file ────────────────────────────────────────────────────────
+  async uploadFile(info: MediaInfo): Promise<IPFSUploadResult> {
+    const filename = info.uri.split('/').pop() ?? 'file';
     const formData = new FormData();
+
     formData.append('file', {
-      uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
-      type: mimeType,
+      uri: Platform.OS === 'ios' ? info.uri.replace('file://', '') : info.uri,
+      type: info.mimeType,
       name: filename,
     } as any);
 
-    const response = await fetch(IPFS_CONFIG.uploadEndpoint, {
+    const response = await fetch(this.uploadUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { Authorization: `Bearer ${this.apiKey}` },
       body: formData,
     });
 
-    if (!response.ok) {
-      throw new Error(`IPFS upload failed: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`IPFS upload failed: ${response.status}`);
 
     const data = await response.json();
-    const hash = data.cid ?? data.IpfsHash;
+    const hash: string = data.cid ?? data.IpfsHash ?? '';
+
+    return { hash, url: this.getUrl(hash), size: data.PinSize ?? info.size ?? 0 };
+  }
+
+  // ── Upload image with compression ─────────────────────────────────────────
+  async uploadImage(
+    uri: string,
+    quality = 0.85,
+    maxWidth = 1920
+  ): Promise<IPFSUploadResult & { width: number; height: number }> {
+    // Resize/compress before upload
+    const manipulated = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: maxWidth } }],
+      { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    const result = await this.uploadFile({
+      uri: manipulated.uri,
+      mimeType: 'image/jpeg',
+      width: manipulated.width,
+      height: manipulated.height,
+    });
 
     return {
-      hash,
-      url: this.getUrl(hash),
-      size: data.PinSize ?? 0,
+      ...result,
+      width: manipulated.width,
+      height: manipulated.height,
     };
   }
 
-  // ── Upload JSON data (for user profile metadata) ──────────────────────────
-  async uploadJSON(data: Record<string, any>): Promise<string> {
-    const response = await fetch(IPFS_CONFIG.uploadEndpoint, {
+  // ── Upload avatar (square crop) ────────────────────────────────────────────
+  async uploadAvatar(uri: string): Promise<IPFSUploadResult> {
+    const manipulated = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 256, height: 256 } }],
+      { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    return this.uploadFile({ uri: manipulated.uri, mimeType: 'image/jpeg' });
+  }
+
+  // ── Upload JSON (metadata) ─────────────────────────────────────────────────
+  async uploadJSON(data: Record<string, unknown>): Promise<string> {
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const formData = new FormData();
+    formData.append('file', blob as any, 'metadata.json');
+
+    const response = await fetch(this.uploadUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      body: formData,
     });
 
     if (!response.ok) throw new Error('IPFS JSON upload failed');
-
     const result = await response.json();
     return result.cid ?? result.IpfsHash;
   }
 
-  // ── Get public gateway URL ─────────────────────────────────────────────────
-  getUrl(hash: string): string {
-    return `${IPFS_CONFIG.gateway}${hash}`;
-  }
-
-  // ── Get URL with fallback gateways ─────────────────────────────────────────
-  getUrlWithFallback(hash: string): string[] {
-    return [
-      `${IPFS_CONFIG.gateway}${hash}`,
-      `${IPFS_CONFIG.cloudflareGateway}${hash}`,
-      `https://ipfs.fleek.co/ipfs/${hash}`,
-    ];
-  }
-
-  // ── Fetch JSON from IPFS ───────────────────────────────────────────────────
+  // ── Fetch JSON ─────────────────────────────────────────────────────────────
   async fetchJSON<T>(hash: string): Promise<T> {
-    const response = await fetch(this.getUrl(hash));
-    if (!response.ok) throw new Error(`Failed to fetch from IPFS: ${hash}`);
-    return response.json();
+    for (const gateway of GATEWAYS) {
+      try {
+        const response = await fetch(`${gateway}${hash}`, { signal: AbortSignal.timeout(5000) });
+        if (response.ok) return response.json();
+      } catch {
+        // Try next gateway
+      }
+    }
+    throw new Error(`Cannot fetch IPFS content: ${hash}`);
+  }
+
+  // ── URL helpers ────────────────────────────────────────────────────────────
+  getUrl(hash: string): string { return `${GATEWAYS[0]}${hash}`; }
+
+  resolveUrl(url: string): string {
+    if (url.startsWith('ipfs://')) return `${GATEWAYS[0]}${url.slice(7)}`;
+    return url;
+  }
+
+  getAllUrls(hash: string): string[] {
+    return GATEWAYS.map((g) => `${g}${hash}`);
   }
 }
 
