@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "XPR Chat",
+    "slug": "xpr-chat",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A2E"
+    },
+    "scheme": "xprchat",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.xprnetwork.chat",
+      "infoPlist": {
+        "NSCameraUsageDescription": "XPR Chat uses camera to send photos and scan QR codes",
+        "NSPhotoLibraryUsageDescription": "XPR Chat uses photo library to send images",
+        "NSMicrophoneUsageDescription": "XPR Chat uses microphone to record voice messages",
+        "NSFaceIDUsageDescription": "XPR Chat uses Face ID for secure wallet access"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A1A2E"
+      },
+      "package": "org.xprnetwork.chat",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "USE_FINGERPRINT",
+        "USE_BIOMETRIC"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-notifications", {
+        "icon": "./assets/notification-icon.png",
+        "color": "#00D4FF"
+      }]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "xpr-chat-project-id"
+      },
+      "xprEndpoint": "wss://api.xprnetwork.org",
+      "matrixServer": "https://matrix.xprchat.io",
+      "ipfsGateway": "https://ipfs.io/ipfs/",
+      "backendUrl": "https://api.xprchat.io"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.env
+*.local
+
+# Expo
+.expo/
+apps/mobile/.expo/
+apps/web/.expo/
+
+# iOS/Android
+ios/
+android/
+
+# Docker data
+docker/synapse/
+docker/certs/
+
+# Logs
+*.log
+logs/
+
+# TypeScript
+*.js.map
+
+# OS
+.DS_Store
+Thumbs.db

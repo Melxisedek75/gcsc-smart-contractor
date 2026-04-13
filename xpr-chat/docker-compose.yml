@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # ─── Matrix Synapse ────────────────────────────────────────────────────────
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: xpr-chat-synapse
+    restart: unless-stopped
+    ports:
+      - '8008:8008'
+    volumes:
+      - ./docker/synapse:/data
+    environment:
+      - SYNAPSE_SERVER_NAME=xprchat.io
+      - SYNAPSE_REPORT_STATS=no
+    networks:
+      - xpr-chat-net
+    depends_on:
+      - postgres
+      - redis
+
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: xpr-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xpr_chat
+      POSTGRES_USER: xpr_chat
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5432:5432'
+    networks:
+      - xpr-chat-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U xpr_chat']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: xpr-chat-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme_in_production}
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6379:6379'
+    networks:
+      - xpr-chat-net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── XPR Chat Backend ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: xpr-chat-backend
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://xpr_chat:${POSTGRES_PASSWORD:-changeme_in_production}@postgres:5432/xpr_chat
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme_in_production}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-generate_a_secure_secret}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - xpr-chat-net
+
+  # ─── Nginx Reverse Proxy ───────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: xpr-chat-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - synapse
+    networks:
+      - xpr-chat-net
+
+networks:
+  xpr-chat-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

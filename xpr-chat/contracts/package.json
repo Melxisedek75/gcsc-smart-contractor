@@ -1,0 +1,19 @@
+{
+  "name": "@xpr-chat/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "proton-asc src/chat.contract.ts -o build/chat.wasm -t build/chat.abi",
+    "build:token": "proton-asc src/token.contract.ts -o build/token.wasm -t build/token.abi",
+    "test": "jest",
+    "deploy": "proton push xprchat build/chat.wasm build/chat.abi"
+  },
+  "dependencies": {
+    "proton-tsc": "^0.9.0"
+  },
+  "devDependencies": {
+    "@proton/cli": "^0.9.0",
+    "assemblyscript": "^0.27.0",
+    "jest": "^29.7.0"
+  }
+}

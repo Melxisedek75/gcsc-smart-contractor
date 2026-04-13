@@ -1,0 +1,30 @@
+{
+  "name": "xpr-chat",
+  "version": "1.0.0",
+  "description": "Decentralized encrypted messenger on XPR Network",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "apps/web",
+    "backend",
+    "contracts"
+  ],
+  "scripts": {
+    "mobile": "npm run start --workspace=apps/mobile",
+    "web": "npm run start --workspace=apps/web",
+    "backend": "npm run dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend",
+    "contracts:build": "npm run build --workspace=contracts",
+    "contracts:test": "npm run test --workspace=contracts",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
