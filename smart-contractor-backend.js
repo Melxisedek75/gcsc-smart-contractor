@@ -16,7 +16,6 @@
 
 const express    = require('express');
 const cors       = require('cors');
-const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const crypto     = require('crypto');   // built-in Node.js — no extra install
 const { Readable } = require('stream');
@@ -31,8 +30,8 @@ const REQUIRED_ENV = [
     'GOOGLE_CLIENT_SECRET',
     'GOOGLE_REFRESH_TOKEN',
     'SYSTEM_EMAIL',
-    'EMAIL_PASSWORD',
     'ENCRYPTION_SECRET',
+    // EMAIL_PASSWORD больше не нужен — используем Gmail OAuth2
 ];
 
 const missingVars = REQUIRED_ENV.filter(v => !process.env[v]);
@@ -180,24 +179,60 @@ oauth2Client.setCredentials({
     refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
 });
 
-const drive = google.drive({
-    version: 'v3',
-    auth: oauth2Client,
-});
+const drive = google.drive({ version: 'v3', auth: oauth2Client });
+const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 // =============================================================
-// SECTION 4: EMAIL CLIENT (Gmail SMTP + App Password)
+// SECTION 4: EMAIL — Gmail API (прямой вызов, без nodemailer)
+// Использует тот же oauth2Client что и Drive.
+// 2FA НЕ ТРЕБУЕТСЯ. Nodemailer не нужен.
 // =============================================================
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.SYSTEM_EMAIL,
-        pass: process.env.EMAIL_PASSWORD,
-    },
-});
+async function sendWelcomeEmail(toEmail, role, xprAccount, xprPublicKey) {
+    const from    = `"GCSC Smart ContractOR" <${process.env.SYSTEM_EMAIL}>`;
+    const subject = 'Welcome to GCSC — Your XPR Wallet is Ready';
+    const html    = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a2e">
+  <h1 style="color:#4361ee">Welcome to GCSC!</h1>
+  <p>You have been registered as a <strong>${role}</strong> on the XPR Network.</p>
+  <div style="background:#f0f4ff;border-left:4px solid #4361ee;padding:16px;margin:20px 0;border-radius:4px">
+    <h3 style="margin:0 0 10px">Your XPR Wallet</h3>
+    <p style="margin:4px 0"><strong>Account:</strong>
+      <code style="background:#e8eeff;padding:2px 6px;border-radius:3px">${xprAccount}</code>
+    </p>
+    <p style="margin:4px 0"><strong>Public Key:</strong>
+      <code style="word-break:break-all;font-size:12px">${xprPublicKey}</code>
+    </p>
+  </div>
+  <div style="background:#fff8e1;border-left:4px solid #ffc107;padding:16px;margin:20px 0;border-radius:4px">
+    <h3 style="margin:0 0 8px">⚠ Security Notice</h3>
+    <ul style="margin:0;padding-left:18px">
+      <li>Your private key has been <strong>encrypted with AES-256-GCM</strong>.</li>
+      <li>The encrypted file is stored in your Google Drive vault: <em>GCSC_Vault_${xprAccount}</em>.</li>
+      <li><strong>Never share your private key with anyone.</strong></li>
+    </ul>
+  </div>
+  <p style="color:#888;font-size:12px">GCSC Smart ContractOR — XPR Network (Proton)</p>
+</div>`;
+
+    // Build RFC 2822 MIME message
+    const mime = [
+        `From: ${from}`,
+        `To: ${toEmail}`,
+        `Subject: ${subject}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        html,
+    ].join('\r\n');
+
+    const raw = Buffer.from(mime).toString('base64url');
+
+    await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: { raw },
+    });
+}
 
 // =============================================================
 // SECTION 5: REGISTRATION ENDPOINT
@@ -272,50 +307,18 @@ app.post('/api/register', async (req, res) => {
             }
         }
 
-        // STEP E — Welcome email (SKIP IN TEST MODE)
+        // STEP E — Welcome email via Gmail API (не фатально — Drive важнее)
+        let emailStatus = 'skipped (test mode)';
         if (!testMode) {
             try {
-                await transporter.sendMail({
-                    from:    `"GCSC Smart ContractOR" <${process.env.SYSTEM_EMAIL}>`,
-                    to:      email,
-                    subject: 'Welcome to GCSC — Your XPR Wallet is Ready',
-                    html: `
-                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a2e">
-                      <h1 style="color:#4361ee">Welcome to GCSC!</h1>
-                      <p>You have been registered as a <strong>${role}</strong> on the XPR Network.</p>
-
-                      <div style="background:#f0f4ff;border-left:4px solid #4361ee;padding:16px;margin:20px 0;border-radius:4px">
-                        <h3 style="margin:0 0 10px">Your XPR Wallet</h3>
-                        <p style="margin:4px 0"><strong>Account:</strong>
-                          <code style="background:#e8eeff;padding:2px 6px;border-radius:3px">${xprAccount}</code>
-                        </p>
-                        <p style="margin:4px 0"><strong>Public Key:</strong>
-                          <code style="word-break:break-all;font-size:12px">${xprPublicKey}</code>
-                        </p>
-                      </div>
-
-                      <div style="background:#fff8e1;border-left:4px solid #ffc107;padding:16px;margin:20px 0;border-radius:4px">
-                        <h3 style="margin:0 0 8px">⚠ Security Notice</h3>
-                        <ul style="margin:0;padding-left:18px">
-                          <li>Your private key has been <strong>encrypted with AES-256-GCM</strong>.</li>
-                          <li>The encrypted file is stored in your Google Drive vault:
-                            <em>GCSC_Vault_${xprAccount}</em>.</li>
-                          <li><strong>Never share your private key with anyone.</strong></li>
-                        </ul>
-                      </div>
-
-                      <p style="color:#888;font-size:12px">
-                        GCSC Smart ContractOR — XPR Network (Proton) — Testnet
-                      </p>
-                    </div>`,
-                });
+                await sendWelcomeEmail(email, role, xprAccount, xprPublicKey);
                 console.log(`[GCSC] Welcome email sent to: ${email}`);
+                emailStatus = 'sent';
             } catch (emailErr) {
-                console.error('[GCSC] Email error:', emailErr.message);
-                throw emailErr;
+                // Email fail НЕ ломает регистрацию — ключ уже на Drive
+                console.error('[GCSC] Email warning (non-fatal):', emailErr.message);
+                emailStatus = `failed: ${emailErr.message}`;
             }
-        } else {
-            console.log(`[GCSC] Email skipped (test mode). Would send to: ${email}`);
         }
 
         // Return only public information — never return the private key
@@ -323,11 +326,12 @@ app.post('/api/register', async (req, res) => {
             success:   true,
             account:   xprAccount,
             publicKey: xprPublicKey,
-            message:   testMode
-                ? 'Registration complete (TEST MODE - no Google Drive/Email).'
+            message:     testMode
+                ? 'Registration complete (TEST MODE).'
                 : 'Registration complete. Encrypted key stored on Google Drive.',
             driveStatus: driveStatus,
-            testMode:   testMode,
+            emailStatus: emailStatus,
+            testMode:    testMode,
         });
 
     } catch (err) {

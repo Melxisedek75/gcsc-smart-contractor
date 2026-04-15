@@ -298,7 +298,11 @@
             })();
 
             // ── Phase 2: REAL backend call ────────────────────────────────────────
-            const backendPromise = fetch('http://localhost:3000/api/register', {
+            // Auto-detect backend URL: localhost in dev, Railway URL in production
+            const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.protocol === 'file:')
+                ? 'http://localhost:3000'
+                : 'https://gcsc-smart-contractor-production.up.railway.app';
+            const backendPromise = fetch(`${BACKEND_URL}/api/register`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ email, role }),
