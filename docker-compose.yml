@@ -1,0 +1,170 @@
+# =============================================================================
+# GCSC Smart Contractor Backend — Local Development Stack
+# =============================================================================
+# Complete local development environment with:
+#   - Node.js/Express backend (hot-reload capable)
+#   - PostgreSQL database (with persistent storage)
+#   - pgAdmin (web-based database management)
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose up -d db       # Start only the database
+#   docker-compose logs -f app    # Tail application logs
+#   docker-compose down -v        # Stop and remove volumes (data will be lost!)
+#
+# URLs:
+#   App:      http://localhost:3000
+#   pgAdmin:  http://localhost:5050 (admin@gcsc.com / admin)
+# =============================================================================
+
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Networks — All services communicate on this isolated network
+# ---------------------------------------------------------------------------
+networks:
+  gcsc-network:
+    driver: bridge
+
+# ---------------------------------------------------------------------------
+# Volumes — Persistent storage for PostgreSQL data
+# ---------------------------------------------------------------------------
+volumes:
+  gcsc-postgres-data:
+    driver: local
+  gcsc-pgadmin-data:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+services:
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL Database
+  # -------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: gcsc-db
+    restart: unless-stopped
+
+    environment:
+      # Database credentials — these create the default database on first run
+      POSTGRES_DB: gcsc_smart_contractor
+      POSTGRES_USER: gcsc_user
+      POSTGRES_PASSWORD: gcsc_dev_password
+      # Performance tuning for development
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+    volumes:
+      # Persistent database storage (survives container restarts)
+      - gcsc-postgres-data:/var/lib/postgresql/data/pgdata
+      # Initialization scripts — executed on first container startup
+      # Files in docker-entrypoint-initdb.d/ are run alphabetically
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/02-init.sql:ro
+
+    ports:
+      # Expose PostgreSQL on host port 5432 for direct access
+      - "5432:5432"
+
+    networks:
+      - gcsc-network
+
+    # Health check — ensures DB is ready before app starts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gcsc_user -d gcsc_smart_contractor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # Security: Run as non-root user (postgres UID 70 in Alpine image)
+    # user: "70:70"
+
+  # -------------------------------------------------------------------------
+  # pgAdmin — Web-based PostgreSQL administration
+  # -------------------------------------------------------------------------
+  # OPTIONAL: Remove this section in production (security)
+  # -------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: gcsc-pgadmin
+    restart: unless-stopped
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gcsc.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+
+    volumes:
+      - gcsc-pgadmin-data:/var/lib/pgadmin
+
+    ports:
+      - "5050:80"
+
+    networks:
+      - gcsc-network
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # GCSC Backend Application
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use the production stage from multi-stage build
+      target: production
+
+    container_name: gcsc-app
+    restart: unless-stopped
+
+    env_file:
+      # Load environment variables from .env file
+      # This file is NOT included in the Docker image (see .dockerignore)
+      - .env
+
+    environment:
+      # Override DB host to use Docker service name
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: gcsc_smart_contractor
+      DB_USER: gcsc_user
+      DB_PASSWORD: gcsc_dev_password
+      # Ensure Node knows it's in a container
+      NODE_ENV: development
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - gcsc-network
+
+    # Wait for database to be healthy before starting
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Health check — matches the Dockerfile HEALTHCHECK but with host networking
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+    # -----------------------------------------------------------------------
+    # For development: Mount source code for hot-reload
+    # -----------------------------------------------------------------------
+    # Uncomment the 'volumes' section below to enable hot-reload during
+    # development. The local source code overrides the code copied into
+    # the image. Note: You need nodemon installed for auto-restart.
+    # -----------------------------------------------------------------------
+    # volumes:
+    #   - ./server.js:/app/server.js:ro
+    #   - ./public:/app/public:ro
