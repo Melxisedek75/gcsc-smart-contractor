@@ -1,0 +1,38 @@
+{
+  "name": "gcsc-smart-contractor-backend",
+  "version": "2.0.0",
+  "description": "GCSC Smart Contractor - Secure P2P Construction Marketplace Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "googleapis": "^144.0.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.13.0",
+    "ripemd160": "^2.0.2",
+    "validator": "^13.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "open": "^10.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "construction",
+    "marketplace",
+    "blockchain",
+    "xpr",
+    "secure"
+  ],
+  "license": "UNLICENSED"
+}
