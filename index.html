@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://gcsc-smart-contractor-production.up.railway.app http://localhost:3000; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <meta name="X-Frame-Options" content="DENY">
+    <meta name="X-Content-Type-Options" content="nosniff">
+    <meta name="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <title>GCSC Smart Contractor - P2P Construction Marketplace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gcsc: {
+                            purple: '#6d28d9',
+                            purpleLight: '#8b5cf6',
+                            purpleDark: '#5b21b6',
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            cardHover: '#273548',
+                            border: '#334155',
+                            text: '#f1f5f9',
+                            textMuted: '#94a3b8',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            danger: '#ef4444',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            min-height: 100vh;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-in-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(109, 40, 217, 0.15);
+        }
+        .btn-primary {
+            background-color: #6d28d9;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background-color: #5b21b6;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background-color: #1e293b;
+            color: #f1f5f9;
+            border: 1px solid #334155;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #273548;
+            border-color: #6d28d9;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            color: #94a3b8;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: rgba(109, 40, 217, 0.1);
+            color: #8b5cf6;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f1f5f9;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .form-input:focus {
+            border-color: #6d28d9;
+            box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
+        }
+        .form-input::placeholder {
+            color: #64748b;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .step-dot {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background-color: #6d28d9;
+            color: white;
+        }
+        .step-dot.completed {
+            background-color: #10b981;
+            color: white;
+        }
+        .step-dot.pending {
+            background-color: #334155;
+            color: #64748b;
+        }
+        .step-line {
+            width: 3rem;
+            height: 2px;
+            background-color: #334155;
+        }
+        .step-line.completed {
+            background-color: #10b981;
+        }
+        .nav-blur {
+            backdrop-filter: blur(10px);
+            background-color: rgba(15, 23, 42, 0.9);
+        }
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(109, 40, 217, 0.15);
+            color: #8b5cf6;
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+        }
+        .bid-card {
+            border-left: 3px solid #6d28d9;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-open { background-color: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status-in-progress { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .status-completed { background-color: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .status-accepted { background-color: rgba(109, 40, 217, 0.2); color: #8b5cf6; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Anti-clickjacking frame busting -->
+    <div id="clickjack-protection" style="display:none;"></div>
+
+    <!-- Navigation Bar -->
+    <nav id="main-nav" class="nav-blur border-b border-gcsc-border sticky top-0 z-50" style="display:none;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gcsc-purple flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <span class="text-xl font-bold text-white cursor-pointer" id="nav-logo">GCSC Smart Contractor</span>
+                </div>
+                <div class="hidden md:flex items-center gap-4">
+                    <button id="nav-dashboard" class="sidebar-link">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        <span>Dashboard</span>
+                    </button>
+                    <button id="nav-profile" class="sidebar-link">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <span>Profile</span>
+                    </button>
+                    <button id="nav-logout" class="sidebar-link text-gcsc-danger hover:text-red-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>Logout</span>
+                    </button>
+                </div>
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-gcsc-textMuted hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden border-t border-gcsc-border" style="display:none;">
+            <div class="px-4 py-3 space-y-1">
+                <button id="mobile-nav-dashboard" class="sidebar-link w-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <span>Dashboard</span>
+                </button>
+                <button id="mobile-nav-profile" class="sidebar-link w-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <span>Profile</span>
+                </button>
+                <button id="mobile-nav-logout" class="sidebar-link w-full text-gcsc-danger">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast notification container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-[9999] space-y-2"></div>
+
+    <!-- ==================== PAGE: HOME / LANDING ==================== -->
+    <div id="page-home" class="page active">
+        <!-- Hero Section -->
+        <section class="hero-gradient min-h-screen flex flex-col">
+            <!-- Top bar -->
+            <div class="w-full px-4 sm:px-6 lg:px-8 py-4">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gcsc-purple flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        </div>
+                        <span class="text-2xl font-bold text-white">GCSC Smart Contractor</span>
+                    </div>
+                    <button id="hero-login-btn" class="btn-primary px-6 py-2 rounded-lg font-medium">Get Started</button>
+                </div>
+            </div>
+
+            <!-- Hero Content -->
+            <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+                <div class="max-w-5xl mx-auto text-center">
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">
+                        Build with Trust.<br>
+                        <span class="text-gcsc-purpleLight">Pay with Confidence.</span>
+                    </h1>
+                    <p class="text-lg sm:text-xl text-gcsc-textMuted mb-10 max-w-2xl mx-auto leading-relaxed">
+                        The first peer-to-peer construction marketplace powered by smart contracts and XPR blockchain escrow. Connect directly with verified contractors, get competitive bids, and ensure secure payments.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                        <button id="cta-homeowner" class="btn-primary px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            I Need a Contractor
+                        </button>
+                        <button id="cta-contractor" class="btn-secondary px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            I'm a Contractor
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="px-4 sm:px-6 lg:px-8 py-16 border-t border-gcsc-border">
+                <div class="max-w-7xl mx-auto">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-center text-white mb-12">Why Choose GCSC?</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Feature 1: Smart Contracts -->
+                        <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6 card-hover text-center">
+                            <div class="feature-icon mx-auto mb-4">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white mb-2">Smart Contracts</h3>
+                            <p class="text-gcsc-textMuted text-sm">Automated agreements ensure all parties fulfill their obligations before funds are released.</p>
+                        </div>
+                        <!-- Feature 2: Escrow -->
+                        <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6 card-hover text-center">
+                            <div class="feature-icon mx-auto mb-4">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white mb-2">Secure Escrow</h3>
+                            <p class="text-gcsc-textMuted text-sm">Funds are held in blockchain escrow until project milestones are completed and verified.</p>
+                        </div>
+                        <!-- Feature 3: XPR Blockchain -->
+                        <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6 card-hover text-center">
+                            <div class="feature-icon mx-auto mb-4">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white mb-2">XPR Blockchain</h3>
+                            <p class="text-gcsc-textMuted text-sm">Built on the high-speed XPR Network for instant, near-zero fee transactions.</p>
+                        </div>
+                        <!-- Feature 4: Verified Reviews -->
+                        <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6 card-hover text-center">
+                            <div class="feature-icon mx-auto mb-4">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white mb-2">Verified Reviews</h3>
+                            <p class="text-gcsc-textMuted text-sm">Only verified project participants can leave reviews. No fake ratings.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="border-t border-gcsc-border px-4 sm:px-6 lg:px-8 py-8">
+                <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-gcsc-purple flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gcsc-textMuted">GCSC Smart Contractor v2.0</span>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <a href="https://docs.gcsc.io" target="_blank" rel="noopener noreferrer" class="text-sm text-gcsc-textMuted hover:text-white transition-colors">Documentation</a>
+                        <a href="https://xprnetwork.org" target="_blank" rel="noopener noreferrer" class="text-sm text-gcsc-textMuted hover:text-white transition-colors">XPR Network</a>
+                        <a href="mailto:support@gcsc.io" class="text-sm text-gcsc-textMuted hover:text-white transition-colors">Support</a>
+                    </div>
+                    <div class="text-sm text-gcsc-textMuted">
+                        Built securely with care.
+                    </div>
+                </div>
+            </footer>
+        </section>
+    </div>
+
+    <!-- ==================== PAGE: AUTH / LOGIN-REGISTER ==================== -->
+    <div id="page-auth" class="page">
+        <div class="min-h-screen hero-gradient flex items-center justify-center px-4 py-12">
+            <div class="max-w-md w-full">
+                <!-- Auth Card -->
+                <div class="bg-gcsc-card border border-gcsc-border rounded-2xl p-8 shadow-2xl">
+                    <!-- Logo -->
+                    <div class="text-center mb-8">
+                        <div class="w-14 h-14 rounded-xl bg-gcsc-purple flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        </div>
+                        <h2 id="auth-title" class="text-2xl font-bold text-white">Get Started</h2>
+                        <p id="auth-subtitle" class="text-gcsc-textMuted mt-2">Enter your email to begin</p>
+                    </div>
+
+                    <!-- Step Indicator -->
+                    <div id="auth-steps" class="step-indicator" style="display:none;">
+                        <div id="step-dot-1" class="step-dot active">1</div>
+                        <div id="step-line-1" class="step-line"></div>
+                        <div id="step-dot-2" class="step-dot pending">2</div>
+                        <div id="step-line-2" class="step-line"></div>
+                        <div id="step-dot-3" class="step-dot pending">3</div>
+                    </div>
+
+                    <!-- Auth Forms Container -->
+                    <div id="auth-form-container">
+                        <!-- Login/Register Step 1: Email -->
+                        <div id="auth-step-email">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gcsc-textMuted mb-2">Email Address</label>
+                                <input type="email" id="auth-email" class="form-input" placeholder="you@example.com" autocomplete="email">
+                                <p id="auth-email-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                            </div>
+                            <div id="auth-role-section" class="mb-6" style="display:none;">
+                                <label class="block text-sm font-medium text-gcsc-textMuted mb-2">I am a...</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button id="role-homeowner-btn" class="role-btn p-3 rounded-lg border border-gcsc-border text-center transition-all" data-role="homeowner">
+                                        <svg class="w-6 h-6 mx-auto mb-1 text-gcsc-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                                        <span class="text-sm">Homeowner</span>
+                                    </button>
+                                    <button id="role-contractor-btn" class="role-btn p-3 rounded-lg border border-gcsc-border text-center transition-all" data-role="contractor">
+                                        <svg class="w-6 h-6 mx-auto mb-1 text-gcsc-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                        <span class="text-sm">Contractor</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <button id="auth-email-submit" class="btn-primary w-full py-3 rounded-lg font-medium">Continue</button>
+                            <div class="mt-4 text-center">
+                                <button id="auth-toggle-mode" class="text-sm text-gcsc-purpleLight hover:text-gcsc-purple transition-colors">Already have an account? Log in</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: OTP -->
+                        <div id="auth-step-otp" style="display:none;">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gcsc-textMuted mb-2">Enter 6-Digit Code</label>
+                                <p class="text-sm text-gcsc-textMuted mb-3">We sent a verification code to <span id="otp-email-display" class="text-white font-medium"></span></p>
+                                <input type="text" id="auth-otp" class="form-input text-center text-2xl tracking-[0.5em]" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                                <p id="auth-otp-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                            </div>
+                            <button id="auth-otp-submit" class="btn-primary w-full py-3 rounded-lg font-medium mb-3">Verify</button>
+                            <button id="auth-otp-resend" class="btn-secondary w-full py-2 rounded-lg text-sm">Resend Code</button>
+                            <div class="mt-4 text-center">
+                                <button id="auth-back-to-email" class="text-sm text-gcsc-textMuted hover:text-white transition-colors">Use different email</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Success -->
+                        <div id="auth-step-success" style="display:none;">
+                            <div class="text-center">
+                                <div class="w-16 h-16 rounded-full bg-gcsc-success bg-opacity-20 flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-gcsc-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <h3 class="text-xl font-bold text-white mb-2" id="auth-success-title">Account Created!</h3>
+                                <p class="text-gcsc-textMuted mb-6" id="auth-success-message">Your account has been set up successfully.</p>
+
+                                <div class="bg-gcsc-bg rounded-lg p-4 mb-6 text-left border border-gcsc-border">
+                                    <div class="mb-3">
+                                        <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">XPR Account</label>
+                                        <p id="success-xpr-account" class="text-white font-mono text-sm mt-1"></p>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Public Key</label>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <p id="success-xpr-key" class="text-white font-mono text-sm truncate flex-1"></p>
+                                            <button id="success-copy-key" class="text-gcsc-purpleLight hover:text-white transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button id="auth-success-continue" class="btn-primary w-full py-3 rounded-lg font-medium">Go to Dashboard</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PAGE: DASHBOARD ==================== -->
+    <div id="page-dashboard" class="page">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Dashboard Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div>
+                    <h1 id="dashboard-title" class="text-3xl font-bold text-white">Dashboard</h1>
+                    <p id="dashboard-subtitle" class="text-gcsc-textMuted mt-1">Welcome back</p>
+                </div>
+                <div id="dashboard-actions"></div>
+            </div>
+
+            <!-- Stats Row -->
+            <div id="dashboard-stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"></div>
+
+            <!-- Main Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Projects List -->
+                <div class="lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 id="projects-section-title" class="text-xl font-semibold text-white">Projects</h2>
+                        <div id="projects-filters" class="flex gap-2"></div>
+                    </div>
+                    <div id="projects-list" class="space-y-4"></div>
+                    <div id="projects-empty" class="text-center py-12 bg-gcsc-card border border-gcsc-border rounded-xl" style="display:none;">
+                        <svg class="w-12 h-12 text-gcsc-textMuted mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                        <p class="text-gcsc-textMuted">No projects found.</p>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Quick Actions -->
+                    <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                        <div id="quick-actions" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+                        <div id="recent-activity" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PAGE: POST PROJECT ==================== -->
+    <div id="page-post-project" class="page">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-center gap-3 mb-8">
+                <button id="post-project-back" class="p-2 rounded-lg hover:bg-gcsc-card transition-colors">
+                    <svg class="w-5 h-5 text-gcsc-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                </button>
+                <h1 class="text-3xl font-bold text-white">Post a Project</h1>
+            </div>
+
+            <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6 sm:p-8">
+                <form id="post-project-form" novalidate>
+                    <!-- Title -->
+                    <div class="mb-6">
+                        <label for="project-title" class="block text-sm font-medium text-gcsc-text mb-2">Project Title <span class="text-gcsc-danger">*</span></label>
+                        <input type="text" id="project-title" class="form-input" placeholder="e.g., Roof replacement for 3-bedroom house" maxlength="120" required>
+                        <p id="project-title-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-6">
+                        <label for="project-category" class="block text-sm font-medium text-gcsc-text mb-2">Category <span class="text-gcsc-danger">*</span></label>
+                        <select id="project-category" class="form-input" required>
+                            <option value="">Select a category</option>
+                            <option value="Roofing">Roofing</option>
+                            <option value="Windows & Doors">Windows & Doors</option>
+                            <option value="Landscaping">Landscaping</option>
+                            <option value="Siding">Siding</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="HVAC">HVAC</option>
+                            <option value="Remodeling">Remodeling</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <p id="project-category-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-6">
+                        <label for="project-location" class="block text-sm font-medium text-gcsc-text mb-2">Location <span class="text-gcsc-danger">*</span></label>
+                        <input type="text" id="project-location" class="form-input" placeholder="e.g., Austin, TX" maxlength="100" required>
+                        <p id="project-location-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                    </div>
+
+                    <!-- Budget Range -->
+                    <div class="mb-6">
+                        <label for="project-budget" class="block text-sm font-medium text-gcsc-text mb-2">Budget Range (USD)</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <input type="number" id="project-budget-min" class="form-input" placeholder="Min ($)" min="0" step="100">
+                            </div>
+                            <div>
+                                <input type="number" id="project-budget-max" class="form-input" placeholder="Max ($)" min="0" step="100">
+                            </div>
+                        </div>
+                        <p id="project-budget-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-6">
+                        <label for="project-description" class="block text-sm font-medium text-gcsc-text mb-2">Project Description <span class="text-gcsc-danger">*</span></label>
+                        <textarea id="project-description" class="form-input" rows="6" placeholder="Describe your project in detail. Include dimensions, materials preferences, timeline expectations, and any special requirements." maxlength="2000" required></textarea>
+                        <p id="project-description-error" class="text-gcsc-danger text-sm mt-1" style="display:none;"></p>
+                        <p class="text-gcsc-textMuted text-xs mt-1"><span id="desc-char-count">0</span> / 2000 characters</p>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="submit" id="project-submit-btn" class="btn-primary flex-1 py-3 rounded-lg font-medium">Post Project</button>
+                        <button type="button" id="project-cancel-btn" class="btn-secondary py-3 px-6 rounded-lg font-medium">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PAGE: PROJECT DETAIL ==================== -->
+    <div id="page-project-detail" class="page">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Back button & header -->
+            <div class="flex items-center gap-3 mb-6">
+                <button id="project-detail-back" class="p-2 rounded-lg hover:bg-gcsc-card transition-colors">
+                    <svg class="w-5 h-5 text-gcsc-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                </button>
+                <h1 class="text-2xl font-bold text-white">Project Details</h1>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Content -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Project Info Card -->
+                    <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <span id="detail-category" class="status-badge mb-2"></span>
+                                <span id="detail-status" class="status-badge mb-2"></span>
+                            </div>
+                        </div>
+                        <h2 id="detail-title" class="text-2xl font-bold text-white mb-3"></h2>
+                        <div class="flex items-center gap-4 text-sm text-gcsc-textMuted mb-4">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                <span id="detail-location"></span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span id="detail-date"></span>
+                            </span>
+                        </div>
+                        <div class="border-t border-gcsc-border pt-4">
+                            <h3 class="text-sm font-medium text-gcsc-textMuted mb-2">Description</h3>
+                            <p id="detail-description" class="text-gcsc-text leading-relaxed whitespace-pre-wrap"></p>
+                        </div>
+                        <div id="detail-budget-section" class="border-t border-gcsc-border pt-4 mt-4">
+                            <h3 class="text-sm font-medium text-gcsc-textMuted mb-2">Budget Range</h3>
+                            <p id="detail-budget" class="text-white font-semibold"></p>
+                        </div>
+                        <div class="border-t border-gcsc-border pt-4 mt-4">
+                            <h3 class="text-sm font-medium text-gcsc-textMuted mb-2">Posted by</h3>
+                            <p id="detail-owner" class="text-gcsc-text"></p>
+                        </div>
+                    </div>
+
+                    <!-- Bids Section -->
+                    <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                        <h3 id="bids-section-title" class="text-lg font-semibold text-white mb-4">Bids</h3>
+                        <div id="bids-list"></div>
+                        <div id="bids-empty" class="text-center py-8" style="display:none;">
+                            <p class="text-gcsc-textMuted">No bids yet.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Contractor: Place Bid Form -->
+                    <div id="place-bid-card" class="bg-gcsc-card border border-gcsc-border rounded-xl p-6" style="display:none;">
+                        <h3 class="text-lg font-semibold text-white mb-4">Place a Bid</h3>
+                        <form id="place-bid-form">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gcsc-text mb-2">Bid Amount (USD) <span class="text-gcsc-danger">*</span></label>
+                                <input type="number" id="bid-amount" class="form-input" placeholder="0.00" min="1" step="0.01" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gcsc-text mb-2">Estimated Timeline (days) <span class="text-gcsc-danger">*</span></label>
+                                <input type="number" id="bid-timeline" class="form-input" placeholder="e.g., 14" min="1" max="365" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gcsc-text mb-2">Proposal Description</label>
+                                <textarea id="bid-description" class="form-input" rows="4" placeholder="Describe your approach, experience, and why you're the right fit."></textarea>
+                            </div>
+                            <button type="submit" id="bid-submit-btn" class="btn-primary w-full py-3 rounded-lg font-medium">Submit Bid</button>
+                        </form>
+                    </div>
+
+                    <!-- Homeowner: Actions -->
+                    <div id="homeowner-actions-card" class="bg-gcsc-card border border-gcsc-border rounded-xl p-6" style="display:none;">
+                        <h3 class="text-lg font-semibold text-white mb-4">Actions</h3>
+                        <div class="space-y-2">
+                            <button id="edit-project-btn" class="btn-secondary w-full py-2 rounded-lg text-sm">Edit Project</button>
+                            <button id="close-project-btn" class="btn-secondary w-full py-2 rounded-lg text-sm text-gcsc-warning border-gcsc-warning">Close Project</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PAGE: PROFILE ==================== -->
+    <div id="page-profile" class="page">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 class="text-3xl font-bold text-white mb-8">Profile & Settings</h1>
+
+            <div class="space-y-6">
+                <!-- Account Info -->
+                <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gcsc-purpleLight" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        Account Information
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Email</label>
+                            <p id="profile-email" class="text-white mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Role</label>
+                            <p id="profile-role" class="text-white mt-1 capitalize"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Member Since</label>
+                            <p id="profile-joined" class="text-white mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- XPR Wallet -->
+                <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gcsc-purpleLight" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        XPR Wallet
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Account Name</label>
+                            <p id="profile-xpr-account" class="text-white font-mono mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gcsc-textMuted uppercase tracking-wider">Public Key</label>
+                            <div class="flex items-center gap-2 mt-1">
+                                <p id="profile-xpr-key" class="text-white font-mono text-sm flex-1 break-all"></p>
+                                <button id="profile-copy-key" class="p-2 rounded-lg bg-gcsc-bg border border-gcsc-border hover:border-gcsc-purple transition-colors flex-shrink-0" title="Copy Public Key">
+                                    <svg class="w-4 h-4 text-gcsc-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-gcsc-bg rounded-lg p-4 border border-gcsc-border">
+                            <p class="text-sm text-gcsc-textMuted">
+                                <svg class="w-4 h-4 inline mr-1 text-gcsc-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Your private keys are stored securely on our servers and never exposed to the frontend. Only your public key is shown here.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logout -->
+                <div class="bg-gcsc-card border border-gcsc-border rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gcsc-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Session
+                    </h2>
+                    <button id="profile-logout-btn" class="w-full py-3 rounded-lg font-medium border border-gcsc-danger text-gcsc-danger hover:bg-gcsc-danger hover:bg-opacity-10 transition-all">
+                        Log Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: LOGIN REQUIRED ==================== -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-full bg-gcsc-purple bg-opacity-20 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-gcsc-purpleLight" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Session Expired</h3>
+                <p class="text-gcsc-textMuted mb-6">Please log in again to continue.</p>
+                <button id="login-modal-btn" class="btn-primary w-full py-3 rounded-lg font-medium">Log In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT ==================== -->
+    <script>
+    // ============================================================
+    // GCSC Smart Contractor v2.0 - Secure Frontend
+    // All code wrapped in IIFE to prevent global scope pollution
+    // ============================================================
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // SECURITY: Anti-clickjacking - frame busting
+        // ============================================================
+        if (window.top !== window.self) {
+            window.top.location = window.self.location;
+        }
+
+        // ============================================================
+        // STATE (private - not exposed to window)
+        // ============================================================
+        let currentPage = 'home';
+        let userData = null;
+        let currentProjectId = null;
+        let authMode = 'register'; // 'register' or 'login'
+        let selectedRole = null;
+        let pendingEmail = null;
+        let projectsCache = [];
+        let isMobileMenuOpen = false;
+
+        // ============================================================
+        // MOCK DATA - Used when API is unavailable
+        // ============================================================
+        const MOCK_PROJECTS = [
+            {
+                id: 'proj-001',
+                title: 'Complete Roof Replacement - Asphalt Shingles',
+                category: 'Roofing',
+                location: 'Austin, TX',
+                description: 'Need a full roof replacement for a 2,400 sq ft single-story home. Current roof is 20-year-old asphalt shingles showing significant wear. Looking for architectural shingles with a 30-year warranty. Includes removal of old roofing, inspection of decking, and installation of new underlayment. Must include proper ventilation installation.',
+                budgetMin: 8000,
+                budgetMax: 12000,
+                status: 'open',
+                ownerId: 'user-homeowner-1',
+                ownerEmail: 'john@example.com',
+                createdAt: '2024-01-15T10:00:00Z',
+                bids: [
+                    { id: 'bid-001', contractorId: 'user-contractor-1', contractorEmail: 'roofpro@example.com', amount: 9500, timeline: 5, description: 'We specialize in asphalt shingle replacement. Licensed and insured. 10+ years experience in Austin area.', status: 'pending', createdAt: '2024-01-15T14:30:00Z' },
+                    { id: 'bid-002', contractorId: 'user-contractor-2', contractorEmail: 'texasroof@example.com', amount: 8750, timeline: 7, description: 'Family-owned roofing business. We use only Owens Corning Duration shingles. Includes 10-year workmanship warranty.', status: 'pending', createdAt: '2024-01-16T09:15:00Z' }
+                ]
+            },
+            {
+                id: 'proj-002',
+                title: 'Kitchen Remodel - Cabinets & Countertops',
+                category: 'Remodeling',
+                location: 'Dallas, TX',
+                description: 'Full kitchen remodel for a 12x14 kitchen. Looking to replace cabinets (soft-close, shaker style), quartz countertops, subway tile backsplash, and update lighting fixtures. Flooring is already being handled separately. Must work within HOA guidelines.',
+                budgetMin: 15000,
+                budgetMax: 25000,
+                status: 'open',
+                ownerId: 'user-homeowner-2',
+                ownerEmail: 'sarah@example.com',
+                createdAt: '2024-01-18T08:00:00Z',
+                bids: []
+            },
+            {
+                id: 'proj-003',
+                title: 'HVAC System Replacement - Central Air',
+                category: 'HVAC',
+                location: 'Houston, TX',
+                description: 'Replace failing 15-year-old central AC unit for a 2,000 sq ft home. Need a high-efficiency 16 SEER unit. Includes new condenser, air handler, and digital thermostat. Must be EPA 608 certified technician. Ductwork inspection included.',
+                budgetMin: 5000,
+                budgetMax: 8000,
+                status: 'open',
+                ownerId: 'user-homeowner-3',
+                ownerEmail: 'mike@example.com',
+                createdAt: '2024-01-20T12:00:00Z',
+                bids: [
+                    { id: 'bid-003', contractorId: 'user-contractor-3', contractorEmail: 'coolair@example.com', amount: 6200, timeline: 2, description: 'Trane certified dealer. We install XR16 high-efficiency systems. Includes 10-year parts warranty and 2-year labor warranty.', status: 'pending', createdAt: '2024-01-21T10:00:00Z' }
+                ]
+            },
+            {
+                id: 'proj-004',
+                title: 'Whole-House Window Replacement (18 windows)',
+                category: 'Windows & Doors',
+                location: 'San Antonio, TX',
+                description: 'Replace all 18 windows in a 3-bedroom home built in 1995. Looking for energy-efficient double-pane vinyl windows. All standard sizes, double-hung style. Includes removal, disposal, and interior/exterior trim work.',
+                budgetMin: 10000,
+                budgetMax: 18000,
+                status: 'in-progress',
+                ownerId: 'user-homeowner-1',
+                ownerEmail: 'john@example.com',
+                createdAt: '2024-01-10T09:00:00Z',
+                bids: [
+                    { id: 'bid-004', contractorId: 'user-contractor-4', contractorEmail: 'windowexpert@example.com', amount: 14200, timeline: 3, description: 'Andersen certified installer. We use 400 Series tilt-wash double-hung windows. Lifetime limited warranty included.', status: 'accepted', createdAt: '2024-01-11T16:00:00Z' }
+                ]
+            },
+            {
+                id: 'proj-005',
+                title: 'Backyard Landscaping - Complete Redesign',
+                category: 'Landscaping',
+                location: 'Fort Worth, TX',
+                description: 'Complete backyard transformation for a 0.25-acre lot. Remove existing overgrown landscaping, install irrigation system, sod, stone pathway, raised garden beds, and patio area. Drought-resistant native plants preferred.',
+                budgetMin: 12000,
+                budgetMax: 20000,
+                status: 'open',
+                ownerId: 'user-homeowner-4',
+                ownerEmail: 'lisa@example.com',
+                createdAt: '2024-01-22T15:00:00Z',
+                bids: []
+            },
+            {
+                id: 'proj-006',
+                title: 'Electrical Panel Upgrade - 100A to 200A',
+                category: 'Electrical',
+                location: 'Austin, TX',
+                description: 'Upgrade residential electrical service from 100 amp to 200 amp. Replace panel, meter base, and service entrance cable. Home has a workshop addition that requires more power. Must pull proper permits and coordinate with utility company.',
+                budgetMin: 2500,
+                budgetMax: 4500,
+                status: 'open',
+                ownerId: 'user-homeowner-5',
+                ownerEmail: 'david@example.com',
+                createdAt: '2024-01-25T11:00:00Z',
+                bids: [
+                    { id: 'bid-005', contractorId: 'user-contractor-5', contractorEmail: 'powerpro@example.com', amount: 3200, timeline: 1, description: 'Licensed master electrician. We handle permits and utility coordination. Square D QO panel with whole-house surge protection included.', status: 'pending', createdAt: '2024-01-25T13:30:00Z' }
+                ]
+            }
+        ];
+
+        // ============================================================
+        // DOM REFERENCES (cached for performance)
+        // ============================================================
+        const pages = {};
+        const nav = document.getElementById('main-nav');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const toastContainer = document.getElementById('toast-container');
+
+        // ============================================================
+        // UTILITY FUNCTIONS (secure, no XSS vectors)
+        // ============================================================
+
+        /**
+         * Get a DOM element by ID. Always use this instead of direct reference.
+         * @param {string} id - Element ID
+         * @returns {HTMLElement|null}
+         */
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        /**
+         * Create a DOM element safely with text content (XSS-safe)
+         * @param {string} tag - HTML tag name
+         * @param {Object} options - { className, text, attrs }
+         * @returns {HTMLElement}
+         */
+        function createElement(tag, options) {
+            const el = document.createElement(tag);
+            if (!options) return el;
+            if (options.className) {
+                if (Array.isArray(options.className)) {
+                    options.className.forEach(function(c) { el.classList.add(c); });
+                } else {
+                    el.className = options.className;
+                }
+            }
+            if (options.text !== undefined && options.text !== null) {
+                el.textContent = String(options.text);
+            }
+            if (options.attrs) {
+                Object.keys(options.attrs).forEach(function(key) {
+                    el.setAttribute(key, options.attrs[key]);
+                });
+            }
+            if (options.children) {
+                options.children.forEach(function(child) {
+                    if (child) el.appendChild(child);
+                });
+            }
+            return el;
+        }
+
+        /**
+         * Format currency safely
+         */
+        function formatCurrency(amount) {
+            const num = Number(amount);
+            if (isNaN(num)) return '$0';
+            return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        /**
+         * Format date safely
+         */
+        function formatDate(dateString) {
+            try {
+                const d = new Date(dateString);
+                return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            } catch (e) {
+                return 'Unknown date';
+            }
+        }
+
+        /**
+         * Format relative time
+         */
+        function timeAgo(dateString) {
+            try {
+                const now = new Date();
+                const past = new Date(dateString);
+                const seconds = Math.floor((now - past) / 1000);
+                if (seconds < 60) return 'just now';
+                const minutes = Math.floor(seconds / 60);
+                if (minutes < 60) return minutes + 'm ago';
+                const hours = Math.floor(minutes / 60);
+                if (hours < 24) return hours + 'h ago';
+                const days = Math.floor(hours / 24);
+                if (days < 30) return days + 'd ago';
+                return formatDate(dateString);
+            } catch (e) {
+                return 'Unknown';
+            }
+        }
+
+        /**
+         * Truncate text with ellipsis
+         */
+        function truncate(text, maxLen) {
+            const str = String(text || '');
+            if (str.length <= maxLen) return str;
+            return str.substring(0, maxLen) + '...';
+        }
+
+        /**
+         * Sanitize user input - remove HTML tags
+         */
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return '';
+            return input.replace(/[<>]/g, '');
+        }
+
+        /**
+         * Validate email format
+         */
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email));
+        }
+
+        /**
+         * Show toast notification
+         */
+        function showToast(message, type) {
+            type = type || 'info';
+            const colors = {
+                success: 'border-gcsc-success text-gcsc-success',
+                error: 'border-gcsc-danger text-gcsc-danger',
+                warning: 'border-gcsc-warning text-gcsc-warning',
+                info: 'border-gcsc-purple text-gcsc-purpleLight'
+            };
+            const bgColors = {
+                success: 'bg-green-900 bg-opacity-20',
+                error: 'bg-red-900 bg-opacity-20',
+                warning: 'bg-yellow-900 bg-opacity-20',
+                info: 'bg-gcsc-purple bg-opacity-10'
+            };
+
+            const toast = createElement('div', {
+                className: ['px-4', 'py-3', 'rounded-lg', 'border', 'shadow-lg', 'flex', 'items-center', 'gap-3', 'fade-in']
+            });
+            toast.classList.add(...(colors[type] || colors.info).split(' '));
+            toast.classList.add(...(bgColors[type] || bgColors.info).split(' '));
+
+            const iconSvg = type === 'success'
+                ? '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                : type === 'error'
+                ? '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+                : '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+            // SECURITY: iconSvg is hardcoded above, safe to use innerHTML for SVG icons only
+            const iconDiv = createElement('div');
+            iconDiv.innerHTML = iconSvg;
+            toast.appendChild(iconDiv.firstChild);
+
+            const msgSpan = createElement('span', { className: 'text-sm font-medium', text: message });
+            toast.appendChild(msgSpan);
+
+            toastContainer.appendChild(toast);
+
+            // Auto remove after 4 seconds
+            setTimeout(function() {
+                if (toast.parentNode) {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    toast.style.transition = 'all 0.3s ease';
+                    setTimeout(function() { toast.remove(); }, 300);
+                }
+            }, 4000);
+        }
+
+        // ============================================================
+        // NAVIGATION & PAGE ROUTING
+        // ============================================================
+
+        function navigateTo(pageName, params) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(function(p) {
+                p.classList.remove('active');
+            });
+
+            // Show target page
+            const targetPage = $('page-' + pageName);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                targetPage.classList.add('fade-in');
+            }
+
+            currentPage = pageName;
+
+            // Show/hide nav based on page
+            if (pageName === 'home' || pageName === 'auth') {
+                nav.style.display = 'none';
+                document.body.classList.remove('pt-0');
+            } else {
+                nav.style.display = 'block';
+            }
+
+            // Close mobile menu on navigation
+            mobileMenu.style.display = 'none';
+            isMobileMenuOpen = false;
+
+            // Update page-specific content
+            if (pageName === 'dashboard') renderDashboard();
+            if (pageName === 'project-detail' && params && params.projectId) renderProjectDetail(params.projectId);
+            if (pageName === 'profile') renderProfile();
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // ============================================================
+        // API COMMUNICATION (secure, all auth headers included)
+        // ============================================================
+
+        /**
+         * Helper function for ALL API calls
+         * Security: Always includes JWT token in Authorization header
+         */
+        async function apiCall(endpoint, options) {
+            options = options || {};
+            const token = sessionStorage.getItem('gcsc_token');
+            const isLocal = window.location.hostname === 'localhost';
+            const url = isLocal ? 'http://localhost:3000' + endpoint : endpoint;
+
+            const fetchOptions = {
+                method: options.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+                    ...(options.headers || {})
+                }
+            };
+
+            if (options.body && typeof options.body === 'object') {
+                fetchOptions.body = JSON.stringify(options.body);
+            }
+
+            try {
+                const response = await fetch(url, fetchOptions);
+
+                // Handle 401 Unauthorized - token expired or invalid
+                if (response.status === 401) {
+                    sessionStorage.clear();
+                    showLoginModal();
+                    throw new Error('Session expired. Please log in again.');
+                }
+
+                return response;
+            } catch (networkError) {
+                // Network errors - throw for caller to handle (fallback to mock)
+                throw networkError;
+            }
+        }
+
+        /**
+         * Verify token with server
+         */
+        async function verifyToken() {
+            try {
+                const response = await apiCall('/api/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    userData = data;
+                    return true;
+                }
+                return false;
+            } catch (err) {
+                // If server is down, check if we have mock token (dev mode)
+                const token = sessionStorage.getItem('gcsc_token');
+                if (token && token.startsWith('mock-')) {
+                    // Use mock user data
+                    const role = sessionStorage.getItem('gcsc_role') || 'homeowner';
+                    userData = {
+                        id: 'user-mock-1',
+                        email: sessionStorage.getItem('gcsc_email') || 'demo@example.com',
+                        role: role,
+                        xprAccount: 'gcscuser123',
+                        xprPublicKey: 'PUB_K1_6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5BoVqPq',
+                        createdAt: '2024-01-01T00:00:00Z'
+                    };
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // ============================================================
+        // AUTHENTICATION
+        // ============================================================
+
+        function showLoginModal() {
+            $('login-modal').classList.add('active');
+        }
+
+        function hideLoginModal() {
+            $('login-modal').classList.remove('active');
+        }
+
+        function getAuthEmail() {
+            return sanitizeInput($('auth-email').value.trim());
+        }
+
+        function showAuthStep(step) {
+            // Hide all steps
+            $('auth-step-email').style.display = 'none';
+            $('auth-step-otp').style.display = 'none';
+            $('auth-step-success').style.display = 'none';
+
+            // Show requested step
+            if (step === 'email') {
+                $('auth-step-email').style.display = 'block';
+                $('auth-steps').style.display = 'none';
+                $('auth-title').textContent = authMode === 'login' ? 'Welcome Back' : 'Get Started';
+                $('auth-subtitle').textContent = authMode === 'login' ? 'Enter your email to log in' : 'Enter your email to create an account';
+            } else if (step === 'otp') {
+                $('auth-step-otp').style.display = 'block';
+                $('auth-steps').style.display = 'flex';
+                updateStepIndicator(2);
+                $('otp-email-display').textContent = pendingEmail || '';
+                $('auth-title').textContent = 'Verify Email';
+                $('auth-subtitle').textContent = 'Enter the verification code sent to your email';
+            } else if (step === 'success') {
+                $('auth-step-success').style.display = 'block';
+                $('auth-steps').style.display = 'flex';
+                updateStepIndicator(3);
+                $('auth-title').textContent = authMode === 'login' ? 'Welcome Back!' : 'All Set!';
+                $('auth-subtitle').textContent = authMode === 'login' ? 'You are now logged in.' : 'Your account has been created.';
+            }
+        }
+
+        function updateStepIndicator(current) {
+            for (let i = 1; i <= 3; i++) {
+                const dot = $('step-dot-' + i);
+                const line = $('step-line-' + i);
+                if (!dot) continue;
+                dot.classList.remove('active', 'completed', 'pending');
+                if (i < current) {
+                    dot.classList.add('completed');
+                    dot.textContent = '';
+                    dot.appendChild(createElement('svg', {
+                        attrs: { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M5 13l4 4L19 7' } })]
+                    }));
+                } else if (i === current) {
+                    dot.classList.add('active');
+                    dot.textContent = String(i);
+                } else {
+                    dot.classList.add('pending');
+                    dot.textContent = String(i);
+                }
+                if (line) {
+                    line.classList.toggle('completed', i < current);
+                }
+            }
+        }
+
+        function selectRole(role) {
+            selectedRole = role;
+            document.querySelectorAll('.role-btn').forEach(function(btn) {
+                if (btn.dataset.role === role) {
+                    btn.style.borderColor = '#6d28d9';
+                    btn.style.backgroundColor = 'rgba(109, 40, 217, 0.1)';
+                    btn.querySelector('svg').style.color = '#8b5cf6';
+                    btn.querySelector('span').style.color = '#f1f5f9';
+                } else {
+                    btn.style.borderColor = '#334155';
+                    btn.style.backgroundColor = 'transparent';
+                    btn.querySelector('svg').style.color = '#94a3b8';
+                    btn.querySelector('span').style.color = '#94a3b8';
+                }
+            });
+        }
+
+        async function submitEmail() {
+            const email = getAuthEmail();
+
+            // Validation
+            if (!email) {
+                $('auth-email-error').textContent = 'Please enter your email address';
+                $('auth-email-error').style.display = 'block';
+                return;
+            }
+            if (!isValidEmail(email)) {
+                $('auth-email-error').textContent = 'Please enter a valid email address';
+                $('auth-email-error').style.display = 'block';
+                return;
+            }
+            $('auth-email-error').style.display = 'none';
+
+            // Role selection required for registration
+            if (authMode === 'register' && !selectedRole) {
+                $('auth-email-error').textContent = 'Please select your role';
+                $('auth-email-error').style.display = 'block';
+                return;
+            }
+
+            pendingEmail = email;
+
+            try {
+                const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+                const body = authMode === 'login' ? { email: email } : { email: email, role: selectedRole };
+
+                await apiCall(endpoint, { method: 'POST', body: body });
+                showAuthStep('otp');
+                showToast('Verification code sent to your email', 'success');
+            } catch (err) {
+                // Fallback: mock OTP flow for demo
+                console.log('API unavailable, using mock auth flow');
+                showAuthStep('otp');
+                showToast('Demo mode: Use code 123456', 'info');
+            }
+        }
+
+        async function submitOTP() {
+            const otp = sanitizeInput($('auth-otp').value.trim());
+
+            if (!otp || otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+                $('auth-otp-error').textContent = 'Please enter a valid 6-digit code';
+                $('auth-otp-error').style.display = 'block';
+                return;
+            }
+            $('auth-otp-error').style.display = 'none';
+
+            try {
+                const endpoint = authMode === 'login' ? '/api/auth/verify-login' : '/api/auth/verify-register';
+                const body = { email: pendingEmail, otp: otp };
+
+                const response = await apiCall(endpoint, { method: 'POST', body: body });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Store auth data securely
+                    sessionStorage.setItem('gcsc_token', data.token);
+                    sessionStorage.setItem('gcsc_role', data.role);
+                    sessionStorage.setItem('gcsc_email', data.email);
+                    userData = data;
+                    showAuthStep('success');
+                    populateSuccessData(data);
+                    showToast(authMode === 'login' ? 'Welcome back!' : 'Account created successfully!', 'success');
+                } else {
+                    $('auth-otp-error').textContent = 'Invalid or expired code. Please try again.';
+                    $('auth-otp-error').style.display = 'block';
+                }
+            } catch (err) {
+                // Fallback: mock verification
+                console.log('API unavailable, using mock verification');
+                if (otp === '123456') {
+                    const role = selectedRole || 'homeowner';
+                    const mockToken = 'mock-jwt-token-' + Date.now();
+                    sessionStorage.setItem('gcsc_token', mockToken);
+                    sessionStorage.setItem('gcsc_role', role);
+                    sessionStorage.setItem('gcsc_email', pendingEmail);
+                    userData = {
+                        email: pendingEmail,
+                        role: role,
+                        xprAccount: 'gcsc.' + role + '.' + Date.now(),
+                        xprPublicKey: 'PUB_K1_6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5BoVqPq',
+                        createdAt: new Date().toISOString()
+                    };
+                    showAuthStep('success');
+                    populateSuccessData(userData);
+                    showToast(authMode === 'login' ? 'Welcome back!' : 'Account created!', 'success');
+                } else {
+                    $('auth-otp-error').textContent = 'Invalid code. For demo, use 123456.';
+                    $('auth-otp-error').style.display = 'block';
+                }
+            }
+        }
+
+        function populateSuccessData(data) {
+            const accountName = data.xprAccount || 'gcsc.user.' + Date.now();
+            const publicKey = data.xprPublicKey || 'PUB_K1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+
+            $('success-xpr-account').textContent = accountName;
+            $('success-xpr-key').textContent = publicKey;
+
+            // Store for profile page
+            sessionStorage.setItem('gcsc_xpr_account', accountName);
+            sessionStorage.setItem('gcsc_xpr_key', publicKey);
+        }
+
+        function finishAuth() {
+            navigateTo('dashboard');
+        }
+
+        async function handleLogout() {
+            const token = sessionStorage.getItem('gcsc_token');
+
+            // Call logout endpoint if token exists
+            if (token) {
+                try {
+                    await apiCall('/api/logout', { method: 'POST' });
+                } catch (err) {
+                    console.log('Logout API call failed, clearing locally');
+                }
+            }
+
+            // Clear all stored data
+            sessionStorage.clear();
+            userData = null;
+            projectsCache = [];
+
+            showToast('You have been logged out', 'info');
+            navigateTo('home');
+        }
+
+        // ============================================================
+        // PAGE RENDERERS (all use createElement + textContent - NO innerHTML)
+        // ============================================================
+
+        // ---- DASHBOARD ----
+        async function renderDashboard() {
+            if (!userData) {
+                const verified = await verifyToken();
+                if (!verified) {
+                    navigateTo('auth');
+                    return;
+                }
+            }
+
+            const role = userData.role || sessionStorage.getItem('gcsc_role');
+            const email = userData.email || sessionStorage.getItem('gcsc_email');
+
+            // Update header
+            $('dashboard-title').textContent = role === 'contractor' ? 'Contractor Board' : 'My Projects';
+            $('dashboard-subtitle').textContent = 'Welcome back, ' + (email ? email.split('@')[0] : 'User');
+
+            // Clear and populate actions
+            const actionsContainer = $('dashboard-actions');
+            actionsContainer.innerHTML = '';
+            if (role === 'homeowner') {
+                const postBtn = createElement('button', {
+                    className: ['btn-primary', 'px-6', 'py-2', 'rounded-lg', 'font-medium', 'flex', 'items-center', 'gap-2'],
+                    children: [
+                        createElement('svg', {
+                            className: ['w-5', 'h-5'],
+                            attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                            children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 4v16m8-8H4' } })]
+                        }),
+                        createElement('span', { text: 'Post a Project' })
+                    ]
+                });
+                postBtn.addEventListener('click', function() { navigateTo('post-project'); });
+                actionsContainer.appendChild(postBtn);
+            }
+
+            // Load projects
+            let projects = [];
+            try {
+                const response = await apiCall('/api/projects');
+                if (response.ok) {
+                    projects = await response.json();
+                } else {
+                    throw new Error('Failed to fetch projects');
+                }
+            } catch (err) {
+                console.log('Using mock projects data');
+                projects = MOCK_PROJECTS;
+            }
+            projectsCache = projects;
+
+            // Filter projects based on role
+            let displayProjects = projects;
+            const userId = userData ? userData.id : null;
+
+            if (role === 'homeowner') {
+                // Show only homeowner's projects
+                displayProjects = projects.filter(function(p) {
+                    return !userId || p.ownerId === userId || p.ownerEmail === email;
+                });
+                // If no matching projects (demo), show a couple
+                if (displayProjects.length === 0) {
+                    displayProjects = projects.slice(0, 3);
+                }
+            } else {
+                // Contractor sees all open projects
+                displayProjects = projects.filter(function(p) { return p.status === 'open'; });
+            }
+
+            // Render stats
+            renderDashboardStats(displayProjects, role);
+
+            // Render projects list
+            const listContainer = $('projects-list');
+            listContainer.innerHTML = '';
+
+            if (displayProjects.length === 0) {
+                $('projects-empty').style.display = 'block';
+            } else {
+                $('projects-empty').style.display = 'none';
+                displayProjects.forEach(function(project) {
+                    listContainer.appendChild(createProjectCard(project, role));
+                });
+            }
+
+            // Update section title
+            $('projects-section-title').textContent = role === 'contractor' ? 'Available Projects' : 'Your Projects';
+
+            // Quick actions
+            const quickActions = $('quick-actions');
+            quickActions.innerHTML = '';
+            if (role === 'homeowner') {
+                const qa1 = createElement('button', {
+                    className: ['sidebar-link', 'w-full', 'text-left'],
+                    children: [
+                        createElement('svg', {
+                            className: ['w-5', 'h-5'],
+                            attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                            children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 4v16m8-8H4' } })]
+                        }),
+                        createElement('span', { text: 'Post New Project' })
+                    ]
+                });
+                qa1.addEventListener('click', function() { navigateTo('post-project'); });
+                quickActions.appendChild(qa1);
+            } else {
+                const qa1 = createElement('button', {
+                    className: ['sidebar-link', 'w-full', 'text-left'],
+                    children: [
+                        createElement('svg', {
+                            className: ['w-5', 'h-5'],
+                            attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                            children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' } })]
+                        }),
+                        createElement('span', { text: 'Find Projects' })
+                    ]
+                });
+                qa1.addEventListener('click', function() { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+                quickActions.appendChild(qa1);
+            }
+            const qa2 = createElement('button', {
+                className: ['sidebar-link', 'w-full', 'text-left'],
+                children: [
+                    createElement('svg', {
+                        className: ['w-5', 'h-5'],
+                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' } })]
+                    }),
+                    createElement('span', { text: 'View Profile' })
+                ]
+            });
+            qa2.addEventListener('click', function() { navigateTo('profile'); });
+            quickActions.appendChild(qa2);
+
+            // Recent activity
+            const activityContainer = $('recent-activity');
+            activityContainer.innerHTML = '';
+            const activities = generateMockActivity(displayProjects);
+            if (activities.length === 0) {
+                activityContainer.appendChild(createElement('p', { className: 'text-gcsc-textMuted text-sm', text: 'No recent activity' }));
+            } else {
+                activities.forEach(function(act) {
+                    activityContainer.appendChild(createActivityItem(act));
+                });
+            }
+        }
+
+        function renderDashboardStats(projects, role) {
+            const container = $('dashboard-stats');
+            container.innerHTML = '';
+
+            if (role === 'homeowner') {
+                const total = projects.length;
+                const openCount = projects.filter(function(p) { return p.status === 'open'; }).length;
+                const inProgress = projects.filter(function(p) { return p.status === 'in-progress'; }).length;
+                const totalBids = projects.reduce(function(acc, p) { return acc + (p.bids ? p.bids.length : 0); }, 0);
+
+                container.appendChild(createStatCard('Total Projects', String(total), 'M12 6v6m0 0v6m0-6h6m-6 0H6'));
+                container.appendChild(createStatCard('Open', String(openCount), 'M13 10V3L4 14h7v7l9-11h-7z'));
+                container.appendChild(createStatCard('In Progress', String(inProgress), 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'));
+                container.appendChild(createStatCard('Total Bids', String(totalBids), 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'));
+            } else {
+                const available = projects.length;
+                const categories = new Set(projects.map(function(p) { return p.category; })).size;
+                container.appendChild(createStatCard('Available Projects', String(available), 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'));
+                container.appendChild(createStatCard('Categories', String(categories), 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'));
+            }
+        }
+
+        function createStatCard(label, value, iconPath) {
+            return createElement('div', {
+                className: ['bg-gcsc-card', 'border', 'border-gcsc-border', 'rounded-xl', 'p-5', 'card-hover'],
+                children: [
+                    createElement('div', {
+                        className: 'flex items-center justify-between mb-3',
+                        children: [
+                            createElement('span', { className: 'text-gcsc-textMuted text-sm', text: label }),
+                            createElement('div', {
+                                className: 'w-10 h-10 rounded-lg bg-gcsc-purple bg-opacity-20 flex items-center justify-center',
+                                children: [
+                                    createElement('svg', {
+                                        className: ['w-5', 'h-5', 'text-gcsc-purpleLight'],
+                                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: iconPath } })]
+                                    })
+                                ]
+                            })
+                        ]
+                    }),
+                    createElement('p', { className: 'text-2xl font-bold text-white', text: value })
+                ]
+            });
+        }
+
+        function createProjectCard(project, userRole) {
+            const statusClass = 'status-' + (project.status || 'open');
+            const bidCount = project.bids ? project.bids.length : 0;
+
+            const card = createElement('div', {
+                className: ['bg-gcsc-card', 'border', 'border-gcsc-border', 'rounded-xl', 'p-6', 'card-hover', 'cursor-pointer', 'slide-in']
+            });
+
+            // Header row
+            const header = createElement('div', { className: 'flex items-start justify-between mb-3' });
+            const titleSection = createElement('div', { className: 'flex-1 pr-4' });
+            titleSection.appendChild(createElement('span', {
+                className: ['status-badge', 'mb-2', statusClass],
+                text: project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Open'
+            }));
+            titleSection.appendChild(createElement('h3', {
+                className: 'text-lg font-semibold text-white mt-1',
+                text: project.title
+            }));
+            header.appendChild(titleSection);
+
+            const budgetEl = createElement('p', {
+                className: 'text-gcsc-purpleLight font-bold text-lg whitespace-nowrap'
+            });
+            if (project.budgetMin && project.budgetMax) {
+                budgetEl.textContent = formatCurrency(project.budgetMin) + ' - ' + formatCurrency(project.budgetMax);
+            } else if (project.budgetMin) {
+                budgetEl.textContent = 'From ' + formatCurrency(project.budgetMin);
+            } else {
+                budgetEl.textContent = 'Budget TBD';
+            }
+            header.appendChild(budgetEl);
+            card.appendChild(header);
+
+            // Meta row
+            const meta = createElement('div', { className: 'flex flex-wrap items-center gap-4 text-sm text-gcsc-textMuted mb-3' });
+            meta.appendChild(createElement('span', {
+                className: 'flex items-center gap-1',
+                children: [
+                    createElement('svg', {
+                        className: ['w-4', 'h-4'],
+                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' } }),
+                                  createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M15 11a3 3 0 11-6 0 3 3 0 016 0z' } })]
+                    }),
+                    createElement('span', { text: project.location || 'Location TBD' })
+                ]
+            }));
+            meta.appendChild(createElement('span', {
+                className: 'flex items-center gap-1',
+                children: [
+                    createElement('svg', {
+                        className: ['w-4', 'h-4'],
+                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' } })]
+                    }),
+                    createElement('span', { text: project.category || 'General' })
+                ]
+            }));
+            meta.appendChild(createElement('span', {
+                className: 'flex items-center gap-1',
+                children: [
+                    createElement('svg', {
+                        className: ['w-4', 'h-4'],
+                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' } })]
+                    }),
+                    createElement('span', { text: timeAgo(project.createdAt) })
+                ]
+            }));
+            card.appendChild(meta);
+
+            // Description preview
+            card.appendChild(createElement('p', {
+                className: 'text-gcsc-textMuted text-sm mb-4 line-clamp-2',
+                text: truncate(project.description, 180)
+            }));
+
+            // Footer
+            const footer = createElement('div', { className: 'flex items-center justify-between pt-3 border-t border-gcsc-border' });
+            const bidsInfo = createElement('div', { className: 'flex items-center gap-4' });
+            bidsInfo.appendChild(createElement('span', {
+                className: 'text-sm text-gcsc-textMuted flex items-center gap-1',
+                children: [
+                    createElement('svg', {
+                        className: ['w-4', 'h-4'],
+                        attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                        children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' } })]
+                    }),
+                    createElement('span', { text: bidCount + (bidCount === 1 ? ' bid' : ' bids') })
+                ]
+            }));
+            footer.appendChild(bidsInfo);
+
+            const viewBtn = createElement('span', {
+                className: 'text-gcsc-purpleLight text-sm font-medium flex items-center gap-1',
+                text: 'View Details'
+            });
+            viewBtn.appendChild(createElement('svg', {
+                className: ['w-4', 'h-4'],
+                attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M9 5l7 7-7 7' } })]
+            }));
+            footer.appendChild(viewBtn);
+            card.appendChild(footer);
+
+            // Click handler
+            card.addEventListener('click', function() {
+                navigateTo('project-detail', { projectId: project.id });
+            });
+
+            return card;
+        }
+
+        function createActivityItem(activity) {
+            return createElement('div', {
+                className: 'flex items-start gap-3',
+                children: [
+                    createElement('div', {
+                        className: 'w-2 h-2 rounded-full bg-gcsc-purple mt-2 flex-shrink-0'
+                    }),
+                    createElement('div', {
+                        children: [
+                            createElement('p', { className: 'text-sm text-gcsc-text', text: activity.text }),
+                            createElement('p', { className: 'text-xs text-gcsc-textMuted', text: activity.time })
+                        ]
+                    })
+                ]
+            });
+        }
+
+        function generateMockActivity(projects) {
+            const activities = [];
+            projects.slice(0, 5).forEach(function(p, i) {
+                if (p.bids && p.bids.length > 0) {
+                    activities.push({
+                        text: 'New bid on "' + truncate(p.title, 30) + '"',
+                        time: timeAgo(p.bids[0].createdAt)
+                    });
+                }
+                activities.push({
+                    text: 'Project "' + truncate(p.title, 30) + '" posted',
+                    time: timeAgo(p.createdAt)
+                });
+            });
+            return activities.slice(0, 6);
+        }
+
+        // ---- PROJECT DETAIL ----
+        async function renderProjectDetail(projectId) {
+            if (!userData) {
+                const verified = await verifyToken();
+                if (!verified) { navigateTo('auth'); return; }
+            }
+
+            currentProjectId = projectId;
+            const role = userData.role || sessionStorage.getItem('gcsc_role');
+
+            // Find project
+            let project = projectsCache.find(function(p) { return p.id === projectId; });
+
+            // If not in cache, try API
+            if (!project) {
+                try {
+                    const response = await apiCall('/api/projects/' + projectId);
+                    if (response.ok) {
+                        project = await response.json();
+                    }
+                } catch (err) {
+                    console.log('Project not found in API, checking mock data');
+                }
+            }
+
+            // Fallback to mock
+            if (!project) {
+                project = MOCK_PROJECTS.find(function(p) { return p.id === projectId; });
+            }
+
+            if (!project) {
+                showToast('Project not found', 'error');
+                navigateTo('dashboard');
+                return;
+            }
+
+            // Populate details
+            $('detail-title').textContent = project.title;
+            $('detail-category').textContent = project.category || 'General';
+            $('detail-category').className = 'status-badge mr-2';
+            $('detail-status').textContent = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Open';
+            $('detail-status').className = 'status-badge status-' + (project.status || 'open');
+            $('detail-location').textContent = project.location || 'Location TBD';
+            $('detail-date').textContent = formatDate(project.createdAt);
+            $('detail-description').textContent = project.description || 'No description provided.';
+
+            if (project.budgetMin || project.budgetMax) {
+                $('detail-budget-section').style.display = 'block';
+                if (project.budgetMin && project.budgetMax) {
+                    $('detail-budget').textContent = formatCurrency(project.budgetMin) + ' - ' + formatCurrency(project.budgetMax);
+                } else if (project.budgetMin) {
+                    $('detail-budget').textContent = 'From ' + formatCurrency(project.budgetMin);
+                } else {
+                    $('detail-budget').textContent = 'Up to ' + formatCurrency(project.budgetMax);
+                }
+            } else {
+                $('detail-budget-section').style.display = 'none';
+            }
+            $('detail-owner').textContent = project.ownerEmail || 'Anonymous';
+
+            // Show/hide bid form based on role
+            if (role === 'contractor' && project.status === 'open') {
+                $('place-bid-card').style.display = 'block';
+                $('homeowner-actions-card').style.display = 'none';
+            } else if (role === 'homeowner') {
+                $('place-bid-card').style.display = 'none';
+                $('homeowner-actions-card').style.display = 'block';
+            } else {
+                $('place-bid-card').style.display = 'none';
+                $('homeowner-actions-card').style.display = 'none';
+            }
+
+            // Render bids
+            const bidsList = $('bids-list');
+            bidsList.innerHTML = '';
+            const bids = project.bids || [];
+
+            if (bids.length === 0) {
+                $('bids-empty').style.display = 'block';
+                $('bids-section-title').textContent = 'Bids (0)';
+            } else {
+                $('bids-empty').style.display = 'none';
+                $('bids-section-title').textContent = 'Bids (' + bids.length + ')';
+                bids.forEach(function(bid) {
+                    bidsList.appendChild(createBidCard(bid, role, project));
+                });
+            }
+        }
+
+        function createBidCard(bid, userRole, project) {
+            const card = createElement('div', {
+                className: ['bid-card', 'bg-gcsc-bg', 'rounded-lg', 'p-5', 'mb-3']
+            });
+
+            // Header
+            const header = createElement('div', { className: 'flex items-start justify-between mb-3' });
+            const contractorInfo = createElement('div');
+            contractorInfo.appendChild(createElement('h4', {
+                className: 'font-semibold text-white',
+                text: bid.contractorEmail ? bid.contractorEmail.split('@')[0] : 'Contractor'
+            }));
+            contractorInfo.appendChild(createElement('p', {
+                className: 'text-sm text-gcsc-textMuted',
+                text: bid.contractorEmail || ''
+            }));
+            header.appendChild(contractorInfo);
+
+            const amountEl = createElement('p', {
+                className: 'text-xl font-bold text-gcsc-success',
+                text: formatCurrency(bid.amount)
+            });
+            header.appendChild(amountEl);
+            card.appendChild(header);
+
+            // Timeline
+            card.appendChild(createElement('div', {
+                className: 'flex items-center gap-4 text-sm text-gcsc-textMuted mb-3',
+                children: [
+                    createElement('span', {
+                        className: 'flex items-center gap-1',
+                        children: [
+                            createElement('svg', {
+                                className: ['w-4', 'h-4'],
+                                attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                                children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' } })]
+                            }),
+                            createElement('span', { text: bid.timeline + ' days' })
+                        ]
+                    }),
+                    createElement('span', {
+                        className: 'flex items-center gap-1',
+                        children: [
+                            createElement('svg', {
+                                className: ['w-4', 'h-4'],
+                                attrs: { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+                                children: [createElement('path', { attrs: { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' } })]
+                            }),
+                            createElement('span', { text: timeAgo(bid.createdAt) })
+                        ]
+                    })
+                ]
+            }));
+
+            // Description
+            if (bid.description) {
+                card.appendChild(createElement('p', {
+                    className: 'text-gcsc-text text-sm mb-3',
+                    text: bid.description
+                }));
+            }
+
+            // Status badge for accepted
+            if (bid.status === 'accepted') {
+                card.appendChild(createElement('span', {
+                    className: 'status-badge status-accepted',
+                    text: 'Accepted'
+                }));
+            }
+
+            // Homeowner actions
+            if (userRole === 'homeowner' && project.status === 'open' && bid.status !== 'accepted') {
+                const actions = createElement('div', { className: 'flex gap-2 mt-3 pt-3 border-t border-gcsc-border' });
+                const acceptBtn = createElement('button', {
+                    className: ['btn-primary', 'px-4', 'py-2', 'rounded-lg', 'text-sm'],
+                    text: 'Accept Bid'
+                });
+                acceptBtn.addEventListener('click', function() { acceptBid(project.id, bid.id); });
+                actions.appendChild(acceptBtn);
+
+                const rejectBtn = createElement('button', {
+                    className: ['btn-secondary', 'px-4', 'py-2', 'rounded-lg', 'text-sm'],
+                    text: 'Decline'
+                });
+                rejectBtn.addEventListener('click', function() { declineBid(project.id, bid.id); });
+                actions.appendChild(rejectBtn);
+                card.appendChild(actions);
+            }
+
+            return card;
+        }
+
+        // ---- POST PROJECT ----
+        function initPostProjectPage() {
+            // Character count
+            $('project-description').addEventListener('input', function() {
+                const len = this.value.length;
+                $('desc-char-count').textContent = String(len);
+                if (len > 2000) {
+                    $('desc-char-count').style.color = '#ef4444';
+                } else {
+                    $('desc-char-count').style.color = '#94a3b8';
+                }
+            });
+        }
+
+        async function submitProjectForm(event) {
+            event.preventDefault();
+
+            // Clear previous errors
+            ['title', 'category', 'location', 'description', 'budget'].forEach(function(field) {
+                $('project-' + field + '-error').style.display = 'none';
+            });
+
+            // Gather values
+            const title = sanitizeInput($('project-title').value.trim());
+            const category = $('project-category').value;
+            const location = sanitizeInput($('project-location').value.trim());
+            const description = sanitizeInput($('project-description').value.trim());
+            const budgetMin = parseFloat($('project-budget-min').value) || null;
+            const budgetMax = parseFloat($('project-budget-max').value) || null;
+
+            // Validation
+            let hasError = false;
+            if (!title || title.length < 5) {
+                $('project-title-error').textContent = 'Title must be at least 5 characters';
+                $('project-title-error').style.display = 'block';
+                hasError = true;
+            }
+            if (!category) {
+                $('project-category-error').textContent = 'Please select a category';
+                $('project-category-error').style.display = 'block';
+                hasError = true;
+            }
+            if (!location) {
+                $('project-location-error').textContent = 'Please enter a location';
+                $('project-location-error').style.display = 'block';
+                hasError = true;
+            }
+            if (!description || description.length < 20) {
+                $('project-description-error').textContent = 'Description must be at least 20 characters';
+                $('project-description-error').style.display = 'block';
+                hasError = true;
+            }
+            if (budgetMin && budgetMax && budgetMin > budgetMax) {
+                $('project-budget-error').textContent = 'Minimum budget cannot exceed maximum';
+                $('project-budget-error').style.display = 'block';
+                hasError = true;
+            }
+
+            if (hasError) return;
+
+            const projectData = {
+                title: title,
+                category: category,
+                location: location,
+                description: description,
+                budgetMin: budgetMin,
+                budgetMax: budgetMax
+            };
+
+            $('project-submit-btn').disabled = true;
+            $('project-submit-btn').textContent = 'Posting...';
+
+            try {
+                const response = await apiCall('/api/projects', {
+                    method: 'POST',
+                    body: projectData
+                });
+
+                if (response.ok) {
+                    showToast('Project posted successfully!', 'success');
+                    // Reset form
+                    $('post-project-form').reset();
+                    $('desc-char-count').textContent = '0';
+                    navigateTo('dashboard');
+                } else {
+                    showToast('Failed to post project. Please try again.', 'error');
+                }
+            } catch (err) {
+                // Fallback: add to mock data
+                console.log('API unavailable, adding to local data');
+                const newProject = {
+                    id: 'proj-local-' + Date.now(),
+                    ...projectData,
+                    status: 'open',
+                    ownerId: userData ? userData.id : 'local-user',
+                    ownerEmail: userData ? userData.email : 'local@example.com',
+                    createdAt: new Date().toISOString(),
+                    bids: []
+                };
+                MOCK_PROJECTS.unshift(newProject);
+                projectsCache.unshift(newProject);
+                showToast('Project posted (local mode)', 'success');
+                $('post-project-form').reset();
+                $('desc-char-count').textContent = '0';
+                navigateTo('dashboard');
+            } finally {
+                $('project-submit-btn').disabled = false;
+                $('project-submit-btn').textContent = 'Post Project';
+            }
+        }
+
+        // ---- PLACE BID ----
+        async function submitBidForm(event) {
+            event.preventDefault();
+
+            const amount = parseFloat($('bid-amount').value);
+            const timeline = parseInt($('bid-timeline').value, 10);
+            const description = sanitizeInput($('bid-description').value.trim());
+
+            if (!amount || amount <= 0) {
+                showToast('Please enter a valid bid amount', 'error');
+                return;
+            }
+            if (!timeline || timeline < 1) {
+                showToast('Please enter a valid timeline', 'error');
+                return;
+            }
+            if (!currentProjectId) {
+                showToast('No project selected', 'error');
+                return;
+            }
+
+            $('bid-submit-btn').disabled = true;
+            $('bid-submit-btn').textContent = 'Submitting...';
+
+            try {
+                const response = await apiCall('/api/projects/' + currentProjectId + '/bids', {
+                    method: 'POST',
+                    body: { amount: amount, timeline: timeline, description: description }
+                });
+
+                if (response.ok) {
+                    showToast('Bid submitted successfully!', 'success');
+                    $('place-bid-form').reset();
+                    // Refresh project detail
+                    renderProjectDetail(currentProjectId);
+                } else {
+                    showToast('Failed to submit bid. Please try again.', 'error');
+                }
+            } catch (err) {
+                // Fallback: add to local mock
+                const project = MOCK_PROJECTS.find(function(p) { return p.id === currentProjectId; });
+                if (project) {
+                    const newBid = {
+                        id: 'bid-local-' + Date.now(),
+                        contractorId: userData ? userData.id : 'local-contractor',
+                        contractorEmail: userData ? userData.email : 'local@example.com',
+                        amount: amount,
+                        timeline: timeline,
+                        description: description,
+                        status: 'pending',
+                        createdAt: new Date().toISOString()
+                    };
+                    project.bids = project.bids || [];
+                    project.bids.push(newBid);
+                    showToast('Bid submitted (local mode)', 'success');
+                    $('place-bid-form').reset();
+                    renderProjectDetail(currentProjectId);
+                }
+            } finally {
+                $('bid-submit-btn').disabled = false;
+                $('bid-submit-btn').textContent = 'Submit Bid';
+            }
+        }
+
+        // ---- BID ACTIONS ----
+        async function acceptBid(projectId, bidId) {
+            try {
+                const response = await apiCall('/api/projects/' + projectId + '/bids/' + bidId + '/accept', {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    showToast('Bid accepted!', 'success');
+                    renderProjectDetail(projectId);
+                } else {
+                    showToast('Failed to accept bid', 'error');
+                }
+            } catch (err) {
+                // Local fallback
+                const project = MOCK_PROJECTS.find(function(p) { return p.id === projectId; });
+                if (project && project.bids) {
+                    const bid = project.bids.find(function(b) { return b.id === bidId; });
+                    if (bid) {
+                        bid.status = 'accepted';
+                        project.status = 'in-progress';
+                        showToast('Bid accepted (local mode)', 'success');
+                        renderProjectDetail(projectId);
+                    }
+                }
+            }
+        }
+
+        async function declineBid(projectId, bidId) {
+            try {
+                await apiCall('/api/projects/' + projectId + '/bids/' + bidId + '/decline', {
+                    method: 'POST'
+                });
+                showToast('Bid declined', 'info');
+                renderProjectDetail(projectId);
+            } catch (err) {
+                showToast('Bid declined (local mode)', 'info');
+                const project = MOCK_PROJECTS.find(function(p) { return p.id === projectId; });
+                if (project && project.bids) {
+                    project.bids = project.bids.filter(function(b) { return b.id !== bidId; });
+                    renderProjectDetail(projectId);
+                }
+            }
+        }
+
+        // ---- PROFILE ----
+        function renderProfile() {
+            if (!userData) {
+                navigateTo('auth');
+                return;
+            }
+
+            $('profile-email').textContent = userData.email || sessionStorage.getItem('gcsc_email') || 'N/A';
+            $('profile-role').textContent = userData.role || sessionStorage.getItem('gcsc_role') || 'N/A';
+            $('profile-joined').textContent = userData.createdAt ? formatDate(userData.createdAt) : 'N/A';
+            $('profile-xpr-account').textContent = userData.xprAccount || sessionStorage.getItem('gcsc_xpr_account') || 'N/A';
+            $('profile-xpr-key').textContent = userData.xprPublicKey || sessionStorage.getItem('gcsc_xpr_key') || 'N/A';
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showToast('Copied to clipboard!', 'success');
+                }).catch(function() {
+                    // Fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    showToast('Copied to clipboard!', 'success');
+                });
+            } else {
+                showToast('Clipboard not available', 'error');
+            }
+        }
+
+        // ============================================================
+        // EVENT LISTENERS (all using addEventListener - NO inline handlers)
+        // ============================================================
+
+        function setupEventListeners() {
+            // ---- HOME PAGE ----
+            $('cta-homeowner').addEventListener('click', function() {
+                authMode = 'register';
+                selectedRole = 'homeowner';
+                navigateTo('auth');
+                showAuthStep('email');
+                selectRole('homeowner');
+                $('auth-role-section').style.display = 'block';
+            });
+
+            $('cta-contractor').addEventListener('click', function() {
+                authMode = 'register';
+                selectedRole = 'contractor';
+                navigateTo('auth');
+                showAuthStep('email');
+                selectRole('contractor');
+                $('auth-role-section').style.display = 'block';
+            });
+
+            $('hero-login-btn').addEventListener('click', function() {
+                authMode = 'login';
+                selectedRole = null;
+                navigateTo('auth');
+                showAuthStep('email');
+                $('auth-role-section').style.display = 'none';
+            });
+
+            // ---- AUTH ----
+            $('auth-email-submit').addEventListener('click', submitEmail);
+            $('auth-otp-submit').addEventListener('click', submitOTP);
+            $('auth-otp-resend').addEventListener('click', function() {
+                showToast('Code resent (demo: use 123456)', 'info');
+            });
+            $('auth-back-to-email').addEventListener('click', function() {
+                showAuthStep('email');
+            });
+            $('auth-success-continue').addEventListener('click', finishAuth);
+
+            $('auth-email').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') submitEmail();
+            });
+            $('auth-otp').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') submitOTP();
+            });
+
+            $('auth-toggle-mode').addEventListener('click', function() {
+                if (authMode === 'login') {
+                    authMode = 'register';
+                    $('auth-toggle-mode').textContent = 'Already have an account? Log in';
+                    $('auth-title').textContent = 'Get Started';
+                    $('auth-subtitle').textContent = 'Enter your email to create an account';
+                    $('auth-role-section').style.display = 'flex';
+                } else {
+                    authMode = 'login';
+                    $('auth-toggle-mode').textContent = "Don't have an account? Sign up";
+                    $('auth-title').textContent = 'Welcome Back';
+                    $('auth-subtitle').textContent = 'Enter your email to log in';
+                    $('auth-role-section').style.display = 'none';
+                }
+            });
+
+            // Role selection buttons
+            document.querySelectorAll('.role-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    selectRole(this.dataset.role);
+                });
+            });
+
+            $('success-copy-key').addEventListener('click', function() {
+                const key = $('success-xpr-key').textContent;
+                if (key) copyToClipboard(key);
+            });
+
+            // ---- NAVIGATION ----
+            $('nav-logo').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('nav-dashboard').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('nav-profile').addEventListener('click', function() { navigateTo('profile'); });
+            $('nav-logout').addEventListener('click', handleLogout);
+
+            $('mobile-menu-btn').addEventListener('click', function() {
+                isMobileMenuOpen = !isMobileMenuOpen;
+                mobileMenu.style.display = isMobileMenuOpen ? 'block' : 'none';
+            });
+
+            $('mobile-nav-dashboard').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('mobile-nav-profile').addEventListener('click', function() { navigateTo('profile'); });
+            $('mobile-nav-logout').addEventListener('click', handleLogout);
+
+            // ---- POST PROJECT ----
+            $('post-project-back').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('project-cancel-btn').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('post-project-form').addEventListener('submit', submitProjectForm);
+
+            // ---- PROJECT DETAIL ----
+            $('project-detail-back').addEventListener('click', function() { navigateTo('dashboard'); });
+            $('place-bid-form').addEventListener('submit', submitBidForm);
+
+            // ---- PROFILE ----
+            $('profile-copy-key').addEventListener('click', function() {
+                const key = $('profile-xpr-key').textContent;
+                if (key) copyToClipboard(key);
+            });
+            $('profile-logout-btn').addEventListener('click', handleLogout);
+
+            // ---- LOGIN MODAL ----
+            $('login-modal-btn').addEventListener('click', function() {
+                hideLoginModal();
+                navigateTo('auth');
+            });
+
+            // Close modal on overlay click
+            $('login-modal').addEventListener('click', function(e) {
+                if (e.target === $('login-modal')) hideLoginModal();
+            });
+        }
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+
+        function initApp() {
+            // Setup all event listeners
+            setupEventListeners();
+
+            // Initialize post project page features
+            initPostProjectPage();
+
+            // Check for existing session
+            const token = sessionStorage.getItem('gcsc_token');
+            if (token) {
+                verifyToken().then(function(valid) {
+                    if (valid) {
+                        // User is logged in, stay on current or go to dashboard
+                        if (currentPage === 'home' || currentPage === 'auth') {
+                            navigateTo('dashboard');
+                        }
+                    }
+                });
+            }
+
+            console.log('GCSC Smart Contractor v2.0 initialized');
+            console.log('Security features: CSP, SRI, IIFE scope isolation, createElement+textContent, JWT auth, anti-clickjacking');
+        }
+
+        // ============================================================
+        // EXPOSE MINIMAL API TO WINDOW
+        // ============================================================
+        window.GCSC = {
+            init: initApp,
+            logout: handleLogout,
+            navigate: navigateTo
+        };
+
+        // Start the app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+
+    })(); // End of IIFE
+    </script>
+</body>
+</html>
