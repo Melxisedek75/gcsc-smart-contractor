@@ -1,0 +1,32 @@
+DNS SETUP FOR smartcontractor.org
+====================================
+
+When you purchase the domain, configure these DNS records:
+
+RECORD 1 (Main domain):
+  Type:  CNAME
+  Name:  @  (or root)
+  Value: Melxisedek75.github.io
+  TTL:   3600
+
+RECORD 2 (WWW redirect):
+  Type:  CNAME
+  Name:  www
+  Value: Melxisedek75.github.io
+  TTL:   3600
+
+WHERE TO CONFIGURE:
+  - GoDaddy: DNS Management → Add Record
+  - Namecheap: Advanced DNS → Add New Record
+  - Google Domains: DNS → Custom records
+  - Cloudflare: DNS → Add record
+
+After DNS is set:
+  1. Wait 5-15 minutes for DNS to propagate
+  2. Visit https://smartcontractor.org
+  3. GitHub will automatically detect and enable SSL
+
+SSL CERTIFICATE:
+  - Free, automatic
+  - Provided by GitHub Pages + Let's Encrypt
+  - No action needed from you
