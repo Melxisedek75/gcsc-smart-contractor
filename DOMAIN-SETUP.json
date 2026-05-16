@@ -1,0 +1,19 @@
+{
+  "domain": "smartcontractor.org",
+  "www_redirect": "www.smartcontractor.org",
+  "github_pages_url": "https://melxisedek75.github.io/gcsc-smart-contractor/",
+  "dns_records": {
+    "type": "CNAME",
+    "name": "@",
+    "value": "Melxisedek75.github.io",
+    "ttl": 3600
+  },
+  "settings_to_update": [
+    ".env.template \u2014 CORS_ORIGIN_WHITELIST",
+    ".env.template \u2014 GOOGLE_REDIRECT_URI",
+    "server.js \u2014 hardcoded URLs",
+    "public/index.html \u2014 API base URL"
+  ],
+  "ssl": "Auto (GitHub Pages provides free SSL)",
+  "status": "domain_not_purchased_yet"
+}
