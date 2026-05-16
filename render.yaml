@@ -2,9 +2,11 @@ services:
   - type: web
     name: gcsc-smart-contractor
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npm install
     startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,24 +20,13 @@ services:
         generateValue: true
       - key: OTP_EXPIRY_MINUTES
         value: 15
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
       - key: GOOGLE_REDIRECT_URI
         value: https://gcsc-smart-contractor.onrender.com/dev/oauth/callback
-      - key: GOOGLE_REFRESH_TOKEN
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
       - key: XPR_CHAIN_ID
         value: 384da888ccb7
       - key: CORS_ORIGIN_WHITELIST
         value: https://gcsc-smart-contractor.onrender.com
-    healthCheckPath: /health
-    autoDeploy: true
-
-  - type: postgres
-    name: gcsc-postgres
-    plan: free
-    ipAllowList: []
+    disk:
+      name: gcsc-data
+      mountPath: /data
+      sizeGB: 1
