@@ -1,0 +1,217 @@
+# =============================================================================
+# GCSC Smart Contractor Backend — Production Stack
+# =============================================================================
+# Hardened production configuration for self-hosted deployments.
+# For Railway.app deployments, see railway.json and scripts/deploy.sh.
+#
+# Differences from docker-compose.yml (development):
+#   - NO pgAdmin (reduces attack surface)
+#   - Resource limits on all containers (prevents DoS via resource exhaustion)
+#   - Logging limits (prevents disk fill attacks)
+#   - Restart: always (ensures high availability)
+#   - NODE_ENV=production (enables all security features)
+#   - Production secrets via environment variables (NEVER in files)
+#
+# Security hardening:
+#   - Non-root container execution
+#   - Read-only root filesystem where possible
+#   - No new privileges
+#   - Seccomp profile
+#   - Resource quotas (memory, CPU)
+#   - Log rotation (prevents disk exhaustion)
+#
+# Usage:
+#   export $(cat .env.production | xargs)  # Load production secrets
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   - .env.production file with all secrets (NOT in version control)
+#   - Database initialized with schema.sql
+#   - SSL/TLS termination handled by reverse proxy or load balancer
+# =============================================================================
+
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Networks — Isolated production network
+# ---------------------------------------------------------------------------
+networks:
+  gcsc-prod-network:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ---------------------------------------------------------------------------
+# Volumes — Persistent production storage
+# ---------------------------------------------------------------------------
+volumes:
+  gcsc-postgres-data-prod:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+services:
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL Database — Production
+  # -------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: gcsc-db-prod
+
+    # Always restart on failure (high availability)
+    restart: always
+
+    environment:
+      # All values injected from environment — NEVER hardcoded
+      POSTGRES_DB: ${DB_NAME:-gcsc_smart_contractor}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+    volumes:
+      # Persistent database storage
+      - gcsc-postgres-data-prod:/var/lib/postgresql/data/pgdata
+
+    ports:
+      # Bind to localhost only — prevents external access
+      # Use SSH tunnel or VPN for remote administration
+      - "127.0.0.1:5432:5432"
+
+    networks:
+      - gcsc-prod-network
+
+    # Security: Resource limits prevent DoS via resource exhaustion
+    deploy:
+      resources:
+        limits:
+          # Maximum 256MB RAM for database
+          memory: 256M
+          # Maximum 0.5 CPU cores
+          cpus: "0.5"
+        reservations:
+          # Reserve 128MB RAM minimum
+          memory: 128M
+          cpus: "0.25"
+
+    # Security: Kernel-level hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # PostgreSQL needs write access to data directory
+
+    # Health check — ensures DB is ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME:-gcsc_smart_contractor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    # Logging: Size-limited to prevent disk exhaustion
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "gcsc.service,gcsc.environment"
+        env: "NODE_ENV"
+
+  # -------------------------------------------------------------------------
+  # GCSC Backend Application — Production
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+
+    container_name: gcsc-app-prod
+    restart: always
+
+    env_file:
+      # Production secrets — this file must NEVER be in version control
+      - .env.production
+
+    environment:
+      # Override with Docker service name for internal network resolution
+      DB_HOST: db
+      DB_PORT: 5432
+      NODE_ENV: production
+      # Trust proxy for Railway/reverse proxy compatibility
+      TRUST_PROXY: "1"
+
+    ports:
+      # Bind to all interfaces (required for load balancers)
+      - "3000:3000"
+
+    networks:
+      - gcsc-prod-network
+
+    # Start only after database is healthy
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # -----------------------------------------------------------------------
+    # Security: Resource limits
+    # -----------------------------------------------------------------------
+    deploy:
+      resources:
+        limits:
+          # Maximum 512MB RAM — prevents memory exhaustion attacks
+          memory: 512M
+          # Maximum 1 CPU core
+          cpus: "1.0"
+        reservations:
+          # Reserve 128MB minimum for stable performance
+          memory: 128M
+          cpus: "0.25"
+
+    # -----------------------------------------------------------------------
+    # Security: Kernel-level hardening
+    # -----------------------------------------------------------------------
+    security_opt:
+      # Prevent privilege escalation (e.g., setuid binaries)
+      - no-new-privileges:true
+    cap_drop:
+      # Drop all capabilities — the app doesn't need any
+      - ALL
+    cap_add:
+      # Re-add only what's needed for Node.js operation
+      - NET_BIND_SERVICE
+    # read_only: true  # Uncomment if your app doesn't need filesystem writes
+
+    # -----------------------------------------------------------------------
+    # Health check
+    # -----------------------------------------------------------------------
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    # -----------------------------------------------------------------------
+    # Logging: Size-limited JSON logs
+    # -----------------------------------------------------------------------
+    logging:
+      driver: "json-file"
+      options:
+        # Rotate at 10MB per file
+        max-size: "10m"
+        # Keep 3 rotated files (total max 30MB per container)
+        max-file: "3"
+        # Add metadata for log aggregation
+        labels: "gcsc.service,gcsc.environment"
+        env: "NODE_ENV,PORT"
+
+    # -----------------------------------------------------------------------
+    # Graceful shutdown handling
+    # -----------------------------------------------------------------------
+    # Docker sends SIGTERM, then SIGKILL after stop_grace_period.
+    # The server handles SIGTERM for graceful shutdown.
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
