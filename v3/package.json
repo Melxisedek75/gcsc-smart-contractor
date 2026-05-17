@@ -1,0 +1,53 @@
+{
+  "name": "gcsc-smart-contractor-backend-v3",
+  "version": "3.0.0",
+  "description": "GCSC Smart Contractor Backend v3 - P2P Construction Marketplace with XPR Blockchain Escrow, Stripe Payments, and Full Project Management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:schema": "psql -d gcsc_v3 -f database/schema.sql",
+    "test": "jest --coverage",
+    "lint": "eslint .",
+    "security:audit": "npm audit && snyk test"
+  },
+  "keywords": [
+    "construction",
+    "marketplace",
+    "escrow",
+    "blockchain",
+    "xpr",
+    "stripe",
+    "p2p",
+    "smart-contractor"
+  ],
+  "author": "GCSC Engineering Team",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@proton/api": "^27.6.0",
+    "@proton/js": "^27.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "googleapis": "^130.0.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "ripemd160": "^2.0.2",
+    "stripe": "^14.10.0",
+    "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.3",
+    "snyk": "^1.1269.0",
+    "supertest": "^6.3.4"
+  }
+}
