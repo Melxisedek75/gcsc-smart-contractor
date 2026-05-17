@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: gcsc-backend
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gcsc-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_EXPIRY_SECONDS
+        value: "604800"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: XPR_CHAIN_ID
+        value: "384da888ccb047ea0000000000000000000000000000000000"
+      - key: XPR_API_ENDPOINT
+        value: "https://api.protonchain.com"
+      - key: FRONTEND_URL
+        value: "https://gcsc.store"
+
+databases:
+  - name: gcsc-db
+    plan: starter
+    databaseName: gcsc_db
+    user: gcsc_admin
