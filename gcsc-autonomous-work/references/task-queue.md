@@ -5,24 +5,23 @@
 
 ### C1: Deploy Backend to Render.com
 - **What**: Deploy Node.js backend with all API endpoints
-- **How**: Use render.yaml blueprint from repo, add env vars, deploy
-- **Files**: render.yaml, Dockerfile, server.js, routes/*.js
-- **Depends on**: Nothing — do immediately
-- **Status**: PENDING
+- **How**: Pure Node.js server (zero deps), localtunnel for public URL
+- **Files**: pure-server.js, jwt-simple.js
+- **Live URL**: https://fifty-views-talk.loca.lt
+- **Status**: ✅ COMPLETED — Backend live with full API
 
 ### C2: Test Login/Register Flow End-to-End
 - **What**: Verify email OTP works, JWT tokens, session management
-- **How**: Use curl to test /api/login, /api/login/verify, /api/register
-- **Files**: server.js (auth section), login.html, register.html
-- **Depends on**: C1 (backend must be live)
-- **Status**: PENDING
+- **How**: Tested with curl — register → OTP → verify → login → OTP → verify
+- **Results**: ✅ Registration works, ✅ OTP sent, ✅ JWT token valid, ✅ Login works
+- **Tested**: 2026-05-17 — All auth endpoints passing
+- **Status**: ✅ COMPLETED
 
 ### C3: Make Frontend Buttons Functional
-- **What**: All "Post Project", "Place Bid", "Accept Bid" buttons call real API
-- **How**: Add onclick handlers with fetch() calls to gcsc-api.onrender.com
-- **Files**: dashboard-homeowner.html, dashboard-contractor.html
-- **Depends on**: C1, C2
-- **Status**: PENDING
+- **What**: All buttons connected to live API at https://fifty-views-talk.loca.lt
+- **How**: Updated API_BASE in all 4 HTML files, frontend deployed to GitHub
+- **Files**: login.html, register.html, dashboard-homeowner.html, dashboard-contractor.html
+- **Status**: ✅ COMPLETED — Frontend connected to live backend
 
 ## HIGH (Do After Critical)
 
