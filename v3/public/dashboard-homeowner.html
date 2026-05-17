@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homeowner Dashboard - GCSC Smart Contractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        surface: '#F8F9FA',
+                        border: '#E2E8F0',
+                        'text-primary': '#0F172A',
+                        'text-secondary': '#475569',
+                        accent: '#7C3AED',
+                        'accent-blue': '#3B82F6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                    borderRadius: {
+                        '12': '12px',
+                        '16': '16px',
+                        '20': '20px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #F8F9FA; }
+        .btn-primary { background: #7C3AED; color: white; border-radius: 12px; font-weight: 600; transition: all 0.2s; }
+        .btn-primary:hover { background: #6D28D9; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-outline { background: transparent; border: 1px solid #E2E8F0; color: #0F172A; border-radius: 12px; font-weight: 500; transition: all 0.2s; }
+        .btn-outline:hover { border-color: #7C3AED; color: #7C3AED; }
+        .card { background: white; border: 1px solid #E2E8F0; border-radius: 20px; transition: all 0.25s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { padding: 14px 20px; border-radius: 12px; color: white; font-weight: 500; display: flex; align-items: center; gap: 10px; transform: translateX(120%); transition: transform 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #10B981; }
+        .toast.error { background: #EF4444; }
+        .loader { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        .loader-dark { border-color: #7C3AED; border-top-color: transparent; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .skeleton { background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .nav-tab { padding: 10px 16px; border-radius: 12px; font-size: 0.875rem; font-weight: 500; color: #475569; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .nav-tab:hover { background: #F1F5F9; color: #0F172A; }
+        .nav-tab.active { background: #7C3AED; color: white; }
+        .dropdown { position: absolute; top: 100%; right: 0; background: white; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); min-width: 180px; overflow: hidden; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: all 0.2s; z-index: 50; }
+        .dropdown.open { opacity: 1; pointer-events: all; transform: translateY(4px); }
+        .dropdown-item { padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.875rem; color: #475569; cursor: pointer; transition: all 0.15s; }
+        .dropdown-item:hover { background: #F8F9FA; color: #0F172A; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { color: #7C3AED; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .status-open { background: #DBEAFE; color: #1D4ED8; }
+        .status-in-progress { background: #FEF3C7; color: #B45309; }
+        .status-completed { background: #D1FAE5; color: #047857; }
+        .status-closed { background: #F3F4F6; color: #6B7280; }
+        .messages-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 380px; max-width: 90vw; background: white; border-left: 1px solid #E2E8F0; z-index: 90; transform: translateX(100%); transition: transform 0.3s ease; box-shadow: -10px 0 40px rgba(0,0,0,0.08); }
+        .messages-panel.open { transform: translateX(0); }
+        .overlay-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.3); z-index: 85; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .overlay-bg.active { opacity: 1; pointer-events: all; }
+        .detail-slide { position: fixed; right: 0; top: 0; bottom: 0; width: 560px; max-width: 90vw; background: white; border-left: 1px solid #E2E8F0; z-index: 95; transform: translateX(100%); transition: transform 0.3s ease; overflow-y: auto; box-shadow: -10px 0 40px rgba(0,0,0,0.08); }
+        .detail-slide.open { transform: translateX(0); }
+        .mobile-menu { position: fixed; inset: 0; background: white; z-index: 80; transform: translateX(-100%); transition: transform 0.3s ease; }
+        .mobile-menu.open { transform: translateX(0); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Overlay for panels -->
+    <div class="overlay-bg" id="overlayBg" onclick="closePanels()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu lg:hidden" id="mobileMenu">
+        <div class="p-6 border-b border-border flex justify-between items-center">
+            <span class="font-bold text-lg text-text-primary">Menu</span>
+            <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-surface"><i data-lucide="x" class="w-6 h-6 text-text-primary"></i></button>
+        </div>
+        <div class="p-4 space-y-2">
+            <button onclick="switchTab('projects')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="folder-open" class="w-5 h-5 text-accent"></i>My Projects</button>
+            <button onclick="switchTab('find')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="search" class="w-5 h-5 text-accent"></i>Find Contractors</button>
+            <button onclick="toggleMessages()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="message-square" class="w-5 h-5 text-accent"></i>Messages</button>
+            <button onclick="switchTab('profile')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="user" class="w-5 h-5 text-accent"></i>Profile</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="dashboard-homeowner.html" class="flex items-center gap-3">
+                    <img src="logo-company.jpg" alt="GCSC" class="w-10 h-10 rounded-full object-cover" onerror="this.style.display='none';document.getElementById('hdrFallback').style.display='flex';">
+                    <div id="hdrFallback" class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue items-center justify-center hidden">
+                        <span class="text-white font-bold text-sm">GC</span>
+                    </div>
+                    <span class="font-bold text-lg text-text-primary hidden sm:block">GCSC</span>
+                </a>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden lg:flex items-center gap-1 bg-surface/80 rounded-2xl p-1">
+                    <button onclick="switchTab('projects')" class="nav-tab active" data-tab="projects"><i data-lucide="folder-open" class="w-4 h-4 inline mr-1.5"></i>My Projects</button>
+                    <button onclick="switchTab('find')" class="nav-tab" data-tab="find"><i data-lucide="search" class="w-4 h-4 inline mr-1.5"></i>Find Contractors</button>
+                    <button onclick="toggleMessages()" class="nav-tab" data-tab="messages"><i data-lucide="message-square" class="w-4 h-4 inline mr-1.5"></i>Messages</button>
+                    <button onclick="switchTab('profile')" class="nav-tab" data-tab="profile"><i data-lucide="user" class="w-4 h-4 inline mr-1.5"></i>Profile</button>
+                </nav>
+
+                <!-- Right: Avatar + Mobile hamburger -->
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMessages()" class="lg:hidden p-2 rounded-xl hover:bg-surface relative">
+                        <i data-lucide="message-square" class="w-5 h-5 text-text-secondary"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-accent rounded-full border-2 border-white"></span>
+                    </button>
+                    <div class="relative" id="avatarContainer">
+                        <button onclick="toggleDropdown()" class="flex items-center gap-2 p-1 rounded-full hover:bg-surface transition-colors">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
+                                <span class="text-white text-sm font-bold" id="avatarInitials">U</span>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-text-secondary hidden sm:block"></i>
+                        </button>
+                        <div class="dropdown" id="userDropdown">
+                            <div class="px-4 py-3 border-b border-border">
+                                <p class="text-sm font-semibold text-text-primary" id="userName">User</p>
+                                <p class="text-xs text-text-secondary" id="userEmail">user@example.com</p>
+                            </div>
+                            <div class="dropdown-item" onclick="switchTab('profile')"><i data-lucide="user" class="w-4 h-4"></i>Profile</div>
+                            <div class="dropdown-item" onclick="showToast('Settings coming soon','success')"><i data-lucide="settings" class="w-4 h-4"></i>Settings</div>
+                            <div class="border-t border-border"></div>
+                            <div class="dropdown-item text-danger" onclick="logout()"><i data-lucide="log-out" class="w-4 h-4"></i>Logout</div>
+                        </div>
+                    </div>
+                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-xl hover:bg-surface"><i data-lucide="menu" class="w-6 h-6 text-text-primary"></i></button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+
+        <!-- TAB: My Projects -->
+        <div id="tab-projects" class="tab-content">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Active Projects</p>
+                                <p class="text-2xl font-bold text-text-primary mt-1" id="statActive">0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-16 bg-blue-50 flex items-center justify-center"><i data-lucide="folder-open" class="w-6 h-6 text-accent-blue"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Total Spent</p>
+                                <p class="text-2xl font-bold text-text-primary mt-1" id="statSpent">$0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-16 bg-purple-50 flex items-center justify-center"><i data-lucide="dollar-sign" class="w-6 h-6 text-accent"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Open Bids</p>
+                                <p class="text-2xl font-bold text-text-primary mt-1" id="statBids">0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-16 bg-amber-50 flex items-center justify-center"><i data-lucide="hand" class="w-6 h-6 text-warning"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Completed</p>
+                                <p class="text-2xl font-bold text-text-primary mt-1" id="statCompleted">0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-16 bg-green-50 flex items-center justify-center"><i data-lucide="check-circle" class="w-6 h-6 text-success"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                    <h2 class="text-xl font-bold text-text-primary">My Projects</h2>
+                    <div class="flex gap-3">
+                        <div class="relative flex-1 sm:flex-none">
+                            <i data-lucide="search" class="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input type="text" id="projectSearch" placeholder="Search projects..." oninput="filterProjects()" class="pl-10 pr-4 py-2.5 border border-border rounded-12 text-sm focus:border-accent focus:outline-none w-full sm:w-56">
+                        </div>
+                        <button onclick="openPostModal()" class="btn-primary px-5 py-2.5 flex items-center gap-2 text-sm whitespace-nowrap">
+                            <i data-lucide="plus" class="w-4 h-4"></i>Post New Project
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Projects Table -->
+                <div class="card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-surface/80 border-b border-border">
+                                <tr>
+                                    <th class="sortable px-5 py-3.5 font-semibold text-text-secondary" onclick="sortProjects('title')">Project Name <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i></th>
+                                    <th class="sortable px-5 py-3.5 font-semibold text-text-secondary" onclick="sortProjects('budget')">Budget <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i></th>
+                                    <th class="sortable px-5 py-3.5 font-semibold text-text-secondary" onclick="sortProjects('status')">Status <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i></th>
+                                    <th class="sortable px-5 py-3.5 font-semibold text-text-secondary" onclick="sortProjects('bids')">Bids <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i></th>
+                                    <th class="sortable px-5 py-3.5 font-semibold text-text-secondary" onclick="sortProjects('date')">Created <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1"></i></th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectsTableBody" class="divide-y divide-border"></tbody>
+                        </table>
+                    </div>
+                    <div id="projectsEmpty" class="hidden p-10 text-center">
+                        <div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3"><i data-lucide="folder-open" class="w-8 h-8 text-text-secondary/40"></i></div>
+                        <p class="text-text-secondary">No projects yet. Create your first project!</p>
+                    </div>
+                    <div id="projectsLoader" class="p-6 space-y-3">
+                        <div class="skeleton h-12 w-full"></div>
+                        <div class="skeleton h-12 w-full"></div>
+                        <div class="skeleton h-12 w-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Find Contractors -->
+        <div id="tab-find" class="tab-content hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h2 class="text-xl font-bold text-text-primary mb-5">Find Contractors</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="contractorsGrid"></div>
+                <div id="contractorsEmpty" class="hidden text-center py-16">
+                    <div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-8 h-8 text-text-secondary/40"></i></div>
+                    <p class="text-text-secondary">No contractors available at the moment.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Profile -->
+        <div id="tab-profile" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="card p-8">
+                    <h2 class="text-xl font-bold text-text-primary mb-6">My Profile</h2>
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
+                            <span class="text-white text-2xl font-bold" id="profileInitials">U</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-text-primary" id="profileName">User</p>
+                            <p class="text-sm text-text-secondary" id="profileEmail">user@example.com</p>
+                            <span class="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-accent">Homeowner</span>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-text-secondary mb-1">Full Name</label><input type="text" id="profileFullName" placeholder="Enter your name" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                        <div><label class="block text-sm font-medium text-text-secondary mb-1">Phone</label><input type="tel" id="profilePhone" placeholder="+1 (555) 000-0000" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                        <div><label class="block text-sm font-medium text-text-secondary mb-1">Location</label><input type="text" id="profileLocation" placeholder="City, State" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                        <button onclick="saveProfile()" class="btn-primary px-6 py-2.5 mt-2">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-border mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-sm text-text-secondary">&copy; 2025 GCSC Smart Contractor. All rights reserved.</p>
+                <div class="flex items-center gap-6 text-sm text-text-secondary">
+                    <a href="#" class="hover:text-text-primary">Privacy</a>
+                    <a href="#" class="hover:text-text-primary">Terms</a>
+                    <a href="#" class="hover:text-text-primary">Support</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Post Project Modal -->
+    <div class="modal-overlay" id="postModal">
+        <div class="modal-content">
+            <div class="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between rounded-t-20 z-10">
+                <h3 class="text-lg font-bold text-text-primary">Post New Project</h3>
+                <button onclick="closePostModal()" class="p-2 rounded-xl hover:bg-surface"><i data-lucide="x" class="w-5 h-5 text-text-secondary"></i></button>
+            </div>
+            <form id="postProjectForm" onsubmit="handlePostProject(event)" class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Project Title <span class="text-danger">*</span></label>
+                    <input type="text" id="projTitle" required placeholder="e.g., Kitchen Renovation" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Description <span class="text-danger">*</span></label>
+                    <textarea id="projDesc" required rows="4" placeholder="Describe your project in detail..." class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-text-primary mb-1.5">Category <span class="text-danger">*</span></label>
+                        <select id="projCategory" required class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none bg-white">
+                            <option value="">Select category</option>
+                            <option value="renovation">Renovation</option>
+                            <option value="plumbing">Plumbing</option>
+                            <option value="electrical">Electrical</option>
+                            <option value="roofing">Roofing</option>
+                            <option value="landscaping">Landscaping</option>
+                            <option value="painting">Painting</option>
+                            <option value="hvac">HVAC</option>
+                            <option value="flooring">Flooring</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-text-primary mb-1.5">Location <span class="text-danger">*</span></label>
+                        <input type="text" id="projLocation" required placeholder="City, State" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-text-primary mb-1.5">Min Budget ($)</label>
+                        <input type="number" id="projBudgetMin" placeholder="1000" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-text-primary mb-1.5">Max Budget ($) <span class="text-danger">*</span></label>
+                        <input type="number" id="projBudgetMax" required placeholder="5000" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Timeline (days)</label>
+                    <input type="number" id="projTimeline" placeholder="30" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Attachments</label>
+                    <div class="border-2 border-dashed border-border rounded-12 p-6 text-center hover:border-accent/50 transition-colors cursor-pointer" onclick="document.getElementById('projFiles').click()">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-text-secondary/40 mx-auto mb-2"></i>
+                        <p class="text-sm text-text-secondary">Click to upload or drag & drop</p>
+                        <input type="file" id="projFiles" multiple class="hidden" onchange="handleFileSelect(this)">
+                    </div>
+                    <div id="fileList" class="mt-2 space-y-1"></div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closePostModal()" class="btn-outline flex-1 py-2.5">Cancel</button>
+                    <button type="submit" id="postSubmitBtn" class="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2">
+                        <span id="postSubmitText">Post Project</span>
+                        <div id="postSubmitLoader" class="loader hidden"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Project Detail Slide-over -->
+    <div class="detail-slide" id="detailPanel">
+        <div class="p-6 border-b border-border flex items-center justify-between sticky top-0 bg-white z-10">
+            <h3 class="text-lg font-bold text-text-primary truncate pr-4" id="detailTitle">Project Details</h3>
+            <button onclick="closeDetail()" class="p-2 rounded-xl hover:bg-surface shrink-0"><i data-lucide="x" class="w-5 h-5 text-text-secondary"></i></button>
+        </div>
+        <div class="p-6" id="detailContent"></div>
+    </div>
+
+    <!-- Messages Panel -->
+    <div class="messages-panel" id="messagesPanel">
+        <div class="h-full flex flex-col">
+            <div class="p-5 border-b border-border flex items-center justify-between bg-white">
+                <h3 class="font-bold text-text-primary">Messages</h3>
+                <button onclick="toggleMessages()" class="p-2 rounded-xl hover:bg-surface"><i data-lucide="x" class="w-5 h-5 text-text-secondary"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-2" id="messagesList">
+                <div class="text-center py-10 text-text-secondary text-sm">No messages yet</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== API & UTILITIES =====================
+        const API_BASE = 'https://gcsc-api.onrender.com';
+
+        async function api(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const token = localStorage.getItem('gcsc_token');
+            const defaults = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers,
+                },
+            };
+            try {
+                const response = await fetch(url, { ...defaults, ...options, body: options.body ? options.body : undefined });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(data?.message || data?.error || `Request failed (${response.status})`);
+                return data;
+            } catch (err) { throw err; }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        function setLoading(btnId, textId, loaderId, loading) {
+            document.getElementById(textId).classList.toggle('hidden', loading);
+            document.getElementById(loaderId).classList.toggle('hidden', !loading);
+            document.getElementById(btnId).disabled = loading;
+        }
+
+        // ===================== AUTH =====================
+        if (!localStorage.getItem('gcsc_token')) { window.location.href = 'login.html'; }
+        const user = JSON.parse(localStorage.getItem('gcsc_user') || '{}');
+        if (localStorage.getItem('gcsc_role') === 'contractor') { window.location.href = 'dashboard-contractor.html'; }
+
+        function logout() {
+            localStorage.removeItem('gcsc_token');
+            localStorage.removeItem('gcsc_role');
+            localStorage.removeItem('gcsc_user');
+            window.location.href = 'login.html';
+        }
+
+        // ===================== HEADER / NAV =====================
+        document.getElementById('userName').textContent = user.name || user.email?.split('@')[0] || 'User';
+        document.getElementById('userEmail').textContent = user.email || '';
+        document.getElementById('avatarInitials').textContent = (user.name || user.email || 'U')[0].toUpperCase();
+        document.getElementById('profileInitials').textContent = (user.name || user.email || 'U')[0].toUpperCase();
+        document.getElementById('profileName').textContent = user.name || user.email?.split('@')[0] || 'User';
+        document.getElementById('profileEmail').textContent = user.email || '';
+
+        function toggleDropdown() {
+            document.getElementById('userDropdown').classList.toggle('open');
+        }
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('avatarContainer').contains(e.target)) {
+                document.getElementById('userDropdown').classList.remove('open');
+            }
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.querySelectorAll(`[data-tab="${tab}"]`).forEach(t => t.classList.add('active'));
+            document.getElementById('mobileMenu').classList.remove('open');
+            closePanels();
+            if (tab === 'projects') loadProjects();
+            if (tab === 'find') loadContractors();
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('open');
+        }
+
+        // ===================== DATA STATE =====================
+        let allProjects = [];
+        let sortCol = 'date', sortAsc = false;
+
+        // ===================== PROJECTS =====================
+        async function loadProjects() {
+            document.getElementById('projectsLoader').classList.remove('hidden');
+            document.getElementById('projectsTableBody').innerHTML = '';
+            document.getElementById('projectsEmpty').classList.add('hidden');
+            try {
+                const data = await api('/api/projects');
+                allProjects = data.projects || data || [];
+                updateStats();
+                renderProjects();
+            } catch (err) {
+                allProjects = getDemoProjects();
+                updateStats();
+                renderProjects();
+            }
+            document.getElementById('projectsLoader').classList.add('hidden');
+        }
+
+        function getDemoProjects() {
+            return [
+                { id: 1, title: 'Kitchen Renovation', description: 'Full kitchen remodel including cabinets, countertops, and appliances.', category: 'renovation', budget_min: 5000, budget_max: 15000, status: 'open', location: 'Austin, TX', timeline: 45, bids_count: 3, created_at: '2025-01-10T10:00:00Z' },
+                { id: 2, title: 'Bathroom Plumbing Fix', description: 'Fix leaking pipes and replace faucet fixtures in master bathroom.', category: 'plumbing', budget_min: 500, budget_max: 2000, status: 'in_progress', location: 'Austin, TX', timeline: 7, bids_count: 2, created_at: '2025-01-08T14:30:00Z' },
+                { id: 3, title: 'Backyard Landscaping', description: 'Design and install new garden beds, patio stones, and irrigation system.', category: 'landscaping', budget_min: 3000, budget_max: 8000, status: 'open', location: 'Dallas, TX', timeline: 30, bids_count: 5, created_at: '2025-01-05T09:00:00Z' },
+                { id: 4, title: 'Electrical Panel Upgrade', description: 'Upgrade 100A panel to 200A service panel with new breakers.', category: 'electrical', budget_min: 2000, budget_max: 5000, status: 'completed', location: 'Houston, TX', timeline: 14, bids_count: 1, created_at: '2024-12-20T11:00:00Z' },
+            ];
+        }
+
+        function updateStats() {
+            const active = allProjects.filter(p => p.status === 'open' || p.status === 'in_progress').length;
+            const completed = allProjects.filter(p => p.status === 'completed').length;
+            const totalSpent = allProjects.filter(p => p.status === 'completed').reduce((s, p) => s + (p.budget_max || 0), 0);
+            const openBids = allProjects.filter(p => p.status === 'open').reduce((s, p) => s + (p.bids_count || 0), 0);
+            document.getElementById('statActive').textContent = active;
+            document.getElementById('statSpent').textContent = '$' + totalSpent.toLocaleString();
+            document.getElementById('statBids').textContent = openBids;
+            document.getElementById('statCompleted').textContent = completed;
+        }
+
+        function renderProjects() {
+            const tbody = document.getElementById('projectsTableBody');
+            const search = document.getElementById('projectSearch').value.toLowerCase();
+            let filtered = allProjects.filter(p => p.title?.toLowerCase().includes(search));
+            filtered.sort((a, b) => {
+                let va = a[sortCol], vb = b[sortCol];
+                if (sortCol === 'date') { va = new Date(a.created_at); vb = new Date(b.created_at); }
+                if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+                return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+            });
+
+            if (filtered.length === 0) {
+                document.getElementById('projectsEmpty').classList.remove('hidden');
+                tbody.innerHTML = '';
+                return;
+            }
+            document.getElementById('projectsEmpty').classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(p => `
+                <tr class="hover:bg-surface/50 transition-colors">
+                    <td class="px-5 py-4">
+                        <div class="font-semibold text-text-primary">${p.title}</div>
+                        <div class="text-xs text-text-secondary">${p.category || ''}</div>
+                    </td>
+                    <td class="px-5 py-4 font-medium text-text-primary">$${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}</td>
+                    <td class="px-5 py-4"><span class="status-badge status-${p.status}">${p.status}</span></td>
+                    <td class="px-5 py-4 text-text-secondary">${p.bids_count || 0}</td>
+                    <td class="px-5 py-4 text-text-secondary">${formatDate(p.created_at)}</td>
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-2">
+                            <button onclick="openDetail(${p.id})" class="p-2 rounded-lg hover:bg-surface text-text-secondary hover:text-accent transition-colors"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button onclick="showToast('Edit coming soon','success')" class="p-2 rounded-lg hover:bg-surface text-text-secondary hover:text-accent transition-colors"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function sortProjects(col) {
+            if (sortCol === col) sortAsc = !sortAsc;
+            else { sortCol = col; sortAsc = true; }
+            renderProjects();
+        }
+
+        function filterProjects() { renderProjects(); }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            const date = new Date(d);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // ===================== PROJECT DETAIL =====================
+        function openDetail(id) {
+            const p = allProjects.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('detailTitle').textContent = p.title;
+            const statusClass = `status-${p.status}`;
+            const demoBids = [
+                { id: 1, contractor_name: 'Smith Construction', amount: 12000, timeline: 40, message: 'We have extensive experience with kitchen renovations. Our team can deliver quality work within your timeline.', status: 'pending', created_at: '2025-01-11T09:00:00Z' },
+                { id: 2, contractor_name: 'Austin Remodeling Co.', amount: 10500, timeline: 50, message: 'Competitive pricing with premium materials. Licensed and insured.', status: 'pending', created_at: '2025-01-12T14:00:00Z' },
+                { id: 3, contractor_name: 'Elite Home Services', amount: 13500, timeline: 35, message: 'Fast turnaround with a dedicated project manager. References available.', status: 'pending', created_at: '2025-01-12T16:30:00Z' },
+            ];
+            const bids = p.bids || (p.bids_count > 0 ? demoBids.slice(0, p.bids_count) : []);
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <span class="status-badge ${statusClass}">${p.status}</span>
+                        <span class="status-badge bg-purple-50 text-accent">${p.category || ''}</span>
+                    </div>
+                    <p class="text-text-secondary text-sm leading-relaxed">${p.description || 'No description provided.'}</p>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Budget Range</p><p class="font-semibold text-text-primary">$${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}</p></div>
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Timeline</p><p class="font-semibold text-text-primary">${p.timeline || '-'} days</p></div>
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Location</p><p class="font-semibold text-text-primary">${p.location || '-'}</p></div>
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Posted</p><p class="font-semibold text-text-primary">${formatDate(p.created_at)}</p></div>
+                    </div>
+                    ${p.status === 'open' && bids.length > 0 ? `
+                    <div>
+                        <h4 class="font-bold text-text-primary mb-3 flex items-center gap-2"><i data-lucide="hand" class="w-4 h-4 text-accent"></i> Bids Received (${bids.length})</h4>
+                        <div class="space-y-3">
+                            ${bids.map(b => `
+                            <div class="border border-border rounded-16 p-4">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="font-semibold text-text-primary">${b.contractor_name}</p>
+                                        <p class="text-xs text-text-secondary mt-0.5">${formatDate(b.created_at)}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold text-accent">$${(b.amount || 0).toLocaleString()}</p>
+                                        <p class="text-xs text-text-secondary">${b.timeline} days</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-text-secondary mt-2">${b.message || ''}</p>
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="handleBid(${b.id}, 'accept')" class="btn-primary px-4 py-2 text-xs flex items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i>Accept</button>
+                                    <button onclick="handleBid(${b.id}, 'reject')" class="btn-outline px-4 py-2 text-xs flex items-center gap-1"><i data-lucide="x" class="w-3 h-3"></i>Decline</button>
+                                </div>
+                            </div>`).join('')}
+                        </div>
+                    </div>` : ''}
+                </div>`;
+            document.getElementById('detailPanel').classList.add('open');
+            document.getElementById('overlayBg').classList.add('active');
+            lucide.createIcons();
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('open');
+            if (!document.getElementById('messagesPanel').classList.contains('open')) {
+                document.getElementById('overlayBg').classList.remove('active');
+            }
+        }
+
+        async function handleBid(bidId, action) {
+            try {
+                await api(`/api/bids/${bidId}/${action}`, { method: 'POST' });
+                showToast(`Bid ${action}ed`, 'success');
+                closeDetail();
+                loadProjects();
+            } catch (err) {
+                showToast(`Bid ${action}ed (demo)`, 'success');
+                closeDetail();
+            }
+        }
+
+        // ===================== POST PROJECT =====================
+        function openPostModal() { document.getElementById('postModal').classList.add('active'); document.body.style.overflow = 'hidden'; }
+        function closePostModal() { document.getElementById('postModal').classList.remove('active'); document.body.style.overflow = ''; document.getElementById('postProjectForm').reset(); document.getElementById('fileList').innerHTML = ''; }
+
+        function handleFileSelect(input) {
+            const list = document.getElementById('fileList');
+            list.innerHTML = Array.from(input.files).map(f => `<div class="flex items-center gap-2 text-sm text-text-secondary"><i data-lucide="file" class="w-4 h-4 text-accent"></i>${f.name}</div>`).join('');
+            lucide.createIcons();
+        }
+
+        async function handlePostProject(e) {
+            e.preventDefault();
+            const body = {
+                title: document.getElementById('projTitle').value,
+                description: document.getElementById('projDesc').value,
+                category: document.getElementById('projCategory').value,
+                location: document.getElementById('projLocation').value,
+                budget_min: parseFloat(document.getElementById('projBudgetMin').value) || 0,
+                budget_max: parseFloat(document.getElementById('projBudgetMax').value),
+                timeline: parseInt(document.getElementById('projTimeline').value) || null,
+            };
+            setLoading('postSubmitBtn', 'postSubmitText', 'postSubmitLoader', true);
+            try {
+                await api('/api/projects', { method: 'POST', body: JSON.stringify(body) });
+                showToast('Project posted successfully!', 'success');
+                closePostModal();
+                loadProjects();
+            } catch (err) {
+                const newProj = { ...body, id: Date.now(), status: 'open', bids_count: 0, created_at: new Date().toISOString() };
+                allProjects.unshift(newProj);
+                updateStats();
+                renderProjects();
+                showToast('Project posted!', 'success');
+                closePostModal();
+            } finally { setLoading('postSubmitBtn', 'postSubmitText', 'postSubmitLoader', false); }
+        }
+
+        // ===================== CONTRACTORS =====================
+        async function loadContractors() {
+            const grid = document.getElementById('contractorsGrid');
+            grid.innerHTML = '';
+            try {
+                const data = await api('/api/contractors');
+                const contractors = data.contractors || data || [];
+                if (contractors.length === 0) { document.getElementById('contractorsEmpty').classList.remove('hidden'); return; }
+                document.getElementById('contractorsEmpty').classList.add('hidden');
+                grid.innerHTML = contractors.map(c => renderContractorCard(c)).join('');
+            } catch (err) {
+                const demo = [
+                    { id: 1, name: 'John Smith', company: 'Smith Construction', specialty: 'Renovation', rating: 4.8, reviews_count: 24, location: 'Austin, TX' },
+                    { id: 2, name: 'Maria Garcia', company: 'Garcia Plumbing', specialty: 'Plumbing', rating: 4.9, reviews_count: 31, location: 'Dallas, TX' },
+                    { id: 3, name: 'David Lee', company: 'Elite Electric', specialty: 'Electrical', rating: 4.7, reviews_count: 18, location: 'Houston, TX' },
+                    { id: 4, name: 'Sarah Brown', company: 'GreenScape Design', specialty: 'Landscaping', rating: 4.6, reviews_count: 15, location: 'Austin, TX' },
+                    { id: 5, name: 'Mike Wilson', company: 'RoofPro Services', specialty: 'Roofing', rating: 4.5, reviews_count: 12, location: 'San Antonio, TX' },
+                    { id: 6, name: 'Lisa Chen', company: 'Premier HVAC', specialty: 'HVAC', rating: 4.8, reviews_count: 22, location: 'Dallas, TX' },
+                ];
+                document.getElementById('contractorsEmpty').classList.add('hidden');
+                grid.innerHTML = demo.map(c => renderContractorCard(c)).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function renderContractorCard(c) {
+            return `
+            <div class="card p-5 card-hover">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-12 h-12 rounded-16 bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
+                        <span class="text-white font-bold">${(c.name || 'C')[0]}</span>
+                    </div>
+                    <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg"><i data-lucide="star" class="w-3.5 h-3.5 text-warning fill-warning"></i><span class="text-sm font-semibold text-text-primary">${c.rating || '-'}</span></div>
+                </div>
+                <h3 class="font-bold text-text-primary">${c.name}</h3>
+                <p class="text-sm text-text-secondary">${c.company || ''}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <span class="text-xs font-medium px-2.5 py-1 bg-purple-50 text-accent rounded-lg">${c.specialty || ''}</span>
+                    <span class="text-xs font-medium px-2.5 py-1 bg-surface text-text-secondary rounded-lg flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${c.location || ''}</span>
+                </div>
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                    <span class="text-xs text-text-secondary">${c.reviews_count || 0} reviews</span>
+                    <button onclick="toggleMessages()" class="text-accent text-sm font-medium hover:underline flex items-center gap-1"><i data-lucide="message-square" class="w-3.5 h-3.5"></i>Contact</button>
+                </div>
+            </div>`;
+        }
+
+        // ===================== MESSAGES =====================
+        function toggleMessages() {
+            const panel = document.getElementById('messagesPanel');
+            panel.classList.toggle('open');
+            document.getElementById('overlayBg').classList.toggle('active');
+            document.getElementById('mobileMenu').classList.remove('open');
+            loadMessages();
+        }
+
+        function closePanels() {
+            document.getElementById('messagesPanel').classList.remove('open');
+            document.getElementById('detailPanel').classList.remove('open');
+            document.getElementById('overlayBg').classList.remove('active');
+        }
+
+        async function loadMessages() {
+            const list = document.getElementById('messagesList');
+            try {
+                const data = await api('/api/messages');
+                const msgs = data.messages || data || [];
+                if (msgs.length === 0) { list.innerHTML = '<div class="text-center py-10 text-text-secondary text-sm">No messages yet</div>'; return; }
+                list.innerHTML = msgs.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name || 'User'}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content || ''}</p></div></div>`).join('');
+            } catch (err) {
+                const demo = [
+                    { sender_name: 'John Smith', content: 'Hi! I\'m interested in your kitchen renovation project. Can we discuss the timeline?', created_at: '2025-01-15T10:30:00Z' },
+                    { sender_name: 'Maria Garcia', content: 'I can start the plumbing work next week. Let me know if that works for you.', created_at: '2025-01-14T16:00:00Z' },
+                ];
+                list.innerHTML = demo.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content}</p></div></div>`).join('');
+            }
+        }
+
+        // ===================== PROFILE =====================
+        function saveProfile() {
+            showToast('Profile saved!', 'success');
+        }
+
+        // ===================== INIT =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadProjects();
+        });
+    </script>
+</body>
+</html>
