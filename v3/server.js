@@ -63,9 +63,25 @@ const rateLimit    = require('express-rate-limit');
 const cors         = require('cors');
 const validator    = require('validator');
 const RIPEMD160    = require('ripemd160');
+const twilio       = require('twilio');
 
 // PostgreSQL database module
 const db = require('./database/db');
+
+// ---------------------------------------------------------------------------
+// SECTION 2A: TWILIO SMS CLIENT (optional — falls back to email OTP)
+// ---------------------------------------------------------------------------
+let twilioClient = null;
+let twilioPhone = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  try {
+    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+    console.log('[INIT] Twilio SMS client initialized');
+  } catch (e) {
+    console.warn('[INIT] Twilio init failed:', e.message);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // SECTION 2: V3 ROUTE IMPORTS
@@ -596,6 +612,24 @@ This email was sent to ${safeEmail}.
   await sendEmail(email, subject, htmlBody, textBody, requestId);
 }
 
+/**
+ * Send OTP via SMS using Twilio.
+ * Falls back silently if Twilio is not configured.
+ */
+async function sendOTPSMS(phone, otp, requestId) {
+  if (!twilioClient || !twilioPhone) return;
+  try {
+    await twilioClient.messages.create({
+      body: `Your GCSC verification code is: ${otp}. This code will expire in 10 minutes.`,
+      from: twilioPhone,
+      to: phone,
+    });
+    console.log(`[${requestId}] OTP SMS sent to ${phone}`);
+  } catch (err) {
+    console.warn(`[${requestId}] SMS send failed:`, err.message);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SECTION 13: JWT AUTHENTICATION MIDDLEWARE
 // ---------------------------------------------------------------------------
@@ -860,8 +894,25 @@ app.use(morgan((tokens, req, res) => {
 // SECTION 15: HEALTH CHECK
 // ---------------------------------------------------------------------------
 
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '3.0.0',
+    services: {
+      database: 'unknown',
+      twilio: twilioClient ? 'connected' : 'not_configured',
+    },
+    uptime: process.uptime(),
+  };
+  try {
+    await db.query('SELECT 1');
+    health.services.database = 'connected';
+  } catch (err) {
+    health.services.database = 'error';
+    health.status = 'degraded';
+  }
+  res.status(health.status === 'ok' ? 200 : 503).json(health);
 });
 
 // ---------------------------------------------------------------------------
