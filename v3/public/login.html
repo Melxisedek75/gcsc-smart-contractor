@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GCSC Smart Contractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        surface: '#F8F9FA',
+                        border: '#E2E8F0',
+                        'text-primary': '#0F172A',
+                        'text-secondary': '#475569',
+                        accent: '#7C3AED',
+                        'accent-blue': '#3B82F6',
+                        success: '#10B981',
+                    },
+                    borderRadius: {
+                        '12': '12px',
+                        '16': '16px',
+                        '20': '20px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #F8F9FA; }
+        .btn-primary {
+            background: #7C3AED;
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #6D28D9; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .card { background: white; border: 1px solid #E2E8F0; border-radius: 20px; }
+        .otp-input {
+            width: 50px;
+            height: 56px;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            transition: border-color 0.2s;
+        }
+        .otp-input:focus { border-color: #7C3AED; outline: none; }
+        /* Toast notification */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #10B981; }
+        .toast.error { background: #EF4444; }
+        .loader {
+            width: 20px; height: 20px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Card -->
+    <div class="card w-full max-w-md p-8 sm:p-10 shadow-lg">
+
+        <!-- Logo -->
+        <div class="flex flex-col items-center mb-8">
+            <img src="logo-company.jpg" alt="GCSC Logo" class="w-20 h-20 rounded-full object-cover mb-4" onerror="this.style.display='none'">
+            <div id="fallbackLogo" class="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center mb-4">
+                <span class="text-white text-2xl font-bold">GC</span>
+            </div>
+            <h1 class="text-2xl font-bold text-text-primary">Welcome Back</h1>
+            <p class="text-text-secondary mt-1 text-sm">Sign in to your GCSC account</p>
+        </div>
+
+        <!-- Step 1: Email Input -->
+        <div id="step1" class="step active">
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                <label class="block text-sm font-semibold text-text-primary mb-2">Email Address</label>
+                <input
+                    type="email"
+                    id="emailInput"
+                    placeholder="you@example.com"
+                    class="w-full px-4 py-3.5 border-2 border-border rounded-12 text-text-primary placeholder-gray-400 focus:border-accent focus:outline-none transition-colors"
+                    required
+                >
+                <button type="submit" id="continueBtn" class="btn-primary w-full py-3.5 mt-5 flex items-center justify-center gap-2">
+                    <span id="continueText">Continue</span>
+                    <div id="continueLoader" class="loader hidden"></div>
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2: OTP Verification -->
+        <div id="step2" class="step">
+            <div class="text-center mb-6">
+                <p class="text-text-secondary text-sm">We sent a 6-digit code to</p>
+                <p class="text-text-primary font-semibold mt-1" id="otpEmail"></p>
+            </div>
+            <form id="otpForm" onsubmit="handleOtpSubmit(event)">
+                <label class="block text-sm font-semibold text-text-primary mb-3 text-center">Enter Verification Code</label>
+                <div class="flex justify-center gap-2 mb-6" id="otpContainer">
+                    <input type="text" maxlength="1" class="otp-input" data-index="0" autocomplete="one-time-code">
+                    <input type="text" maxlength="1" class="otp-input" data-index="1">
+                    <input type="text" maxlength="1" class="otp-input" data-index="2">
+                    <input type="text" maxlength="1" class="otp-input" data-index="3">
+                    <input type="text" maxlength="1" class="otp-input" data-index="4">
+                    <input type="text" maxlength="1" class="otp-input" data-index="5">
+                </div>
+                <button type="submit" id="verifyBtn" class="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
+                    <span id="verifyText">Verify</span>
+                    <div id="verifyLoader" class="loader hidden"></div>
+                </button>
+            </form>
+            <div class="mt-5 text-center">
+                <button onclick="resendOtp()" id="resendBtn" class="text-accent hover:text-accent/80 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    Resend Code
+                </button>
+                <span id="resendTimer" class="text-text-secondary text-sm ml-2 hidden">(30s)</span>
+            </div>
+            <div class="mt-4 text-center">
+                <button onclick="goBack()" class="text-text-secondary hover:text-text-primary text-sm flex items-center justify-center gap-1 mx-auto">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to email
+                </button>
+            </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3 my-6">
+            <div class="flex-1 h-px bg-border"></div>
+            <span class="text-text-secondary text-xs">or</span>
+            <div class="flex-1 h-px bg-border"></div>
+        </div>
+
+        <!-- Register Link -->
+        <p class="text-center text-text-secondary text-sm">
+            Don't have an account?
+            <a href="register.html" class="text-accent font-semibold hover:underline">Register</a>
+        </p>
+
+        <!-- Footer -->
+        <p class="text-center text-xs text-text-secondary/60 mt-6">
+            &copy; 2025 GCSC Smart Contractor. All rights reserved.
+        </p>
+    </div>
+
+    <script>
+        // ---- API Helper ----
+        const API_BASE = 'https://gcsc-api.onrender.com';
+
+        async function api(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const token = localStorage.getItem('gcsc_token');
+            const defaults = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers,
+                },
+            };
+            try {
+                const response = await fetch(url, { ...defaults, ...options, body: options.body ? options.body : undefined });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(data?.message || data?.error || `Request failed (${response.status})`);
+                }
+                return data;
+            } catch (err) {
+                throw err;
+            }
+        }
+
+        // ---- Toast ----
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ---- Auth Check ----
+        if (localStorage.getItem('gcsc_token')) {
+            const role = localStorage.getItem('gcsc_role');
+            window.location.href = role === 'contractor' ? 'dashboard-contractor.html' : 'dashboard-homeowner.html';
+        }
+
+        // ---- OTP Input Handling ----
+        const otpInputs = document.querySelectorAll('.otp-input');
+        otpInputs.forEach((input, i) => {
+            input.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (val && /^\d$/.test(val)) {
+                    e.target.value = val.slice(-1);
+                    if (i < otpInputs.length - 1) otpInputs[i + 1].focus();
+                } else {
+                    e.target.value = '';
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && i > 0) {
+                    otpInputs[i - 1].focus();
+                }
+                if (e.key === 'ArrowLeft' && i > 0) otpInputs[i - 1].focus();
+                if (e.key === 'ArrowRight' && i < otpInputs.length - 1) otpInputs[i + 1].focus();
+            });
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                paste.split('').forEach((d, j) => { if (otpInputs[j]) otpInputs[j].value = d; });
+                if (otpInputs[paste.length - 1]) otpInputs[paste.length - 1].focus();
+            });
+        });
+
+        // ---- Login Flow ----
+        let currentEmail = '';
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email) return;
+            currentEmail = email;
+            setLoading('continueBtn', 'continueText', 'continueLoader', true);
+            try {
+                await api('/api/login', { method: 'POST', body: JSON.stringify({ email }) });
+                showToast('OTP sent to your email', 'success');
+                document.getElementById('otpEmail').textContent = email;
+                showStep(2);
+                startResendTimer();
+            } catch (err) {
+                showToast(err.message || 'Failed to send OTP', 'error');
+            } finally {
+                setLoading('continueBtn', 'continueText', 'continueLoader', false);
+            }
+        }
+
+        async function handleOtpSubmit(e) {
+            e.preventDefault();
+            const code = Array.from(otpInputs).map(i => i.value).join('');
+            if (code.length !== 6) {
+                showToast('Please enter all 6 digits', 'error');
+                return;
+            }
+            setLoading('verifyBtn', 'verifyText', 'verifyLoader', true);
+            try {
+                const data = await api('/api/login/verify', {
+                    method: 'POST',
+                    body: JSON.stringify({ email: currentEmail, otp: code }),
+                });
+                if (data.token) {
+                    localStorage.setItem('gcsc_token', data.token);
+                    localStorage.setItem('gcsc_role', data.role || 'homeowner');
+                    localStorage.setItem('gcsc_user', JSON.stringify(data.user || { email: currentEmail }));
+                    showToast('Login successful!', 'success');
+                    setTimeout(() => {
+                        window.location.href = (data.role === 'contractor') ? 'dashboard-contractor.html' : 'dashboard-homeowner.html';
+                    }, 500);
+                }
+            } catch (err) {
+                showToast(err.message || 'Invalid OTP', 'error');
+            } finally {
+                setLoading('verifyBtn', 'verifyText', 'verifyLoader', false);
+            }
+        }
+
+        async function resendOtp() {
+            const btn = document.getElementById('resendBtn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            try {
+                await api('/api/login', { method: 'POST', body: JSON.stringify({ email: currentEmail }) });
+                showToast('New OTP sent!', 'success');
+                startResendTimer();
+            } catch (err) {
+                showToast(err.message || 'Failed to resend', 'error');
+                btn.disabled = false;
+            }
+        }
+
+        let resendCountdown;
+        function startResendTimer() {
+            const btn = document.getElementById('resendBtn');
+            const timer = document.getElementById('resendTimer');
+            let seconds = 30;
+            btn.disabled = true;
+            timer.classList.remove('hidden');
+            timer.textContent = `(30s)`;
+            clearInterval(resendCountdown);
+            resendCountdown = setInterval(() => {
+                seconds--;
+                timer.textContent = `(${seconds}s)`;
+                if (seconds <= 0) {
+                    clearInterval(resendCountdown);
+                    btn.disabled = false;
+                    timer.classList.add('hidden');
+                }
+            }, 1000);
+        }
+
+        // ---- Helpers ----
+        function showStep(n) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${n}`).classList.add('active');
+            if (n === 2) setTimeout(() => otpInputs[0].focus(), 200);
+        }
+
+        function goBack() {
+            showStep(1);
+            clearInterval(resendCountdown);
+            document.getElementById('resendBtn').disabled = false;
+            document.getElementById('resendTimer').classList.add('hidden');
+        }
+
+        function setLoading(btnId, textId, loaderId, loading) {
+            const btn = document.getElementById(btnId);
+            document.getElementById(textId).classList.toggle('hidden', loading);
+            document.getElementById(loaderId).classList.toggle('hidden', !loading);
+            btn.disabled = loading;
+        }
+
+        // ---- Init ----
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
