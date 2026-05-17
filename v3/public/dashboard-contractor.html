@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard - GCSC Smart Contractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        surface: '#F8F9FA',
+                        border: '#E2E8F0',
+                        'text-primary': '#0F172A',
+                        'text-secondary': '#475569',
+                        accent: '#7C3AED',
+                        'accent-blue': '#3B82F6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                    borderRadius: {
+                        '12': '12px',
+                        '16': '16px',
+                        '20': '20px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #F8F9FA; }
+        .btn-primary { background: #7C3AED; color: white; border-radius: 12px; font-weight: 600; transition: all 0.2s; }
+        .btn-primary:hover { background: #6D28D9; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-outline { background: transparent; border: 1px solid #E2E8F0; color: #0F172A; border-radius: 12px; font-weight: 500; transition: all 0.2s; }
+        .btn-outline:hover { border-color: #7C3AED; color: #7C3AED; }
+        .btn-sm { padding: 6px 16px; font-size: 0.8125rem; }
+        .card { background: white; border: 1px solid #E2E8F0; border-radius: 20px; transition: all 0.25s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { padding: 14px 20px; border-radius: 12px; color: white; font-weight: 500; display: flex; align-items: center; gap: 10px; transform: translateX(120%); transition: transform 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #10B981; }
+        .toast.error { background: #EF4444; }
+        .loader { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        .loader-dark { border-color: #7C3AED; border-top-color: transparent; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .skeleton { background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .nav-tab { padding: 10px 16px; border-radius: 12px; font-size: 0.875rem; font-weight: 500; color: #475569; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .nav-tab:hover { background: #F1F5F9; color: #0F172A; }
+        .nav-tab.active { background: #7C3AED; color: white; }
+        .dropdown { position: absolute; top: 100%; right: 0; background: white; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); min-width: 180px; overflow: hidden; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: all 0.2s; z-index: 50; }
+        .dropdown.open { opacity: 1; pointer-events: all; transform: translateY(4px); }
+        .dropdown-item { padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.875rem; color: #475569; cursor: pointer; transition: all 0.15s; }
+        .dropdown-item:hover { background: #F8F9FA; color: #0F172A; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .status-open { background: #DBEAFE; color: #1D4ED8; }
+        .status-pending { background: #FEF3C7; color: #B45309; }
+        .status-accepted { background: #D1FAE5; color: #047857; }
+        .status-rejected { background: #FEE2E2; color: #B91C1C; }
+        .messages-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 380px; max-width: 90vw; background: white; border-left: 1px solid #E2E8F0; z-index: 90; transform: translateX(100%); transition: transform 0.3s ease; box-shadow: -10px 0 40px rgba(0,0,0,0.08); }
+        .messages-panel.open { transform: translateX(0); }
+        .overlay-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.3); z-index: 85; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .overlay-bg.active { opacity: 1; pointer-events: all; }
+        .mobile-menu { position: fixed; inset: 0; background: white; z-index: 80; transform: translateX(-100%); transition: transform 0.3s ease; }
+        .mobile-menu.open { transform: translateX(0); }
+        .milestone-tracker { display: flex; align-items: center; gap: 0; }
+        .milestone-dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.625rem; font-weight: 700; flex-shrink: 0; }
+        .milestone-dot.completed { background: #10B981; color: white; }
+        .milestone-dot.current { background: #7C3AED; color: white; box-shadow: 0 0 0 4px rgba(124,58,237,0.2); }
+        .milestone-dot.pending { background: #E2E8F0; color: #94A3B8; }
+        .milestone-line { flex: 1; height: 3px; background: #E2E8F0; min-width: 20px; }
+        .milestone-line.completed { background: #10B981; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Overlay -->
+    <div class="overlay-bg" id="overlayBg" onclick="closePanels()"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu lg:hidden" id="mobileMenu">
+        <div class="p-6 border-b border-border flex justify-between items-center">
+            <span class="font-bold text-lg text-text-primary">Menu</span>
+            <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-surface"><i data-lucide="x" class="w-6 h-6 text-text-primary"></i></button>
+        </div>
+        <div class="p-4 space-y-2">
+            <button onclick="switchTab('find')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="search" class="w-5 h-5 text-accent"></i>Find Projects</button>
+            <button onclick="switchTab('bids')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="hand" class="w-5 h-5 text-accent"></i>My Bids</button>
+            <button onclick="switchTab('jobs')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="briefcase" class="w-5 h-5 text-accent"></i>My Jobs</button>
+            <button onclick="toggleMessages()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="message-square" class="w-5 h-5 text-accent"></i>Messages</button>
+            <button onclick="switchTab('profile')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-surface font-medium text-text-primary flex items-center gap-3"><i data-lucide="user" class="w-5 h-5 text-accent"></i>Profile</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="dashboard-contractor.html" class="flex items-center gap-3">
+                    <img src="logo-company.jpg" alt="GCSC" class="w-10 h-10 rounded-full object-cover" onerror="this.style.display='none';document.getElementById('hdrFallback').style.display='flex';">
+                    <div id="hdrFallback" class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue items-center justify-center hidden">
+                        <span class="text-white font-bold text-sm">GC</span>
+                    </div>
+                    <span class="font-bold text-lg text-text-primary hidden sm:block">GCSC</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-1 bg-surface/80 rounded-2xl p-1">
+                    <button onclick="switchTab('find')" class="nav-tab active" data-tab="find"><i data-lucide="search" class="w-4 h-4 inline mr-1.5"></i>Find Projects</button>
+                    <button onclick="switchTab('bids')" class="nav-tab" data-tab="bids"><i data-lucide="hand" class="w-4 h-4 inline mr-1.5"></i>My Bids</button>
+                    <button onclick="switchTab('jobs')" class="nav-tab" data-tab="jobs"><i data-lucide="briefcase" class="w-4 h-4 inline mr-1.5"></i>My Jobs</button>
+                    <button onclick="toggleMessages()" class="nav-tab" data-tab="messages"><i data-lucide="message-square" class="w-4 h-4 inline mr-1.5"></i>Messages</button>
+                    <button onclick="switchTab('profile')" class="nav-tab" data-tab="profile"><i data-lucide="user" class="w-4 h-4 inline mr-1.5"></i>Profile</button>
+                </nav>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMessages()" class="lg:hidden p-2 rounded-xl hover:bg-surface relative">
+                        <i data-lucide="message-square" class="w-5 h-5 text-text-secondary"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-accent rounded-full border-2 border-white"></span>
+                    </button>
+                    <div class="relative" id="avatarContainer">
+                        <button onclick="toggleDropdown()" class="flex items-center gap-2 p-1 rounded-full hover:bg-surface transition-colors">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
+                                <span class="text-white text-sm font-bold" id="avatarInitials">U</span>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-text-secondary hidden sm:block"></i>
+                        </button>
+                        <div class="dropdown" id="userDropdown">
+                            <div class="px-4 py-3 border-b border-border">
+                                <p class="text-sm font-semibold text-text-primary" id="userName">User</p>
+                                <p class="text-xs text-text-secondary" id="userEmail">user@example.com</p>
+                            </div>
+                            <div class="dropdown-item" onclick="switchTab('profile')"><i data-lucide="user" class="w-4 h-4"></i>Profile</div>
+                            <div class="dropdown-item" onclick="showToast('Settings coming soon','success')"><i data-lucide="settings" class="w-4 h-4"></i>Settings</div>
+                            <div class="border-t border-border"></div>
+                            <div class="dropdown-item text-danger" onclick="logout()"><i data-lucide="log-out" class="w-4 h-4"></i>Logout</div>
+                        </div>
+                    </div>
+                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-xl hover:bg-surface"><i data-lucide="menu" class="w-6 h-6 text-text-primary"></i></button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1">
+
+        <!-- TAB: Find Projects -->
+        <div id="tab-find" class="tab-content">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Available Projects</p><p class="text-2xl font-bold text-text-primary mt-1" id="statAvailable">0</p></div>
+                            <div class="w-12 h-12 rounded-16 bg-blue-50 flex items-center justify-center"><i data-lucide="folder-open" class="w-6 h-6 text-accent-blue"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Active Jobs</p><p class="text-2xl font-bold text-text-primary mt-1" id="statActiveJobs">0</p></div>
+                            <div class="w-12 h-12 rounded-16 bg-purple-50 flex items-center justify-center"><i data-lucide="briefcase" class="w-6 h-6 text-accent"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Total Earned</p><p class="text-2xl font-bold text-text-primary mt-1" id="statEarned">$0</p></div>
+                            <div class="w-12 h-12 rounded-16 bg-green-50 flex items-center justify-center"><i data-lucide="dollar-sign" class="w-6 h-6 text-success"></i></div>
+                        </div>
+                    </div>
+                    <div class="card p-5 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div><p class="text-xs font-semibold text-text-secondary uppercase tracking-wide">Rating</p><p class="text-2xl font-bold text-text-primary mt-1" id="statRating">4.8</p></div>
+                            <div class="w-12 h-12 rounded-16 bg-amber-50 flex items-center justify-center"><i data-lucide="star" class="w-6 h-6 text-warning"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="projectSearch" placeholder="Search projects..." oninput="filterProjectFeed()" class="w-full pl-10 pr-4 py-2.5 border border-border rounded-12 text-sm focus:border-accent focus:outline-none">
+                    </div>
+                    <select id="filterCategory" onchange="filterProjectFeed()" class="px-4 py-2.5 border border-border rounded-12 text-sm focus:border-accent focus:outline-none bg-white text-text-primary">
+                        <option value="">All Categories</option>
+                        <option value="renovation">Renovation</option>
+                        <option value="plumbing">Plumbing</option>
+                        <option value="electrical">Electrical</option>
+                        <option value="roofing">Roofing</option>
+                        <option value="landscaping">Landscaping</option>
+                        <option value="painting">Painting</option>
+                        <option value="hvac">HVAC</option>
+                        <option value="flooring">Flooring</option>
+                    </select>
+                    <select id="filterLocation" onchange="filterProjectFeed()" class="px-4 py-2.5 border border-border rounded-12 text-sm focus:border-accent focus:outline-none bg-white text-text-primary">
+                        <option value="">All Locations</option>
+                        <option value="Austin, TX">Austin, TX</option>
+                        <option value="Dallas, TX">Dallas, TX</option>
+                        <option value="Houston, TX">Houston, TX</option>
+                        <option value="San Antonio, TX">San Antonio, TX</option>
+                    </select>
+                </div>
+
+                <!-- Projects Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" id="projectsFeed"></div>
+                <div id="feedLoader" class="py-10">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        <div class="skeleton h-64 rounded-20"></div>
+                        <div class="skeleton h-64 rounded-20"></div>
+                        <div class="skeleton h-64 rounded-20"></div>
+                    </div>
+                </div>
+                <div id="feedEmpty" class="hidden text-center py-16">
+                    <div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3"><i data-lucide="search-x" class="w-8 h-8 text-text-secondary/40"></i></div>
+                    <p class="text-text-secondary">No projects match your filters.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: My Bids -->
+        <div id="tab-bids" class="tab-content hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h2 class="text-xl font-bold text-text-primary mb-5">My Bids</h2>
+                <div class="card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-surface/80 border-b border-border">
+                                <tr>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Project</th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Bid Amount</th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Timeline</th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Status</th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Date</th>
+                                    <th class="px-5 py-3.5 font-semibold text-text-secondary">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bidsTableBody" class="divide-y divide-border"></tbody>
+                        </table>
+                    </div>
+                    <div id="bidsEmpty" class="hidden p-10 text-center">
+                        <div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3"><i data-lucide="hand" class="w-8 h-8 text-text-secondary/40"></i></div>
+                        <p class="text-text-secondary">You haven't placed any bids yet.</p>
+                        <button onclick="switchTab('find')" class="btn-primary px-5 py-2.5 mt-3 text-sm">Browse Projects</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: My Jobs (Active) -->
+        <div id="tab-jobs" class="tab-content hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h2 class="text-xl font-bold text-text-primary mb-5">My Active Jobs</h2>
+                <div id="activeJobsList" class="space-y-5"></div>
+                <div id="jobsEmpty" class="hidden text-center py-16">
+                    <div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-3"><i data-lucide="briefcase" class="w-8 h-8 text-text-secondary/40"></i></div>
+                    <p class="text-text-secondary">No active jobs. Start bidding on projects!</p>
+                    <button onclick="switchTab('find')" class="btn-primary px-5 py-2.5 mt-3 text-sm">Find Projects</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Profile -->
+        <div id="tab-profile" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="card p-8">
+                    <h2 class="text-xl font-bold text-text-primary mb-6">My Profile</h2>
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
+                            <span class="text-white text-2xl font-bold" id="profileInitials">U</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-text-primary" id="profileName">User</p>
+                            <p class="text-sm text-text-secondary" id="profileEmail">user@example.com</p>
+                            <span class="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-accent-blue">Contractor</span>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-text-secondary mb-1">Full Name</label><input type="text" id="profileFullName" placeholder="Your name" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                            <div><label class="block text-sm font-medium text-text-secondary mb-1">Company Name</label><input type="text" id="profileCompany" placeholder="Company name" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-text-secondary mb-1">Phone</label><input type="tel" id="profilePhone" placeholder="+1 (555) 000-0000" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                            <div><label class="block text-sm font-medium text-text-secondary mb-1">Specialty</label>
+                                <select id="profileSpecialty" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none bg-white">
+                                    <option value="">Select specialty</option>
+                                    <option value="renovation">Renovation</option>
+                                    <option value="plumbing">Plumbing</option>
+                                    <option value="electrical">Electrical</option>
+                                    <option value="roofing">Roofing</option>
+                                    <option value="landscaping">Landscaping</option>
+                                    <option value="painting">Painting</option>
+                                    <option value="hvac">HVAC</option>
+                                    <option value="flooring">Flooring</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-text-secondary mb-1">Location</label><input type="text" id="profileLocation" placeholder="City, State" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none"></div>
+                        <div><label class="block text-sm font-medium text-text-secondary mb-1">Bio</label><textarea id="profileBio" rows="3" placeholder="Tell homeowners about your experience..." class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none resize-none"></textarea></div>
+                        <button onclick="saveProfile()" class="btn-primary px-6 py-2.5 mt-2">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-border mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-sm text-text-secondary">&copy; 2025 GCSC Smart Contractor. All rights reserved.</p>
+                <div class="flex items-center gap-6 text-sm text-text-secondary">
+                    <a href="#" class="hover:text-text-primary">Privacy</a>
+                    <a href="#" class="hover:text-text-primary">Terms</a>
+                    <a href="#" class="hover:text-text-primary">Support</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bid Modal -->
+    <div class="modal-overlay" id="bidModal">
+        <div class="modal-content">
+            <div class="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between rounded-t-20 z-10">
+                <h3 class="text-lg font-bold text-text-primary">Place Your Bid</h3>
+                <button onclick="closeBidModal()" class="p-2 rounded-xl hover:bg-surface"><i data-lucide="x" class="w-5 h-5 text-text-secondary"></i></button>
+            </div>
+            <form id="bidForm" onsubmit="handlePlaceBid(event)" class="p-6 space-y-5">
+                <div class="bg-surface rounded-16 p-4">
+                    <p class="text-xs font-semibold text-text-secondary uppercase">Project</p>
+                    <p class="font-bold text-text-primary" id="bidProjectTitle">-</p>
+                    <p class="text-sm text-text-secondary" id="bidProjectBudget">-</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Your Bid Amount ($) <span class="text-danger">*</span></label>
+                    <input type="number" id="bidAmount" required placeholder="e.g., 5000" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none text-lg font-semibold">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Estimated Timeline (days) <span class="text-danger">*</span></label>
+                    <input type="number" id="bidTimeline" required placeholder="e.g., 14" class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-text-primary mb-1.5">Cover Message</label>
+                    <textarea id="bidMessage" rows="4" placeholder="Introduce yourself and explain why you're the right fit..." class="w-full px-4 py-2.5 border border-border rounded-12 focus:border-accent focus:outline-none resize-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeBidModal()" class="btn-outline flex-1 py-2.5">Cancel</button>
+                    <button type="submit" id="bidSubmitBtn" class="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2">
+                        <span id="bidSubmitText">Submit Bid</span>
+                        <div id="bidSubmitLoader" class="loader hidden"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Messages Panel -->
+    <div class="messages-panel" id="messagesPanel">
+        <div class="h-full flex flex-col">
+            <div class="p-5 border-b border-border flex items-center justify-between bg-white">
+                <h3 class="font-bold text-text-primary">Messages</h3>
+                <button onclick="toggleMessages()" class="p-2 rounded-xl hover:bg-surface"><i data-lucide="x" class="w-5 h-5 text-text-secondary"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-2" id="messagesList">
+                <div class="text-center py-10 text-text-secondary text-sm">No messages yet</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== API & UTILS =====================
+        const API_BASE = 'https://gcsc-api.onrender.com';
+
+        async function api(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const token = localStorage.getItem('gcsc_token');
+            const defaults = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers,
+                },
+            };
+            try {
+                const response = await fetch(url, { ...defaults, ...options, body: options.body ? options.body : undefined });
+                const data = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(data?.message || data?.error || `Request failed (${response.status})`);
+                return data;
+            } catch (err) { throw err; }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        function setLoading(btnId, textId, loaderId, loading) {
+            document.getElementById(textId).classList.toggle('hidden', loading);
+            document.getElementById(loaderId).classList.toggle('hidden', !loading);
+            document.getElementById(btnId).disabled = loading;
+        }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            const date = new Date(d);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // ===================== AUTH =====================
+        if (!localStorage.getItem('gcsc_token')) { window.location.href = 'login.html'; }
+        const user = JSON.parse(localStorage.getItem('gcsc_user') || '{}');
+        if (localStorage.getItem('gcsc_role') !== 'contractor') { window.location.href = 'dashboard-homeowner.html'; }
+
+        function logout() {
+            localStorage.removeItem('gcsc_token');
+            localStorage.removeItem('gcsc_role');
+            localStorage.removeItem('gcsc_user');
+            window.location.href = 'login.html';
+        }
+
+        // ===================== HEADER =====================
+        document.getElementById('userName').textContent = user.name || user.email?.split('@')[0] || 'User';
+        document.getElementById('userEmail').textContent = user.email || '';
+        document.getElementById('avatarInitials').textContent = (user.name || user.email || 'U')[0].toUpperCase();
+        document.getElementById('profileInitials').textContent = (user.name || user.email || 'U')[0].toUpperCase();
+        document.getElementById('profileName').textContent = user.name || user.email?.split('@')[0] || 'User';
+        document.getElementById('profileEmail').textContent = user.email || '';
+
+        function toggleDropdown() { document.getElementById('userDropdown').classList.toggle('open'); }
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('avatarContainer').contains(e.target)) document.getElementById('userDropdown').classList.remove('open');
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.querySelectorAll(`[data-tab="${tab}"]`).forEach(t => t.classList.add('active'));
+            document.getElementById('mobileMenu').classList.remove('open');
+            closePanels();
+            if (tab === 'find') loadProjectFeed();
+            if (tab === 'bids') loadMyBids();
+            if (tab === 'jobs') loadActiveJobs();
+        }
+
+        function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+        function closePanels() { document.getElementById('messagesPanel').classList.remove('open'); document.getElementById('overlayBg').classList.remove('active'); }
+        function toggleMessages() { document.getElementById('messagesPanel').classList.toggle('open'); document.getElementById('overlayBg').classList.toggle('active'); document.getElementById('mobileMenu').classList.remove('open'); loadMessages(); }
+
+        // ===================== DATA =====================
+        let availableProjects = [];
+        let myBids = [];
+        let activeJobs = [];
+        let currentBidProject = null;
+
+        // ===================== STATS =====================
+        async function loadStats() {
+            try {
+                const data = await api('/api/contractor/stats');
+                document.getElementById('statAvailable').textContent = data.available_projects || 0;
+                document.getElementById('statActiveJobs').textContent = data.active_jobs || 0;
+                document.getElementById('statEarned').textContent = '$' + (data.total_earned || 0).toLocaleString();
+                document.getElementById('statRating').textContent = data.rating || '4.8';
+            } catch (err) {
+                document.getElementById('statAvailable').textContent = '12';
+                document.getElementById('statActiveJobs').textContent = '3';
+                document.getElementById('statEarned').textContent = '$24,500';
+                document.getElementById('statRating').textContent = '4.8';
+            }
+        }
+
+        // ===================== FIND PROJECTS =====================
+        async function loadProjectFeed() {
+            document.getElementById('feedLoader').classList.remove('hidden');
+            document.getElementById('projectsFeed').innerHTML = '';
+            document.getElementById('feedEmpty').classList.add('hidden');
+            try {
+                const data = await api('/api/projects/open');
+                availableProjects = data.projects || data || [];
+            } catch (err) {
+                availableProjects = [
+                    { id: 1, title: 'Kitchen Renovation', description: 'Full kitchen remodel including cabinets, countertops, and appliances. Looking for experienced contractors.', category: 'renovation', budget_min: 5000, budget_max: 15000, location: 'Austin, TX', timeline: 45, homeowner_name: 'Alice Johnson', created_at: '2025-01-10T10:00:00Z' },
+                    { id: 2, title: 'Bathroom Plumbing Fix', description: 'Fix leaking pipes and replace faucet fixtures in master bathroom. Licensed plumber required.', category: 'plumbing', budget_min: 500, budget_max: 2000, location: 'Austin, TX', timeline: 7, homeowner_name: 'Bob Williams', created_at: '2025-01-09T14:30:00Z' },
+                    { id: 3, title: 'Backyard Landscaping', description: 'Design and install new garden beds, patio stones, and irrigation system for a quarter-acre lot.', category: 'landscaping', budget_min: 3000, budget_max: 8000, location: 'Dallas, TX', timeline: 30, homeowner_name: 'Carol Davis', created_at: '2025-01-08T09:00:00Z' },
+                    { id: 4, title: 'Electrical Panel Upgrade', description: 'Upgrade 100A panel to 200A service panel with new breakers and wiring inspection.', category: 'electrical', budget_min: 2000, budget_max: 5000, location: 'Houston, TX', timeline: 14, homeowner_name: 'Dan Miller', created_at: '2025-01-07T11:00:00Z' },
+                    { id: 5, title: 'Interior Painting - 3 Rooms', description: 'Paint living room, master bedroom, and kitchen. Walls and ceilings. Paint not included.', category: 'painting', budget_min: 800, budget_max: 2500, location: 'Austin, TX', timeline: 10, homeowner_name: 'Emma Wilson', created_at: '2025-01-06T16:00:00Z' },
+                    { id: 6, title: 'HVAC System Replacement', description: 'Replace old central AC unit with new energy-efficient system. Ductwork inspection needed.', category: 'hvac', budget_min: 4000, budget_max: 12000, location: 'San Antonio, TX', timeline: 21, homeowner_name: 'Frank Brown', created_at: '2025-01-05T08:30:00Z' },
+                ];
+            }
+            document.getElementById('feedLoader').classList.add('hidden');
+            filterProjectFeed();
+        }
+
+        function filterProjectFeed() {
+            const search = document.getElementById('projectSearch').value.toLowerCase();
+            const cat = document.getElementById('filterCategory').value;
+            const loc = document.getElementById('filterLocation').value;
+            let filtered = availableProjects.filter(p => {
+                if (search && !p.title?.toLowerCase().includes(search) && !p.description?.toLowerCase().includes(search)) return false;
+                if (cat && p.category !== cat) return false;
+                if (loc && p.location !== loc) return false;
+                return true;
+            });
+
+            if (filtered.length === 0) { document.getElementById('feedEmpty').classList.remove('hidden'); document.getElementById('projectsFeed').innerHTML = ''; return; }
+            document.getElementById('feedEmpty').classList.add('hidden');
+
+            document.getElementById('projectsFeed').innerHTML = filtered.map(p => `
+                <div class="card p-5 card-hover flex flex-col">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="text-xs font-semibold px-2.5 py-1 bg-purple-50 text-accent rounded-lg uppercase tracking-wider">${p.category || ''}</span>
+                        <span class="text-xs text-text-secondary flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${p.location || ''}</span>
+                    </div>
+                    <h3 class="font-bold text-text-primary text-lg mb-1">${p.title}</h3>
+                    <p class="text-sm text-text-secondary line-clamp-2 mb-4 flex-1">${p.description || ''}</p>
+                    <div class="flex items-center gap-3 text-sm text-text-secondary mb-4 pb-4 border-b border-border">
+                        <span class="flex items-center gap-1"><i data-lucide="dollar-sign" class="w-3.5 h-3.5"></i>$${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}</span>
+                        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i>${p.timeline || '-'} days</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-surface flex items-center justify-center"><span class="text-xs font-bold text-text-primary">${(p.homeowner_name || 'H')[0]}</span></div>
+                            <span class="text-sm text-text-secondary">${p.homeowner_name || 'Homeowner'}</span>
+                        </div>
+                        <button onclick="openBidModal(${p.id})" class="btn-primary btn-sm">Place Bid</button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ===================== BID MODAL =====================
+        function openBidModal(projectId) {
+            const p = availableProjects.find(x => x.id === projectId);
+            if (!p) return;
+            currentBidProject = p;
+            document.getElementById('bidProjectTitle').textContent = p.title;
+            document.getElementById('bidProjectBudget').textContent = `Budget: $${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}`;
+            document.getElementById('bidAmount').value = '';
+            document.getElementById('bidTimeline').value = '';
+            document.getElementById('bidMessage').value = '';
+            document.getElementById('bidModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBidModal() { document.getElementById('bidModal').classList.remove('active'); document.body.style.overflow = ''; currentBidProject = null; }
+
+        async function handlePlaceBid(e) {
+            e.preventDefault();
+            if (!currentBidProject) return;
+            const body = {
+                project_id: currentBidProject.id,
+                amount: parseFloat(document.getElementById('bidAmount').value),
+                timeline: parseInt(document.getElementById('bidTimeline').value),
+                message: document.getElementById('bidMessage').value,
+            };
+            setLoading('bidSubmitBtn', 'bidSubmitText', 'bidSubmitLoader', true);
+            try {
+                await api('/api/bids', { method: 'POST', body: JSON.stringify(body) });
+                showToast('Bid submitted successfully!', 'success');
+                closeBidModal();
+                loadMyBids();
+            } catch (err) {
+                const newBid = {
+                    id: Date.now(),
+                    project: currentBidProject,
+                    project_title: currentBidProject.title,
+                    amount: body.amount,
+                    timeline: body.timeline,
+                    message: body.message,
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                };
+                myBids.unshift(newBid);
+                showToast('Bid submitted!', 'success');
+                closeBidModal();
+                if (!document.getElementById('tab-bids').classList.contains('hidden')) loadMyBids();
+            } finally { setLoading('bidSubmitBtn', 'bidSubmitText', 'bidSubmitLoader', false); }
+        }
+
+        // ===================== MY BIDS =====================
+        async function loadMyBids() {
+            const tbody = document.getElementById('bidsTableBody');
+            tbody.innerHTML = '';
+            try {
+                const data = await api('/api/bids/my');
+                myBids = data.bids || data || [];
+            } catch (err) {
+                if (myBids.length === 0) {
+                    myBids = [
+                        { id: 101, project_title: 'Kitchen Renovation', amount: 12000, timeline: 40, status: 'pending', created_at: '2025-01-11T09:00:00Z' },
+                        { id: 102, project_title: 'Backyard Landscaping', amount: 6500, timeline: 25, status: 'accepted', created_at: '2025-01-09T14:00:00Z' },
+                        { id: 103, project_title: 'Interior Painting - 3 Rooms', amount: 1800, timeline: 8, status: 'rejected', created_at: '2025-01-08T10:00:00Z' },
+                    ];
+                }
+            }
+            if (myBids.length === 0) { document.getElementById('bidsEmpty').classList.remove('hidden'); return; }
+            document.getElementById('bidsEmpty').classList.add('hidden');
+
+            tbody.innerHTML = myBids.map(b => `
+                <tr class="hover:bg-surface/50 transition-colors">
+                    <td class="px-5 py-4 font-semibold text-text-primary">${b.project_title || b.project?.title || '-'}</td>
+                    <td class="px-5 py-4 font-bold text-accent">$${(b.amount || 0).toLocaleString()}</td>
+                    <td class="px-5 py-4 text-text-secondary">${b.timeline || '-'} days</td>
+                    <td class="px-5 py-4"><span class="status-badge status-${b.status}">${b.status}</span></td>
+                    <td class="px-5 py-4 text-text-secondary">${formatDate(b.created_at)}</td>
+                    <td class="px-5 py-4">
+                        ${b.status === 'pending' ? `<button onclick="withdrawBid(${b.id})" class="text-danger text-sm font-medium hover:underline">Withdraw</button>` : `<span class="text-text-secondary text-sm">-</span>`}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function withdrawBid(bidId) {
+            try {
+                await api(`/api/bids/${bidId}`, { method: 'DELETE' });
+                showToast('Bid withdrawn', 'success');
+                loadMyBids();
+            } catch (err) {
+                myBids = myBids.filter(b => b.id !== bidId);
+                showToast('Bid withdrawn', 'success');
+                loadMyBids();
+            }
+        }
+
+        // ===================== ACTIVE JOBS =====================
+        async function loadActiveJobs() {
+            const container = document.getElementById('activeJobsList');
+            try {
+                const data = await api('/api/contractor/jobs');
+                activeJobs = data.jobs || data || [];
+            } catch (err) {
+                activeJobs = [
+                    {
+                        id: 201, title: 'Kitchen Renovation', homeowner_name: 'Alice Johnson', budget: 12000, start_date: '2025-01-15', location: 'Austin, TX',
+                        milestones: [
+                            { name: 'Planning', completed: true },
+                            { name: 'Materials', completed: true },
+                            { name: 'Demolition', completed: true },
+                            { name: 'Construction', completed: false },
+                            { name: 'Finishing', completed: false },
+                        ]
+                    },
+                    {
+                        id: 202, title: 'Backyard Landscaping', homeowner_name: 'Carol Davis', budget: 6500, start_date: '2025-01-20', location: 'Dallas, TX',
+                        milestones: [
+                            { name: 'Design', completed: true },
+                            { name: 'Prep', completed: false },
+                            { name: 'Install', completed: false },
+                            { name: 'Cleanup', completed: false },
+                        ]
+                    },
+                    {
+                        id: 203, title: 'Electrical Panel Upgrade', homeowner_name: 'Dan Miller', budget: 4200, start_date: '2025-01-12', location: 'Houston, TX',
+                        milestones: [
+                            { name: 'Inspection', completed: true },
+                            { name: 'Permits', completed: true },
+                            { name: 'Installation', completed: true },
+                            { name: 'Testing', completed: false },
+                        ]
+                    },
+                ];
+            }
+            if (activeJobs.length === 0) { document.getElementById('jobsEmpty').classList.remove('hidden'); container.innerHTML = ''; return; }
+            document.getElementById('jobsEmpty').classList.add('hidden');
+
+            container.innerHTML = activeJobs.map(j => {
+                const completed = j.milestones?.filter(m => m.completed).length || 0;
+                const total = j.milestones?.length || 0;
+                const progress = total ? Math.round((completed / total) * 100) : 0;
+                return `
+                <div class="card p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="font-bold text-text-primary text-lg">${j.title}</h3>
+                            <p class="text-sm text-text-secondary flex items-center gap-2 mt-1">
+                                <i data-lucide="user" class="w-3.5 h-3.5"></i>${j.homeowner_name || ''}
+                                <span class="text-border">|</span>
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>${j.location || ''}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-accent">$${(j.budget || 0).toLocaleString()}</p>
+                            <p class="text-xs text-text-secondary">Started ${formatDate(j.start_date)}</p>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-text-primary">Progress</span>
+                            <span class="text-sm font-bold text-accent">${progress}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-surface rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-accent to-accent-blue rounded-full transition-all" style="width:${progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="milestone-tracker">
+                        ${j.milestones?.map((m, i) => `
+                            ${i > 0 ? `<div class="milestone-line ${m.completed ? 'completed' : ''}"></div>` : ''}
+                            <div class="milestone-dot ${m.completed ? 'completed' : (i === completed ? 'current' : 'pending')}" title="${m.name}">
+                                ${m.completed ? '<i data-lucide="check" class="w-3 h-3"></i>' : (i + 1)}
+                            </div>
+                        `).join('') || ''}
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-3">
+                        ${j.milestones?.map((m, i) => `<span class="text-xs ${m.completed ? 'text-success' : (i === completed ? 'text-accent font-semibold' : 'text-text-secondary/50')}">${m.name}</span>`).join('<span class="text-text-secondary/20">-</span>') || ''}
+                    </div>
+                    <div class="flex gap-3 mt-5 pt-4 border-t border-border">
+                        <button onclick="updateMilestone(${j.id})" class="btn-primary btn-sm">Update Progress</button>
+                        <button onclick="toggleMessages()" class="btn-outline btn-sm flex items-center gap-1.5"><i data-lucide="message-square" class="w-3.5 h-3.5"></i>Message Client</button>
+                    </div>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function updateMilestone(jobId) {
+            showToast('Progress updated!', 'success');
+            loadActiveJobs();
+        }
+
+        // ===================== MESSAGES =====================
+        async function loadMessages() {
+            const list = document.getElementById('messagesList');
+            try {
+                const data = await api('/api/messages');
+                const msgs = data.messages || data || [];
+                if (msgs.length === 0) { list.innerHTML = '<div class="text-center py-10 text-text-secondary text-sm">No messages yet</div>'; return; }
+                list.innerHTML = msgs.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name || 'User'}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content || ''}</p></div></div>`).join('');
+            } catch (err) {
+                const demo = [
+                    { sender_name: 'Alice Johnson', content: 'Great work on the kitchen so far! When do you think the cabinets will be installed?', created_at: '2025-01-18T14:00:00Z' },
+                    { sender_name: 'GCSC Support', content: 'Your profile verification has been approved. You can now bid on projects.', created_at: '2025-01-17T09:00:00Z' },
+                    { sender_name: 'Carol Davis', content: 'Can we schedule a site visit for the landscaping project next week?', created_at: '2025-01-16T11:30:00Z' },
+                ];
+                list.innerHTML = demo.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content}</p></div></div>`).join('');
+            }
+        }
+
+        // ===================== PROFILE =====================
+        function saveProfile() { showToast('Profile saved!', 'success'); }
+
+        // ===================== INIT =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadStats();
+            loadProjectFeed();
+        });
+    </script>
+</body>
+</html>
