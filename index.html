@@ -110,27 +110,16 @@
       50% { transform: translateY(-20px) scale(1.03); }
     }
 
-    /* ===== HEADER ===== */
+    /* ===== HEADER / NAV ===== */
     .header {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-      background: rgba(255,255,255,0.9);
+      position: sticky; top: 0; z-index: 1000;
+      background: rgba(255,255,255,0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    .header.scrolled {
-      border-bottom-color: #E2E8F0;
+      border-bottom: 1px solid #E2E8F0;
       box-shadow: 0 1px 20px rgba(15,23,42,0.06);
     }
-    .header-logo {
-      height: 52px;
-      width: auto;
-      max-width: 420px;
-      object-fit: contain;
-      display: block;
-      transition: transform 0.3s ease;
-    }
+    /* header-logo style removed - using full-width banner instead */
     .nav-link {
       position: relative;
       color: #475569;
@@ -568,25 +557,30 @@
 </head>
 <body class="font-inter antialiased">
 
-  <!-- ===== HEADER ===== -->
+  <!-- ===== FULL-WIDE LOGO BANNER ===== -->
+  <div class="w-full bg-white">
+    <img
+      src="logo-gcsc-wide.jpg"
+      alt="GCSC Smart Contract"
+      class="w-full h-auto block"
+      style="max-height: 200px; object-fit: cover; object-position: center;"
+    >
+  </div>
+
+  <!-- ===== HEADER / NAV ===== -->
   <header class="header" id="header">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-[72px]">
-        <!-- Logo: Wide GCSC - displayed LARGE spanning header -->
-        <a href="#" class="flex-shrink-0" data-scroll-to="#hero">
-          <img src="logo-gcsc-wide.jpg" alt="GCSC Smart Contract" class="header-logo">
-        </a>
-
+      <div class="flex items-center justify-between h-[64px]">
         <!-- Desktop Nav -->
-        <nav class="hidden lg:flex items-center gap-8 nav-desktop">
+        <nav class="hidden lg:flex items-center gap-8 nav-desktop mx-auto">
           <span class="nav-link" data-scroll-to="#features">Features</span>
           <span class="nav-link" data-scroll-to="#how-it-works">How It Works</span>
           <span class="nav-link" data-scroll-to="#security">Security</span>
           <span class="nav-link" data-scroll-to="#escrow">Escrow</span>
         </nav>
 
-        <!-- CTA Button -->
-        <div class="flex items-center gap-4">
+        <!-- CTA + Mobile Menu -->
+        <div class="flex items-center gap-4 ml-auto">
           <button class="btn-primary hidden sm:flex" data-scroll-to="#cta">
             <span>Get Started</span>
             <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -612,7 +606,7 @@
   </header>
 
   <!-- ===== HERO SECTION ===== -->
-  <section class="hero min-h-screen flex items-center pt-[72px] relative" id="hero">
+  <section class="hero min-h-screen flex items-center relative" id="hero">
     <div class="hero-radial"></div>
     <!-- Gradient Orbs -->
     <div class="orb orb-1"></div>
@@ -623,11 +617,7 @@
       <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         <!-- Left Content -->
         <div class="text-center lg:text-left">
-          <!-- Prominent Wide GCSC Logo -->
-          <div class="mb-6 reveal">
-            <img src="logo-gcsc-wide.jpg" alt="GCSC Smart Contract" class="hero-logo mx-auto lg:mx-0" style="height: auto; width: 100%; max-width: 560px; object-fit: contain;">
-          </div>
-          <div class="section-label mx-auto lg:mx-0 reveal" style="transition-delay: 0.1s;">
+          <div class="section-label mx-auto lg:mx-0 reveal">
             <i data-lucide="shield-check" class="w-4 h-4"></i>
             <span>XPR Blockchain Powered</span>
           </div>
