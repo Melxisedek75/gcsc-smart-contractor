@@ -60,17 +60,23 @@ class MockStripe {
 
 // Use real Stripe if sk_test_ key available, otherwise mock
 let stripe;
+let useMock = false;
+
 if (STRIPE_CONFIG.secretKey && STRIPE_CONFIG.secretKey.startsWith('sk_test_')) {
   try {
-    stripe = require('stripe')(STRIPE_CONFIG.secretKey);
-    console.log('[Stripe] Using REAL Stripe API (test mode)');
+    const Stripe = require('stripe');
+    stripe = Stripe(STRIPE_CONFIG.secretKey);
+    console.log('[Stripe] ✅ Using REAL Stripe API (test mode)');
+    useMock = false;
   } catch (e) {
-    console.log('[Stripe] Failed to load Stripe SDK, using mock');
+    console.log('[Stripe] ⚠️ Failed to load Stripe SDK, using mock');
     stripe = new MockStripe();
+    useMock = true;
   }
 } else {
-  console.log('[Stripe] Using MOCK Stripe (add sk_test_ key for real integration)');
+  console.log('[Stripe] ℹ️ Using MOCK Stripe (add sk_test_ key for real integration)');
   stripe = new MockStripe();
+  useMock = true;
 }
 
 // In-memory escrow payments
@@ -176,28 +182,34 @@ const stripeRoutes = {
     const { payment_intent_id } = body;
     
     try {
-      // In mock mode, auto-confirm
-      if (stripe instanceof MockStripe) {
+      if (useMock) {
+        // Mock mode: auto-confirm
         const intent = await stripe.confirmPaymentIntent(payment_intent_id, {});
-        
-        // Update payment record
         const payment = escrowPayments.find(p => p.payment_intent_id === payment_intent_id);
         if (payment) {
           payment.status = 'succeeded';
           payment.confirmed_at = new Date().toISOString();
         }
-        
         json(res, 200, {
-          message: 'Payment confirmed (test mode)',
+          message: 'Payment confirmed (mock mode)',
           status: intent.status,
           payment
         });
       } else {
-        // Real Stripe: verify via webhook or manual check
-        const intent = await stripe.retrievePaymentIntent(payment_intent_id);
+        // Real Stripe: retrieve and verify
+        const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+        const payment = escrowPayments.find(p => p.payment_intent_id === payment_intent_id);
+        if (payment) {
+          payment.status = intent.status;
+          if (intent.status === 'succeeded') {
+            payment.confirmed_at = new Date().toISOString();
+          }
+        }
         json(res, 200, {
+          message: 'Payment status retrieved',
           status: intent.status,
-          payment_intent_id
+          payment_intent_id,
+          payment
         });
       }
     } catch (err) {
