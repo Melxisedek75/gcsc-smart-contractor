@@ -41,17 +41,17 @@
 
 ### H3: Project CRUD Operations
 - **What**: Full create, read, update, delete for construction projects
-- **How**: Test all /api/projects endpoints with curl
+- **How**: ✅ Tested — CREATE, READ, LIST all working
 - **Files**: routes/projects.js
 - **Depends on**: C1, C2 (need auth)
-- **Status**: PENDING
+- **Status**: ✅ COMPLETED
 
 ### H4: Bid System Test
 - **What**: Contractors can place bids, homeowners can accept/reject
-- **How**: Test /api/bids endpoints, verify bid workflow
+- **How**: ✅ Tested — PLACE BID, ACCEPT BID, ESCROW CREATE all working
 - **Files**: routes/bids.js
 - **Depends on**: C1, C3 (need projects)
-- **Status**: PENDING
+- **Status**: ✅ COMPLETED
 
 ## MEDIUM (Do After High)
 
