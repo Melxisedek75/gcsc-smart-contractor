@@ -413,12 +413,20 @@
             } catch (err) { throw err; }
         }
 
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return '';
+            return text.replace(/\u0026/g, '\u0026amp;').replace(/\u003c/g, '\u0026lt;').replace(/\u003e/g, '\u0026gt;').replace(/\"/g, '\u0026quot;');
+        }
+
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i>`;
+            const span = document.createElement('span');
+            span.textContent = message;
+            toast.appendChild(span);
             container.appendChild(toast);
             lucide.createIcons();
             requestAnimationFrame(() => toast.classList.add('show'));
@@ -538,11 +546,11 @@
             tbody.innerHTML = filtered.map(p => `
                 <tr class="hover:bg-surface/50 transition-colors">
                     <td class="px-5 py-4">
-                        <div class="font-semibold text-text-primary">${p.title}</div>
-                        <div class="text-xs text-text-secondary">${p.category || ''}</div>
+                        <div class="font-semibold text-text-primary">${escapeHtml(p.title)}</div>
+                        <div class="text-xs text-text-secondary">${escapeHtml(p.category || '')}</div>
                     </td>
                     <td class="px-5 py-4 font-medium text-text-primary">$${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}</td>
-                    <td class="px-5 py-4"><span class="status-badge status-${p.status}">${p.status}</span></td>
+                    <td class="px-5 py-4"><span class="status-badge status-${p.status}">${escapeHtml(p.status)}</span></td>
                     <td class="px-5 py-4 text-text-secondary">${p.bids_count || 0}</td>
                     <td class="px-5 py-4 text-text-secondary">${formatDate(p.created_at)}</td>
                     <td class="px-5 py-4">
@@ -586,14 +594,14 @@
             document.getElementById('detailContent').innerHTML = `
                 <div class="space-y-5">
                     <div class="flex flex-wrap gap-2 mb-2">
-                        <span class="status-badge ${statusClass}">${p.status}</span>
-                        <span class="status-badge bg-purple-50 text-accent">${p.category || ''}</span>
+                        <span class="status-badge ${statusClass}">${escapeHtml(p.status)}</span>
+                        <span class="status-badge bg-purple-50 text-accent">${escapeHtml(p.category || '')}</span>
                     </div>
-                    <p class="text-text-secondary text-sm leading-relaxed">${p.description || 'No description provided.'}</p>
+                    <p class="text-text-secondary text-sm leading-relaxed">${escapeHtml(p.description || 'No description provided.')}</p>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Budget Range</p><p class="font-semibold text-text-primary">$${(p.budget_min || 0).toLocaleString()} - $${(p.budget_max || 0).toLocaleString()}</p></div>
-                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Timeline</p><p class="font-semibold text-text-primary">${p.timeline || '-'} days</p></div>
-                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Location</p><p class="font-semibold text-text-primary">${p.location || '-'}</p></div>
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Timeline</p><p class="font-semibold text-text-primary">${escapeHtml(p.timeline || '-')} days</p></div>
+                        <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Location</p><p class="font-semibold text-text-primary">${escapeHtml(p.location || '-')}</p></div>
                         <div class="bg-surface rounded-xl p-3"><p class="text-text-secondary text-xs">Posted</p><p class="font-semibold text-text-primary">${formatDate(p.created_at)}</p></div>
                     </div>
                     ${p.status === 'open' && bids.length > 0 ? `
@@ -604,15 +612,15 @@
                             <div class="border border-border rounded-16 p-4">
                                 <div class="flex items-start justify-between">
                                     <div>
-                                        <p class="font-semibold text-text-primary">${b.contractor_name}</p>
+                                        <p class="font-semibold text-text-primary">${escapeHtml(b.contractor_name)}</p>
                                         <p class="text-xs text-text-secondary mt-0.5">${formatDate(b.created_at)}</p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-lg font-bold text-accent">$${(b.amount || 0).toLocaleString()}</p>
-                                        <p class="text-xs text-text-secondary">${b.timeline} days</p>
+                                        <p class="text-xs text-text-secondary">${escapeHtml(b.timeline)} days</p>
                                     </div>
                                 </div>
-                                <p class="text-sm text-text-secondary mt-2">${b.message || ''}</p>
+                                <p class="text-sm text-text-secondary mt-2">${escapeHtml(b.message || '')}</p>
                                 <div class="flex gap-2 mt-3">
                                     <button onclick="handleBid(${b.id}, 'accept')" class="btn-primary px-4 py-2 text-xs flex items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i>Accept</button>
                                     <button onclick="handleBid(${b.id}, 'reject')" class="btn-outline px-4 py-2 text-xs flex items-center gap-1"><i data-lucide="x" class="w-3 h-3"></i>Decline</button>
@@ -651,7 +659,7 @@
 
         function handleFileSelect(input) {
             const list = document.getElementById('fileList');
-            list.innerHTML = Array.from(input.files).map(f => `<div class="flex items-center gap-2 text-sm text-text-secondary"><i data-lucide="file" class="w-4 h-4 text-accent"></i>${f.name}</div>`).join('');
+            list.innerHTML = Array.from(input.files).map(f => `<div class="flex items-center gap-2 text-sm text-text-secondary"><i data-lucide="file" class="w-4 h-4 text-accent"></i>${escapeHtml(f.name)}</div>`).join('');
             lucide.createIcons();
         }
 
@@ -712,15 +720,15 @@
             <div class="card p-5 card-hover">
                 <div class="flex items-start justify-between mb-3">
                     <div class="w-12 h-12 rounded-16 bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center">
-                        <span class="text-white font-bold">${(c.name || 'C')[0]}</span>
+                        <span class="text-white font-bold">${escapeHtml((c.name || 'C')[0])}</span>
                     </div>
                     <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg"><i data-lucide="star" class="w-3.5 h-3.5 text-warning fill-warning"></i><span class="text-sm font-semibold text-text-primary">${c.rating || '-'}</span></div>
                 </div>
-                <h3 class="font-bold text-text-primary">${c.name}</h3>
-                <p class="text-sm text-text-secondary">${c.company || ''}</p>
+                <h3 class="font-bold text-text-primary">${escapeHtml(c.name)}</h3>
+                <p class="text-sm text-text-secondary">${escapeHtml(c.company || '')}</p>
                 <div class="flex flex-wrap gap-2 mt-3">
-                    <span class="text-xs font-medium px-2.5 py-1 bg-purple-50 text-accent rounded-lg">${c.specialty || ''}</span>
-                    <span class="text-xs font-medium px-2.5 py-1 bg-surface text-text-secondary rounded-lg flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${c.location || ''}</span>
+                    <span class="text-xs font-medium px-2.5 py-1 bg-purple-50 text-accent rounded-lg">${escapeHtml(c.specialty || '')}</span>
+                    <span class="text-xs font-medium px-2.5 py-1 bg-surface text-text-secondary rounded-lg flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${escapeHtml(c.location || '')}</span>
                 </div>
                 <div class="flex items-center justify-between mt-4 pt-3 border-t border-border">
                     <span class="text-xs text-text-secondary">${c.reviews_count || 0} reviews</span>
@@ -750,13 +758,13 @@
                 const data = await api('/api/messages');
                 const msgs = data.messages || data || [];
                 if (msgs.length === 0) { list.innerHTML = '<div class="text-center py-10 text-text-secondary text-sm">No messages yet</div>'; return; }
-                list.innerHTML = msgs.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name || 'User'}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content || ''}</p></div></div>`).join('');
+                list.innerHTML = msgs.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${escapeHtml((m.sender_name || 'U')[0])}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${escapeHtml(m.sender_name || 'User')}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${escapeHtml(m.content || '')}</p></div></div>`).join('');
             } catch (err) {
                 const demo = [
                     { sender_name: 'John Smith', content: 'Hi! I\'m interested in your kitchen renovation project. Can we discuss the timeline?', created_at: '2025-01-15T10:30:00Z' },
                     { sender_name: 'Maria Garcia', content: 'I can start the plumbing work next week. Let me know if that works for you.', created_at: '2025-01-14T16:00:00Z' },
                 ];
-                list.innerHTML = demo.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${(m.sender_name || 'U')[0]}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${m.sender_name}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${m.content}</p></div></div>`).join('');
+                list.innerHTML = demo.map(m => `<div class="flex items-start gap-3 p-3 rounded-xl hover:bg-surface cursor-pointer transition-colors"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-blue flex items-center justify-center shrink-0"><span class="text-white text-xs font-bold">${escapeHtml((m.sender_name || 'U')[0])}</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between"><p class="font-medium text-text-primary text-sm truncate">${escapeHtml(m.sender_name)}</p><span class="text-xs text-text-secondary shrink-0">${formatDate(m.created_at)}</span></div><p class="text-xs text-text-secondary truncate mt-0.5">${escapeHtml(m.content)}</p></div></div>`).join('');
             }
         }
 

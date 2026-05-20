@@ -219,7 +219,10 @@
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i>`;
+            const span = document.createElement('span');
+            span.textContent = message;
+            toast.appendChild(span);
             container.appendChild(toast);
             lucide.createIcons();
             requestAnimationFrame(() => toast.classList.add('show'));

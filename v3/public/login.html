@@ -10,26 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        // ===== API CONFIGURATION =====
-        const API_BASE = 'https://fifty-views-talk.loca.lt';
-        async function api(endpoint, options = {}) {
-            const url = `${API_BASE}${endpoint}`;
-            const token = localStorage.getItem('gcsc_token');
-            const defaults = { headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) } };
-            const response = await fetch(url, { ...defaults, ...options, headers: { ...defaults.headers, ...options.headers } });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || data.message || `HTTP ${response.status}`);
-            return data;
-        }
-        function showToast(message, type = 'success') {
-            const t = document.createElement('div');
-            t.className = `fixed top-4 right-4 px-6 py-3 rounded-xl text-white font-medium shadow-lg z-[9999] ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`;
-            t.textContent = message;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 4000);
-        }
-    </script>
-    <script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -227,7 +207,10 @@
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${message}</span>`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i>`;
+            const span = document.createElement('span');
+            span.textContent = message;
+            toast.appendChild(span);
             container.appendChild(toast);
             lucide.createIcons();
             requestAnimationFrame(() => toast.classList.add('show'));

@@ -5,11 +5,21 @@
 
 const WebSocket = require('ws');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const CORS_WHITELIST = (process.env.CORS_WHITELIST || '').split(',').filter(Boolean);
 
 class GCSCWebSocket {
   constructor(server) {
-    this.wss = new WebSocket.Server({ server });
-    this.clients = new Map(); // userId -> ws
+    this.wss = new WebSocket.Server({ 
+      server,
+      verifyClient: (info) => {
+        const origin = info.origin || info.req.headers.origin;
+        return CORS_WHITELIST.includes(origin) || !origin;
+      }
+    });
+    this.clients = new Map(); // userId -> Set(ws)
     this.setupHandlers();
     console.log('[WebSocket] Server initialized');
   }
@@ -53,13 +63,17 @@ class GCSCWebSocket {
             const payload = this.verifyToken(msg.token);
             ws.userId = payload.userId;
             ws.userEmail = payload.email;
-            this.clients.set(payload.userId, ws);
+            // Support multiple connections per user
+            if (!this.clients.has(payload.userId)) {
+              this.clients.set(payload.userId, new Set());
+            }
+            this.clients.get(payload.userId).add(ws);
             ws.send(JSON.stringify({
               type: 'auth_success',
               userId: payload.userId
             }));
           } catch (e) {
-            ws.send(JSON.stringify({ type: 'auth_error', message: 'Invalid token' }));
+            ws.send(JSON.stringify({ type: 'auth_error', message: e.message || 'Invalid token' }));
           }
         }
         break;
@@ -82,26 +96,29 @@ class GCSCWebSocket {
   }
   
   verifyToken(token) {
-    const parts = token.split('.');
-    if (parts.length !== 3) throw new Error('Invalid token');
-    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g,'+').replace(/_/g,'/'), 'base64').toString());
-    if (payload.exp < Math.floor(Date.now()/1000)) throw new Error('Expired');
-    return payload;
+    if (!JWT_SECRET) throw new Error('JWT_SECRET not configured');
+    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
   }
   
   removeClient(ws) {
-    if (ws.userId) {
-      this.clients.delete(ws.userId);
+    if (ws.userId && this.clients.has(ws.userId)) {
+      const userConnections = this.clients.get(ws.userId);
+      userConnections.delete(ws);
+      if (userConnections.size === 0) {
+        this.clients.delete(ws.userId);
+      }
       console.log(`[WebSocket] Client ${ws.userId} disconnected`);
     }
   }
   
   // Send notification to specific user
   notifyUser(userId, notification) {
-    const ws = this.clients.get(userId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'notification',
+    const connections = this.clients.get(userId);
+    if (!connections) return;
+    connections.forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'notification',
         ...notification,
         timestamp: new Date().toISOString()
       }));
