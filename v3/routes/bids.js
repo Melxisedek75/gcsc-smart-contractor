@@ -464,41 +464,37 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
             });
         }
 
-        // --- Build update ---
+        // --- Build update — SECURITY FIX: Whitelist allowed fields, no dynamic SQL ---
+        const ALLOWED_FIELDS = {
+            amount: { column: 'amount', validate: (v) => {
+                if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) return 'amount must be a positive integer.';
+                if (v > 100_000_000) return 'Bid amount exceeds maximum ($1,000,000).';
+                return null;
+            }},
+            proposed_timeline_days: { column: 'timeline_days', validate: (v) => {
+                const val = Math.round(v);
+                if (!Number.isInteger(val) || val < 1 || val > 3650) return 'proposed_timeline_days must be between 1 and 3650.';
+                return null;
+            }},
+            message: { column: 'description', validate: (v) => {
+                if (v !== null && (typeof v !== 'string' || v.length > 5000)) return 'message must be a string (max 5000 chars) or null.';
+                return null;
+            }},
+        };
+
         const updates = [];
         const params = [];
         let paramIndex = 1;
 
-        if (amount !== undefined) {
-            if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1) {
-                return res.status(400).json({ error: 'amount must be a positive integer.' });
+        for (const [fieldName, config] of Object.entries(ALLOWED_FIELDS)) {
+            const value = req.body[fieldName];
+            if (value !== undefined) {
+                const error = config.validate(value);
+                if (error) return res.status(400).json({ error });
+                updates.push(config.column + ' = $' + paramIndex);
+                params.push(fieldName === 'message' ? (value ? value.trim() : null) : value);
+                paramIndex++;
             }
-            const MAX_BID = 100_000_000;
-            if (amount > MAX_BID) {
-                return res.status(400).json({ error: 'Bid amount exceeds maximum ($1,000,000).' });
-            }
-            updates.push(`amount = $${paramIndex}`);
-            params.push(amount);
-            paramIndex++;
-        }
-
-        if (proposed_timeline_days !== undefined) {
-            const val = Math.round(proposed_timeline_days);
-            if (!Number.isInteger(val) || val < 1 || val > 3650) {
-                return res.status(400).json({ error: 'proposed_timeline_days must be between 1 and 3650.' });
-            }
-            updates.push(`timeline_days = $${paramIndex}`);
-            params.push(val);
-            paramIndex++;
-        }
-
-        if (message !== undefined) {
-            if (message !== null && (typeof message !== 'string' || message.length > 5000)) {
-                return res.status(400).json({ error: 'message must be a string (max 5000 chars) or null.' });
-            }
-            updates.push(`description = $${paramIndex}`);
-            params.push(message ? message.trim() : null);
-            paramIndex++;
         }
 
         if (updates.length === 0) {
@@ -508,7 +504,7 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
         params.push(bidId);
 
         const result = await db.query(
-            `UPDATE bids SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+            'UPDATE bids SET ' + updates.join(', ') + ' WHERE id = $' + paramIndex + ' RETURNING *',
             params
         );
 

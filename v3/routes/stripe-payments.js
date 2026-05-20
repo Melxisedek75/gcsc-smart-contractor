@@ -1,13 +1,14 @@
 /**
- * Stripe Payment Integration
+ * Stripe Payment Integration (FIXED: Database persistence)
  * Escrow funding via PaymentIntent
  * 
- * STATUS: Ready for testing with mock data
- *         Full integration when sk_test_ key provided
+ * STATUS: Database-backed (was in-memory, see SECURITY-AUDIT-2026-05-20.md MEDIUM-1)
+ * Apply migration: v3/database/stripe-payments-migration.sql
  */
 
 const crypto = require('crypto');
 const STRIPE_CONFIG = require('../stripe-config');
+const db = require('../database/db');
 
 // Mock Stripe for testing (until sk_test_ key is provided)
 class MockStripe {
@@ -79,14 +80,9 @@ if (STRIPE_CONFIG.secretKey && STRIPE_CONFIG.secretKey.startsWith('sk_test_')) {
   useMock = true;
 }
 
-// In-memory escrow payments
-const escrowPayments = [];
-let nextPaymentId = 1;
-
 // JWT Authentication — FIXED: Using proper JWT verification with signature check
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || '';
-const db = require('../database/db');
 
 async function getUser(req) {
   const auth = req.headers['authorization'] || '';
@@ -94,7 +90,6 @@ async function getUser(req) {
   if (!token) return null;
   
   try {
-    // Proper JWT verification with signature check
     const decoded = jwt.verify(token, JWT_SECRET, {
       algorithms: ['HS256'],
       clockTolerance: 30,
@@ -102,7 +97,6 @@ async function getUser(req) {
     
     if (!decoded.jti) return null;
     
-    // Check session is valid and not revoked
     const { rows } = await db.query(
       'SELECT * FROM sessions WHERE jti = $1 AND is_revoked = false AND expires_at > NOW()',
       [decoded.jti]
@@ -132,7 +126,7 @@ function parseBody(req) {
 const stripeRoutes = {
   // Create PaymentIntent for escrow
   'POST /api/stripe/create-payment-intent': async (req, res) => {
-    const user = getUser(req);
+    const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     if (user.role !== 'homeowner') return json(res, 403, { error: 'Homeowners only' });
     
@@ -164,25 +158,33 @@ const stripeRoutes = {
         automatic_payment_methods: { enabled: true }
       });
       
-      // Save payment record
-      const payment = {
-        id: nextPaymentId++,
-        escrow_id: parseInt(escrow_id),
-        user_id: user.userId,
-        payment_intent_id: paymentIntent.id,
-        amount: amount_usd,
-        currency: 'usd',
-        status: 'pending',
-        created_at: new Date().toISOString()
-      };
-      escrowPayments.push(payment);
+      // FIXED: Save to database instead of in-memory array
+      const stripeMode = stripe instanceof MockStripe ? 'test_mock' : 'test_live';
+      const result = await db.query(
+        `INSERT INTO stripe_payment_intents 
+         (escrow_id, user_id, payment_intent_id, amount_usd, currency, status, stripe_mode, client_secret, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         RETURNING *`,
+        [
+          parseInt(escrow_id),
+          user.userId,
+          paymentIntent.id,
+          amount,
+          STRIPE_CONFIG.currency,
+          'pending',
+          stripeMode,
+          paymentIntent.client_secret
+        ]
+      );
+      
+      const payment = result.rows[0];
       
       json(res, 200, {
         message: 'Payment intent created',
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
         amount: amount_usd,
-        mode: stripe instanceof MockStripe ? 'test_mock' : 'test_live'
+        mode: stripeMode
       });
     } catch (err) {
       console.error('[Stripe Error]', err.message);
@@ -202,11 +204,18 @@ const stripeRoutes = {
       if (useMock) {
         // Mock mode: auto-confirm
         const intent = await stripe.confirmPaymentIntent(payment_intent_id, {});
-        const payment = escrowPayments.find(p => p.payment_intent_id === payment_intent_id);
-        if (payment) {
-          payment.status = 'succeeded';
-          payment.confirmed_at = new Date().toISOString();
-        }
+        
+        // FIXED: Update database record
+        const result = await db.query(
+          `UPDATE stripe_payment_intents 
+           SET status = 'succeeded', confirmed_at = NOW(), updated_at = NOW()
+           WHERE payment_intent_id = $1 AND user_id = $2
+           RETURNING *`,
+          [payment_intent_id, user.userId]
+        );
+        
+        const payment = result.rows[0] || null;
+        
         json(res, 200, {
           message: 'Payment confirmed (mock mode)',
           status: intent.status,
@@ -215,13 +224,18 @@ const stripeRoutes = {
       } else {
         // Real Stripe: retrieve and verify
         const intent = await stripe.paymentIntents.retrieve(payment_intent_id);
-        const payment = escrowPayments.find(p => p.payment_intent_id === payment_intent_id);
-        if (payment) {
-          payment.status = intent.status;
-          if (intent.status === 'succeeded') {
-            payment.confirmed_at = new Date().toISOString();
-          }
-        }
+        
+        // FIXED: Update database record
+        const result = await db.query(
+          `UPDATE stripe_payment_intents 
+           SET status = $1, confirmed_at = CASE WHEN $1 = 'succeeded' THEN NOW() ELSE confirmed_at END, updated_at = NOW()
+           WHERE payment_intent_id = $2 AND user_id = $3
+           RETURNING *`,
+          [intent.status, payment_intent_id, user.userId]
+        );
+        
+        const payment = result.rows[0] || null;
+        
         json(res, 200, {
           message: 'Payment status retrieved',
           status: intent.status,
@@ -253,16 +267,24 @@ const stripeRoutes = {
     });
   },
   
-  // Get my payments
+  // Get my payments — FIXED: Query database
   'GET /api/stripe/my/payments': async (req, res) => {
-    const user = getUser(req);
+    const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     
-    const payments = escrowPayments
-      .filter(p => p.user_id === user.userId)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    json(res, 200, { payments, total: payments.length });
+    try {
+      const result = await db.query(
+        `SELECT * FROM stripe_payment_intents 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC`,
+        [user.userId]
+      );
+      
+      json(res, 200, { payments: result.rows, total: result.rows.length });
+    } catch (err) {
+      console.error('[Stripe Payments DB Error]', err.message);
+      json(res, 500, { error: 'Failed to retrieve payments', details: err.message });
+    }
   }
 };
 
