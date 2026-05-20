@@ -113,6 +113,16 @@ function json(res, status, data) {
 
 // ===== ROUTER =====
 const routes = {
+  // Dev helper: get latest OTP for testing
+  'GET /api/dev/otp': async (req, res) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const email = url.searchParams.get('email');
+    if (!email) return json(res, 400, { error: 'Email required' });
+    const record = db.otp_verifications.filter(o => o.email === email).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    if (!record) return json(res, 404, { error: 'No OTP found' });
+    json(res, 200, { email, otp: record.otp, expires_at: record.expires_at });
+  },
+
   // Health
   'GET /health': async (req, res) => {
     json(res, 200, { status: 'ok', version: '3.0.0', database: 'memory', timestamp: new Date().toISOString(), uptime: process.uptime() });
