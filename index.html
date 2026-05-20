@@ -603,18 +603,66 @@
     .reveal-left { opacity: 0; transform: translateX(-40px); }
     .reveal-right { opacity: 0; transform: translateX(40px); }
     .reveal-scale { opacity: 0; transform: scale(0.9); }
+
+    /* ===== GCSC LOGO ORB ===== */
+    .gcsc-logo-orb {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px; color: #fff;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      box-shadow: 0 0 0 2px rgba(255,255,255,.15), 0 0 0 5px rgba(124,58,237,.12), 0 4px 16px rgba(124,58,237,.3), inset 0 2px 4px rgba(255,255,255,.3), inset 0 -2px 4px rgba(0,0,0,.2);
+      position: relative; overflow: hidden; flex-shrink: 0;
+    }
+    .gcsc-logo-orb::before {
+      content: ''; position: absolute;
+      top: 1px; left: 5px; width: 30px; height: 15px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.45), transparent);
+      pointer-events: none;
+    }
+    .gcsc-logo-orb-lg {
+      width: 112px; height: 112px;
+      font-size: 36px; letter-spacing: -1px;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.12), 0 0 0 8px rgba(124,58,237,.1), 0 8px 32px rgba(124,58,237,.35), inset 0 3px 6px rgba(255,255,255,.3), inset 0 -3px 6px rgba(0,0,0,.2);
+    }
+    .gcsc-logo-orb-lg::before {
+      width: 84px; height: 42px; left: 14px; top: 3px;
+    }
+    .gcsc-logo-orb-xl {
+      width: 64px; height: 64px;
+      font-size: 22px; letter-spacing: -1px;
+    }
+    .gcsc-logo-orb-xl::before {
+      width: 48px; height: 24px; left: 8px; top: 2px;
+    }
+    .gcsc-logo-orb-sm {
+      width: 32px; height: 32px;
+      font-size: 10px; letter-spacing: -0.3px;
+    }
+    .gcsc-logo-orb-sm::before {
+      width: 24px; height: 12px; left: 4px; top: 1px;
+    }
+    .gcsc-logo-orb-2xl {
+      width: 224px; height: 224px;
+      font-size: 72px; letter-spacing: -2px;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.1), 0 0 0 12px rgba(124,58,237,.08), 0 12px 48px rgba(124,58,237,.3), inset 0 4px 8px rgba(255,255,255,.3), inset 0 -4px 8px rgba(0,0,0,.2);
+    }
+    .gcsc-logo-orb-2xl::before {
+      width: 168px; height: 84px; left: 28px; top: 4px;
+    }
   </style>
 </head>
 <body class="font-inter antialiased">
 
   <!-- ===== FULL-WIDE LOGO BANNER ===== -->
-  <div class="w-full bg-white">
-    <img
-      src="logo-gcsc-wide.jpg"
-      alt="GCSC Smart Contract"
-      class="w-full h-auto block"
-      style="max-height: 200px; object-fit: cover; object-position: center;"
-    >
+  <div class="w-full bg-white flex items-center justify-center py-5 gap-4 border-b border-gray-100">
+    <div class="gcsc-logo-orb gcsc-logo-orb-xl">SC</div>
+    <div class="text-center">
+      <div class="text-2xl font-black tracking-tight" style="color: #7c3aed;">GCSC</div>
+      <div class="text-xs font-semibold tracking-widest uppercase" style="color: #3b82f6;">Smart Contractor</div>
+    </div>
   </div>
 
   <!-- ===== HEADER / NAV ===== -->
@@ -715,7 +763,7 @@
             <div class="relative w-[420px] h-[420px] rounded-[40px] bg-gradient-to-br from-accent/5 to-accent-blue/5 border border-border/60 flex items-center justify-center" style="animation: float-cta 8s ease-in-out infinite;">
               <div class="text-center">
                 <div class="w-32 h-32 rounded-full mx-auto mb-6 flex items-center justify-center" style="background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));">
-                  <img src="logo-company.jpg" alt="GCSC" class="w-28 h-28 rounded-full object-cover">
+                  <div class="gcsc-logo-orb gcsc-logo-orb-lg">SC</div>
                 </div>
                 <h3 class="text-2xl font-bold text-text-primary mb-2">GCSC Smart Contract</h3>
                 <p class="text-text-secondary">Blockchain Escrow</p>
@@ -853,7 +901,7 @@
         <!-- Product Logo in Features -->
         <div class="mt-16 text-center reveal">
           <p class="text-sm text-text-secondary mb-4">Powered by</p>
-          <img src="logo-product.png" alt="SC Smart Contractor" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+          <div class="gcsc-logo-orb" style="margin: 0 auto;">SC</div>
         </div>
       </div>
 
@@ -918,7 +966,7 @@
         <!-- Product Logo in Features -->
         <div class="mt-16 text-center">
           <p class="text-sm text-text-secondary mb-4">Powered by</p>
-          <img src="logo-product.png" alt="SC Smart Contractor" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+          <div class="gcsc-logo-orb" style="margin: 0 auto;">SC</div>
         </div>
       </div>
     </div>
@@ -1214,11 +1262,7 @@
         <!-- Right: Floating Round Logo -->
         <div class="hidden lg:flex items-center justify-center reveal-scale" style="transition-delay: 0.2s;">
           <div class="relative">
-            <img
-              src="logo-company.jpg"
-              alt="GCSC"
-              class="w-56 h-56 rounded-full logo-float-cta border-4 border-white/20 object-cover"
-            >
+            <div class="gcsc-logo-orb gcsc-logo-orb-2xl logo-float-cta border-4 border-white/20">SC</div>
             <!-- Orbiting elements -->
             <div class="absolute inset-0" style="animation: spin 20s linear infinite;">
               <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white/30"></div>
@@ -1285,7 +1329,7 @@
       <!-- Bottom Bar -->
       <div class="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <img src="logo-company.jpg" alt="GCSC" class="w-8 h-8 rounded-full object-cover">
+          <div class="gcsc-logo-orb gcsc-logo-orb-sm">SC</div>
           <p class="text-sm text-text-secondary">
             &copy; <span id="year"></span> GCSC Smart Contract. All rights reserved.
           </p>
