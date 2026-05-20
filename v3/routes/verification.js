@@ -127,12 +127,15 @@ const verificationRoutes = {
     }
   },
 
-  // Admin: verify contractor (placeholder — no real admin check yet)
+  // Admin: verify contractor
   'POST /api/verify/:id/approve': async (req, res) => {
     const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
 
-    // TODO: Add admin role check
+    // Admin check
+    if (user.role !== 'admin') {
+      return json(res, 403, { error: 'Admin access required' });
+    }
 
     const match = req.url.match(/\/api\/verify\/(\d+)\/approve/);
     if (!match) return json(res, 400, { error: 'Invalid verification ID' });
