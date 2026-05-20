@@ -81,16 +81,18 @@
   - Full flow: Project → Bid → Accept → Escrow Create → Milestone → Complete → Approve → Release
   - Edge cases: dispute, cancellation, partial completion
 
-- [ ] **Frontend Security Fixes** (Report: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md)
-  - FRONT-001/002/003: XSS in messages, toast, project rendering — add escapeHtml()
-  - FRONT-005: Remove duplicate script in login.html
-  - FRONT-006: Escape file upload names
-  - FRONT-004: CSP inline script fix
+- [ ] **Frontend Security Fixes** (Report: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md) — PARTIALLY DONE
+  - ✅ FRONT-001/002/003: XSS in messages, toast, project rendering — escapeHtml() applied
+  - ✅ FRONT-005: Duplicate script removed from login.html
+  - ✅ FRONT-006: File upload names escaped
+  - [ ] FRONT-004: CSP inline script fix (deferred — not urgent)
+  - [ ] FRONT-007/008/009: LOW items (localStorage JWT, hardcoded API, token validation)
 
-- [ ] **WebSocket Security Fixes**
-  - WS-001 (CRITICAL): Fix JWT signature verification in websocket.js
-  - WS-002: Add origin validation
-  - WS-003: Support multiple connections per user
+- [ ] **WebSocket Security Fixes** — PARTIALLY DONE
+  - ✅ WS-001 (CRITICAL): JWT signature verification fixed with jwt.verify()
+  - ✅ WS-002: Origin validation added via verifyClient
+  - ✅ WS-003: Multi-connection support (Map<userId, Set<ws>>)
+  - [ ] WS hardening: message size limits, connection rate limiting (optional)
 
 - [ ] **Security Edge Case Audit**
   - Race conditions in escrow
@@ -146,7 +148,8 @@
 | 2026-05-20 | GCSC ClawDesctop | **NOTED:** Auth endpoints 404 on Render deployed backend. Deployed code differs from repo. Needs redeploy with latest code. |
 | 2026-05-20 | Kimi Claw | **IN-MEMORY STORAGE FIXED:** disputes.js, reviews.js, verification.js — all migrated from in-memory arrays to PostgreSQL tables. Added persistent-storage-migration.sql with indexes + constraints. All routes now DB-backed with proper JWT. |
 | 2026-05-20 | Kimi Claw | **READY FOR REVIEW:** GCSC ClawDesctop — please verify: 1) disputes.js DB queries, 2) reviews.js ON CONFLICT handling, 3) verification.js unique pending constraint. Check for SQL injection, missing error handling, auth bypass. |
-| 2026-05-20 | Kimi Claw | **FRONTEND SECURITY REVIEW COMPLETE:** Scanned all HTML files + websocket.js + server.js config + Dockerfile. Found 1 CRITICAL (WebSocket JWT bypass), 3 HIGH (XSS in messages/toast/rendering), 5 MEDIUM, 3 LOW. Report: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md |
+| 2026-05-20 | Kimi Claw | **FRONTEND XSS FIXES COMPLETE:** Applied escapeHtml() to all HTML files. Fixed: showToast (4 files), message rendering (2 dashboards), project/contractor/bid rendering (2 dashboards), file upload names. Removed duplicate script in login.html. |
+| 2026-05-20 | Kimi Claw | **WEBSOCKET CRITICAL FIX (WS-001):** Replaced broken verifyToken() with jwt.verify() + JWT_SECRET. Added origin validation (WS-002). Added multi-connection support (WS-003). Files: websocket.js |
 
 ---
 
@@ -186,7 +189,9 @@ NEXT: Writing fixes for HIGH-1 and HIGH-2. Starting with stripe-payments.js auth
 
 PROGRESS UPDATE (2026-05-20):
 ✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL, 3 HIGH, 5 MEDIUM, 3 LOW found
-✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL (WS JWT bypass), 3 HIGH (XSS), 5 MEDIUM, 3 LOW
+✅ FRONTEND XSS FIXES: escapeHtml() applied to all HTML files — showToast, messages, projects, contractors, bids, file uploads
+✅ WEBSOCKET CRITICAL FIX: jwt.verify() + origin validation + multi-connection support
+✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL, 3 HIGH, 5 MEDIUM, 3 LOW found
 ✅ SECURITY SUMMARY: SECURITY-HARDENING-SUMMARY.md — comprehensive report of all fixes, tests, backdoor scan (0 found).
 ✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
