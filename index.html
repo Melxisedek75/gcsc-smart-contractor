@@ -1247,12 +1247,23 @@
                 type="email"
                 placeholder="Enter your email"
                 class="cta-input pr-[140px]"
+                id="cta-email"
                 aria-label="Email address for early access"
               >
               <button class="btn-white absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2.5 text-sm" id="cta-btn">
                 Get Access
               </button>
             </div>
+          </div>
+          <div class="flex gap-3 mt-3 justify-center lg:justify-start">
+            <label class="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+              <input type="radio" name="cta-role" value="homeowner" checked class="accent-accent">
+              Homeowner
+            </label>
+            <label class="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+              <input type="radio" name="cta-role" value="contractor" class="accent-accent">
+              Contractor
+            </label>
           </div>
           <p class="text-sm text-white/50 mt-4">
             <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
@@ -1363,6 +1374,24 @@
       // ===== Year in Footer =====
       var yearEl = document.getElementById('year');
       if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+      // ===== SERVER STATUS =====
+      (async function() {
+        try {
+          var res = await fetch('https://gcsc-backend.onrender.com/api/health', { method: 'GET' });
+          if (res.ok) {
+            var badge = document.createElement('div');
+            badge.innerHTML = '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:6px;\">\u003c/span>Online';
+            badge.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:rgba(15,23,42,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);';
+            document.body.appendChild(badge);
+          }
+        } catch (e) {
+          var badge = document.createElement('div');
+          badge.innerHTML = '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:#EF4444;margin-right:6px;\">\u003c/span>Offline';
+          badge.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:rgba(15,23,42,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);';
+          document.body.appendChild(badge);
+        }
+      })();
 
       // ===== Lenis Smooth Scroll =====
       var lenis;
@@ -1713,13 +1742,32 @@
       // ===== CTA BUTTON =====
       var ctaBtn = document.getElementById('cta-btn');
       if (ctaBtn) {
-        ctaBtn.addEventListener('click', function() {
-          var input = this.closest('.relative').querySelector('input[type="email"]');
-          if (input && input.value) {
-            alert('Thank you! We will contact you at ' + input.value + ' with early access details.');
-            input.value = '';
+        ctaBtn.addEventListener('click', async function() {
+          var input = document.getElementById('cta-email');
+          var role = document.querySelector('input[name="cta-role"]:checked')?.value || 'homeowner';
+          if (input && input.value && input.value.includes('@')) {
+            ctaBtn.disabled = true;
+            ctaBtn.textContent = 'Sending...';
+            try {
+              var res = await fetch('https://gcsc-backend.onrender.com/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: input.value, password: 'TempPass123!', name: 'Beta User', role: role })
+              });
+              var data = await res.json();
+              if (res.ok) {
+                alert('Thank you! Check your email (' + input.value + ') for OTP to verify your account.');
+                input.value = '';
+              } else {
+                alert(data.message || 'Something went wrong. Please try again.');
+              }
+            } catch (e) {
+              alert('Server is warming up. Please try again in 30 seconds.');
+            }
+            ctaBtn.disabled = false;
+            ctaBtn.textContent = 'Get Access';
           } else {
-            alert('Please enter your email address.');
+            alert('Please enter a valid email address.');
           }
         });
       }
