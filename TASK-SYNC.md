@@ -152,6 +152,7 @@
 | 2026-05-20 | Kimi Claw | **FRONTEND XSS FIXES COMPLETE:** Applied escapeHtml() to all HTML files. Fixed: showToast (4 files), message rendering (2 dashboards), project/contractor/bid rendering (2 dashboards), file upload names. Removed duplicate script in login.html. |
 | 2026-05-20 | Kimi Claw | **WEBSOCKET CRITICAL FIX (WS-001):** Replaced broken verifyToken() with jwt.verify() + JWT_SECRET. Added origin validation (WS-002). Added multi-connection support (WS-003). Files: websocket.js |
 | 2026-05-20 | Kimi Claw | **AUTH 404 ROOT CAUSE FOUND:** Dead localtunnel (fifty-views-talk.loca.lt → 503). Render backend (gcsc-backend.onrender.com) works perfectly — /api/register 200, /api/login 200, /api/stats 200, /health 200. Updated API_BASE in all 4 frontend files. |
+| 2026-05-20 | Kimi Claw | **GCSC.STORE APP RESTORED:** Copied v3 app files to public/ folder for GitHub Pages. Landing page nav fixed: "Get Started" → login.html, "Go to Dashboard" → real dashboard (homeowner/contractor/admin). Files now live: /login.html, /register.html, /dashboard-homeowner.html, /dashboard-contractor.html, /admin.html |
 
 ---
 
