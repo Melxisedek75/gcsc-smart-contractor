@@ -105,6 +105,7 @@ const reviewRoutes = {
     if (!match) return json(res, 400, { error: 'Invalid user ID' });
 
     const targetId = parseInt(match[1], 10);
+    if (Number.isNaN(targetId)) return json(res, 400, { error: 'User ID must be a number' });
 
     try {
       const result = await db.query(

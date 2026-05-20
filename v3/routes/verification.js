@@ -141,6 +141,7 @@ const verificationRoutes = {
     if (!match) return json(res, 400, { error: 'Invalid verification ID' });
 
     const verificationId = parseInt(match[1], 10);
+    if (Number.isNaN(verificationId)) return json(res, 400, { error: 'Verification ID must be a number' });
 
     try {
       const result = await db.query(

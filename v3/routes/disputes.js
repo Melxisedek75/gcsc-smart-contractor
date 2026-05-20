@@ -118,6 +118,7 @@ const disputeRoutes = {
     if (!match) return json(res, 400, { error: 'Invalid dispute ID' });
 
     const disputeId = parseInt(match[1], 10);
+    if (Number.isNaN(disputeId)) return json(res, 400, { error: 'Dispute ID must be a number' });
 
     try {
       const result = await db.query(
@@ -168,6 +169,7 @@ const disputeRoutes = {
     if (!match) return json(res, 400, { error: 'Invalid dispute ID' });
 
     const disputeId = parseInt(match[1], 10);
+    if (Number.isNaN(disputeId)) return json(res, 400, { error: 'Dispute ID must be a number' });
     const body = await parseBody(req);
 
     try {
