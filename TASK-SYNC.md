@@ -162,7 +162,7 @@ PROGRESS UPDATE (2026-05-20):
 ✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
 ✅ MEDIUM-1 FIXED: stripe-payments.js in-memory → database persistence (stripe_payment_intents table)
-🔄 NEXT: Unit tests for stripe-payments.js + rate limiting middleware
+✅ MEDIUM-2 IN PROGRESS: Rate limiting middleware (v3/middleware/rate-limit.js) — auth, financial, general, strict tiers
 ```
 
 ---
