@@ -169,6 +169,7 @@ SECURITY AUDIT RESULTS (2026-05-20):
 NEXT: Writing fixes for HIGH-1 and HIGH-2. Starting with stripe-payments.js auth fix.
 
 PROGRESS UPDATE (2026-05-20):
+✅ SECURITY SUMMARY: SECURITY-HARDENING-SUMMARY.md — comprehensive report of all fixes, tests, backdoor scan (0 found).
 ✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
 ✅ MEDIUM-1 FIXED: stripe-payments.js in-memory → database persistence (stripe_payment_intents table)
@@ -177,7 +178,7 @@ PROGRESS UPDATE (2026-05-20):
 ✅ MEDIUM-3 FIXED: Bid audit logging (create/update/accept/reject/withdraw) + bid-audit-migration.sql
 ✅ LOW-1 FIXED: Shared error handler middleware (sanitizes responses in production)
 🟢 **BACKEND IS UP!** /health = 200. 503 resolved — GCSC ClawDesctop fixed it!
-🔄 NEXT: E2E escrow testing now unblocked (ESC-001..010)
+🔄 NEXT: Auth endpoints 404 — GCSC ClawDesctop to fix deploy. After that: full E2E escrow testing.
 ```
 
 ---
