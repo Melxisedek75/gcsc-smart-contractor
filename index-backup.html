@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCSC Smart Contractor — AI-Powered Construction Escrow & Milestone Payments</title>
+  <meta name="description" content="Programmable escrow infrastructure for the $12 trillion construction industry. AI-powered milestone payments, on-chain escrow on XPR Network, smart contracts, stablecoin settlements. Build with trust, pay with confidence.">
+  <meta name="keywords" content="construction escrow, smart contracts, milestone payments, blockchain construction, XPR Network, stablecoin payments, contractor reputation, construction infrastructure, AI construction, programmable escrow">
+  <meta name="author" content="GCSC Smart Contractor">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="GCSC Smart Contractor — Programmable Construction Escrow">
+  <meta property="og:description" content="AI-powered escrow and milestone settlement infrastructure for the construction industry. $12T market opportunity.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gcsc.store">
+  <meta property="og:image" content="https://gcsc.store/logo-gcsc-wide.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GCSC Smart Contractor">
+  <meta name="twitter:description" content="Programmable escrow infrastructure for construction. AI, stablecoins, smart contracts.">
+  <link rel="canonical" href="https://gcsc.store">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="logo-product.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "GCSC Smart Contractor",
+    "url": "https://gcsc.store",
+    "logo": "https://gcsc.store/logo-gcsc-wide.jpg",
+    "description": "Programmable escrow infrastructure for the construction industry using AI, stablecoins, and smart contracts",
+    "founder": {
+      "@type": "Person",
+      "name": "Serhiy Melxisedek"
+    },
+    "sameAs": [
+      "https://github.com/Melxisedek75/gcsc-smart-contractor"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GCSC Smart Contractor",
+    "applicationCategory": "BusinessApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "127"
+    }
+  }
+  </script>
+  <meta name="description" content="The first construction marketplace powered by XPR blockchain escrow. Secure smart contracts for homeowners and contractors.">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            surface: '#F8F9FA',
+            border: '#E2E8F0',
+            'text-primary': '#0F172A',
+            'text-secondary': '#475569',
+            accent: '#7C3AED',
+            'accent-blue': '#3B82F6',
+            success: '#10B981',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: auto; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #FFFFFF;
+      color: #0F172A;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #F8F9FA; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+    /* ===== GRADIENT ORBS ===== */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.12;
+      pointer-events: none;
+      will-change: transform;
+    }
+    .orb-1 { width: 500px; height: 500px; background: #7C3AED; top: -10%; left: -10%; animation: orb-drift-1 20s ease-in-out infinite; }
+    .orb-2 { width: 400px; height: 400px; background: #3B82F6; top: 20%; right: -8%; animation: orb-drift-2 25s ease-in-out infinite; }
+    .orb-3 { width: 350px; height: 350px; background: #7C3AED; bottom: -5%; left: 30%; animation: orb-drift-3 22s ease-in-out infinite; }
+    @keyframes orb-drift-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(60px, -40px) scale(1.1); }
+      66% { transform: translate(-30px, 30px) scale(0.95); }
+    }
+    @keyframes orb-drift-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-50px, 40px) scale(1.05); }
+      66% { transform: translate(40px, -30px) scale(0.9); }
+    }
+    @keyframes orb-drift-3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(40px, 30px) scale(1.08); }
+      66% { transform: translate(-40px, -20px) scale(0.92); }
+    }
+
+    /* ===== LOGO LEVITATION ===== */
+    .logo-float {
+      animation: float-header 6s ease-in-out infinite;
+      filter: drop-shadow(0 4px 12px rgba(124,58,237,0.15));
+    }
+    @keyframes float-header {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-4px) rotate(0.3deg); }
+      75% { transform: translateY(4px) rotate(-0.3deg); }
+    }
+    .logo-float-cta {
+      animation: float-cta 4s ease-in-out infinite;
+      filter: drop-shadow(0 20px 40px rgba(124,58,237,0.25));
+    }
+    @keyframes float-cta {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.03); }
+    }
+
+    /* ===== HEADER / NAV ===== */
+    .header {
+      position: sticky; top: 0; z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid #E2E8F0;
+      box-shadow: 0 1px 20px rgba(15,23,42,0.06);
+    }
+    /* header-logo style removed - using full-width banner instead */
+    .nav-link {
+      position: relative;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+      cursor: pointer;
+    }
+    .nav-link:hover { color: #7C3AED; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 2px;
+      background: #7C3AED;
+      border-radius: 1px;
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after { width: 100%; }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 28px;
+      background: #7C3AED; color: #fff;
+      font-size: 14px; font-weight: 600;
+      border-radius: 12px; border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(124,58,237,0.3);
+    }
+    .btn-primary:hover {
+      background: #6D28D9;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(124,58,237,0.4);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-outline {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 28px;
+      background: transparent; color: #0F172A;
+      font-size: 14px; font-weight: 600;
+      border-radius: 12px; border: 1.5px solid #E2E8F0;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-outline:hover {
+      border-color: #7C3AED; color: #7C3AED;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(124,58,237,0.1);
+    }
+
+    /* ===== HERO ===== */
+    .hero { position: relative; overflow: hidden; }
+    .hero-radial {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ===== STATS COUNTER ===== */
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #475569;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .stat-divider {
+      width: 1px;
+      height: 50px;
+      background: linear-gradient(180deg, transparent, #E2E8F0, transparent);
+    }
+
+    /* ===== TABS ===== */
+    .tab-btn {
+      position: relative;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #475569;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.3s ease;
+      border-radius: 12px;
+    }
+    .tab-btn.active { color: #7C3AED; background: rgba(124,58,237,0.08); }
+    .tab-btn:hover:not(.active) { color: #0F172A; background: #F8F9FA; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ===== FEATURE CARDS ===== */
+    .feature-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 20px;
+      padding: 32px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.03), rgba(59,130,246,0.03));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(15,23,42,0.1);
+      border-color: rgba(124,58,237,0.2);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));
+      color: #7C3AED;
+      margin-bottom: 20px;
+    }
+
+    /* ===== HOW IT WORKS STEPS ===== */
+    .step-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(15,23,42,0.08);
+      border-color: rgba(124,58,237,0.2);
+    }
+    .step-number {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 8px 20px rgba(124,58,237,0.3);
+    }
+    .step-connector {
+      position: absolute;
+      top: 65px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, #7C3AED, #3B82F6);
+      opacity: 0.3;
+      z-index: -1;
+    }
+    .step-card:last-child .step-connector { display: none; }
+
+    /* ===== SECURITY BADGES ===== */
+    .security-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .security-card::after {
+      content: '';
+      position: absolute; inset: -1px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.4s ease;
+      filter: blur(8px);
+    }
+    .security-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(124,58,237,0.3);
+      box-shadow: 0 20px 50px rgba(124,58,237,0.1);
+    }
+    .security-card:hover::after { opacity: 0.15; }
+    .security-icon {
+      width: 64px; height: 64px;
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));
+      color: #7C3AED;
+    }
+
+    /* ===== ESCROW DEMO ===== */
+    .escrow-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .escrow-entity {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .escrow-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      background: linear-gradient(135deg, #F8F9FA, #fff);
+      border: 2px solid #E2E8F0;
+    }
+    .escrow-lock {
+      width: 100px; height: 100px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 40px;
+      box-shadow: 0 12px 40px rgba(124,58,237,0.3);
+      position: relative;
+      animation: pulse-lock 3s ease-in-out infinite;
+    }
+    @keyframes pulse-lock {
+      0%, 100% { box-shadow: 0 12px 40px rgba(124,58,237,0.3); transform: scale(1); }
+      50% { box-shadow: 0 16px 50px rgba(124,58,237,0.45); transform: scale(1.03); }
+    }
+    .escrow-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+    .escrow-line {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #E2E8F0, #7C3AED);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .escrow-line::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, #7C3AED, transparent);
+      animation: flow-line 2s ease-in-out infinite;
+    }
+    @keyframes flow-line {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    .escrow-step-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #F8F9FA;
+      border: 2px solid #E2E8F0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      transition: all 0.4s ease;
+    }
+    .escrow-step-dot.completed {
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      border-color: transparent;
+      color: #fff;
+    }
+    .escrow-progress-bar {
+      height: 8px;
+      background: #E2E8F0;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .escrow-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7C3AED, #3B82F6);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===== CTA SECTION ===== */
+    .cta-section {
+      background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .cta-input {
+      padding: 16px 24px;
+      font-size: 16px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      outline: none;
+      width: 100%;
+      max-width: 360px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    .cta-input::placeholder { color: rgba(255,255,255,0.6); }
+    .cta-input:focus {
+      border-color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    .btn-white {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 16px 32px;
+      background: #fff; color: #7C3AED;
+      font-size: 15px; font-weight: 700;
+      border-radius: 14px; border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      white-space: nowrap;
+    }
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    }
+
+    /* ===== FOOTER ===== */
+    .footer-link {
+      color: #475569;
+      font-size: 14px;
+      transition: color 0.3s ease;
+      text-decoration: none;
+    }
+    .footer-link:hover { color: #7C3AED; }
+    .footer-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+    .social-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: #F8F9FA;
+      display: flex; align-items: center; justify-content: center;
+      color: #475569;
+      transition: all 0.3s ease;
+      border: 1px solid #E2E8F0;
+    }
+    .social-icon:hover {
+      background: #7C3AED;
+      color: #fff;
+      border-color: #7C3AED;
+      transform: translateY(-3px);
+    }
+
+    /* ===== ANIMATED COUNTER ===== */
+    .counter-value { display: inline-block; }
+
+    /* ===== SECTION LABELS ===== */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(124,58,237,0.08);
+      color: #7C3AED;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
+
+    /* ===== CHECKMARK ANIMATION ===== */
+    .checkmark-circle {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .checkmark-circle.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .step-connector { display: none; }
+      .stat-number { font-size: 28px; }
+    }
+    @media (max-width: 768px) {
+      .stat-divider { display: none; }
+      .escrow-arrow { transform: rotate(90deg); margin: 16px 0; }
+      .step-connector { display: none; }
+      .nav-desktop { display: none; }
+    }
+
+    /* ===== REVEAL CLASSES ===== */
+    .reveal { opacity: 0; transform: translateY(40px); }
+    .reveal-left { opacity: 0; transform: translateX(-40px); }
+    .reveal-right { opacity: 0; transform: translateX(40px); }
+    .reveal-scale { opacity: 0; transform: scale(0.9); }
+  </style>
+</head>
+<body class="font-inter antialiased">
+
+  <!-- ===== FULL-WIDE LOGO BANNER ===== -->
+  <div class="w-full bg-white">
+    <img
+      src="logo-gcsc-wide.jpg"
+      alt="GCSC Smart Contract"
+      class="w-full h-auto block"
+      style="max-height: 200px; object-fit: cover; object-position: center;"
+    >
+  </div>
+
+  <!-- ===== HEADER / NAV ===== -->
+  <header class="header" id="header">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-[64px]">
+        <!-- Desktop Nav -->
+        <nav class="hidden lg:flex items-center gap-8 nav-desktop mx-auto">
+          <span class="nav-link" data-scroll-to="#features">Features</span>
+          <span class="nav-link" data-scroll-to="#how-it-works">How It Works</span>
+          <span class="nav-link" data-scroll-to="#security">Security</span>
+          <span class="nav-link" data-scroll-to="#escrow">Escrow</span>
+        </nav>
+
+        <!-- CTA + Mobile Menu -->
+        <div class="flex items-center gap-4 ml-auto">
+          <button class="btn-primary hidden sm:flex" data-scroll-to="#cta">
+            <span>Get Started</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+          <!-- Mobile Menu Button -->
+          <button class="lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors" id="mobile-menu-btn" aria-label="Open menu">
+            <i data-lucide="menu" class="w-6 h-6 text-text-primary"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="lg:hidden hidden" id="mobile-menu">
+      <div class="px-4 py-6 border-t border-border bg-white/95 backdrop-blur-xl space-y-4">
+        <a href="#features" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Features</a>
+        <a href="#how-it-works" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">How It Works</a>
+        <a href="#security" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Security</a>
+        <a href="#escrow" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Escrow</a>
+        <button class="btn-primary w-full mt-4" data-scroll-to="#cta">Get Started</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== HERO SECTION ===== -->
+  <section class="hero min-h-screen flex items-center relative" id="hero">
+    <div class="hero-radial"></div>
+    <!-- Gradient Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative z-10 w-full">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <!-- Left Content -->
+        <div class="text-center lg:text-left">
+          <div class="section-label mx-auto lg:mx-0 reveal">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>XPR Blockchain Powered</span>
+          </div>
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-text-primary leading-[1.05] tracking-tight mb-6 reveal" style="transition-delay: 0.2s;">
+            Build with Trust.<br>
+            <span class="bg-gradient-to-r from-accent to-accent-blue bg-clip-text text-transparent">Pay with Confidence.</span>
+          </h1>
+          <p class="text-lg sm:text-xl text-text-secondary leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 reveal" style="transition-delay: 0.3s;">
+            The first construction marketplace powered by XPR blockchain escrow. Smart contracts protect every payment, every milestone, every project.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12 reveal" style="transition-delay: 0.4s;">
+            <button class="btn-primary text-base px-8 py-4" data-scroll-to="#cta">
+              <span>Get Started</span>
+              <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+            <button class="btn-outline text-base px-8 py-4" data-scroll-to="#how-it-works">
+              <span>Learn More</span>
+              <i data-lucide="play-circle" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <!-- Stats -->
+          <div class="flex flex-wrap items-center justify-center lg:justify-start gap-6 sm:gap-0 reveal" style="transition-delay: 0.5s;" id="stats-row">
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number"><span class="counter-value" data-target="2847">0</span>+</div>
+              <div class="stat-label">Contracts</div>
+            </div>
+            <div class="stat-divider hidden sm:block"></div>
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number">$<span class="counter-value" data-target="12">0</span>M+</div>
+              <div class="stat-label">Secured</div>
+            </div>
+            <div class="stat-divider hidden sm:block"></div>
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number"><span class="counter-value" data-target="500">0</span>+</div>
+              <div class="stat-label">Contractors</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Visual -->
+        <div class="hidden lg:flex items-center justify-center reveal-scale" style="transition-delay: 0.3s;">
+          <div class="relative">
+            <!-- Main floating card -->
+            <div class="relative w-[420px] h-[420px] rounded-[40px] bg-gradient-to-br from-accent/5 to-accent-blue/5 border border-border/60 flex items-center justify-center" style="animation: float-cta 8s ease-in-out infinite;">
+              <div class="text-center">
+                <div class="w-32 h-32 rounded-full mx-auto mb-6 flex items-center justify-center" style="background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));">
+                  <img src="logo-company.jpg" alt="GCSC" class="w-28 h-28 rounded-full object-cover">
+                </div>
+                <h3 class="text-2xl font-bold text-text-primary mb-2">GCSC Smart Contract</h3>
+                <p class="text-text-secondary">Blockchain Escrow</p>
+                <!-- Floating badges -->
+                <div class="flex justify-center gap-3 mt-6">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-accent/10 text-accent">
+                    <i data-lucide="shield" class="w-3 h-3"></i> Protected
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-accent-blue/10 text-accent-blue">
+                    <i data-lucide="zap" class="w-3 h-3"></i> Instant
+                  </span>
+                </div>
+              </div>
+            </div>
+            <!-- Floating mini cards -->
+            <div class="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-border/60" style="animation: float-header 5s ease-in-out infinite;">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <i data-lucide="check-circle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-text-primary">Payment Released</p>
+                  <p class="text-[10px] text-text-secondary">Milestone 2 of 3</p>
+                </div>
+              </div>
+            </div>
+            <div class="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl p-4 border border-border/60" style="animation: float-header 7s ease-in-out infinite 1s;">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                  <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-text-primary">$24,500 in Escrow</p>
+                  <p class="text-[10px] text-text-secondary">AES-256 Encrypted</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURES TABS SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-surface relative" id="features">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Features</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          Built for Everyone in Construction
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Whether you are hiring or getting hired, our smart contract platform protects both sides.
+        </p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex justify-center gap-2 mb-12 reveal" style="transition-delay: 0.1s;">
+        <button class="tab-btn active" data-tab="homeowners">
+          <span class="flex items-center gap-2">
+            <i data-lucide="home" class="w-4 h-4"></i>
+            For Homeowners
+          </span>
+        </button>
+        <button class="tab-btn" data-tab="contractors">
+          <span class="flex items-center gap-2">
+            <i data-lucide="hard-hat" class="w-4 h-4"></i>
+            For Contractors
+          </span>
+        </button>
+      </div>
+
+      <!-- Tab Content: Homeowners -->
+      <div class="tab-content active" id="tab-homeowners">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-card reveal">
+            <div class="feature-icon">
+              <i data-lucide="file-plus" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Post Your Project</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Describe your construction project in minutes. Set your budget, timeline, and requirements. Get matched with qualified contractors instantly.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.1s;">
+            <div class="feature-icon">
+              <i data-lucide="trending-down" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Receive Competitive Bids</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Multiple contractors bid on your project. Compare prices, portfolios, and ratings. Choose the best fit for your budget and vision.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.2s;">
+            <div class="feature-icon">
+              <i data-lucide="shield-check" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Escrow Protection</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Your funds are held in a secure XPR blockchain escrow. Payments are only released when milestones are completed to your satisfaction.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.3s;">
+            <div class="feature-icon">
+              <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Milestone Tracking</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Track progress with automated milestone verification. Each phase is documented, verified, and approved before payment release.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.4s;">
+            <div class="feature-icon">
+              <i data-lucide="message-square" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Direct Messaging</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Communicate directly with your contractor through our secure platform. All conversations are encrypted and stored for reference.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.5s;">
+            <div class="feature-icon">
+              <i data-lucide="star" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Verified Reviews</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Read authentic reviews from verified homeowners. Our blockchain-backed review system ensures every rating is genuine and tamper-proof.
+            </p>
+          </div>
+        </div>
+        <!-- Product Logo in Features -->
+        <div class="mt-16 text-center reveal">
+          <p class="text-sm text-text-secondary mb-4">Powered by</p>
+          <img src="logo-product.png" alt="SC Smart Contractor" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+        </div>
+      </div>
+
+      <!-- Tab Content: Contractors -->
+      <div class="tab-content" id="tab-contractors">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="search" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Find Quality Jobs</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Browse a curated list of construction projects in your area. Filter by project type, budget range, and location to find the perfect match.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="send" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Place Bids Easily</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Submit professional bids with detailed proposals, timelines, and pricing. Stand out with your portfolio and verified credentials.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="wallet" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Guaranteed Payment</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Funds are locked in escrow before work begins. Get paid automatically when milestones are verified. No more chasing payments.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="award" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Build Your Reputation</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Earn blockchain-verified credentials and ratings. Your reputation grows with every completed project, attracting higher-value clients.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Business Analytics</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Track your earnings, win rates, and project history. Use data insights to optimize your bidding strategy and grow your business.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="users" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Network & Grow</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Connect with other professionals in the industry. Join a community of verified contractors and access exclusive partnership opportunities.
+            </p>
+          </div>
+        </div>
+        <!-- Product Logo in Features -->
+        <div class="mt-16 text-center">
+          <p class="text-sm text-text-secondary mb-4">Powered by</p>
+          <img src="logo-product.png" alt="SC Smart Contractor" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-white relative" id="how-it-works">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="route" class="w-4 h-4"></i>
+          <span>Process</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          How It Works
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Three simple steps to secure, smart construction contracts powered by blockchain.
+        </p>
+      </div>
+
+      <!-- Steps -->
+      <div class="grid md:grid-cols-3 gap-8 relative">
+        <!-- Step 1 -->
+        <div class="step-card reveal">
+          <div class="step-connector hidden md:block"></div>
+          <div class="step-number">1</div>
+          <div class="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-6 text-accent">
+            <i data-lucide="file-text" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Post Your Project</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Homeowners describe their project needs, set a budget range, and specify their timeline. Our AI helps optimize your project listing for the best contractor matches.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card reveal" style="transition-delay: 0.15s;">
+          <div class="step-connector hidden md:block"></div>
+          <div class="step-number">2</div>
+          <div class="w-16 h-16 rounded-2xl bg-accent-blue/10 flex items-center justify-center mx-auto mb-6 text-accent-blue">
+            <i data-lucide="users" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Contractors Bid</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Verified contractors review your project and submit competitive bids. Compare portfolios, read verified reviews, and chat with prospects before making your choice.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card reveal" style="transition-delay: 0.3s;">
+          <div class="step-number">3</div>
+          <div class="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-6 text-success">
+            <i data-lucide="shield-check" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Smart Contract Escrow</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Funds are locked in XPR blockchain escrow. As each milestone is completed and approved, payment is automatically released. Everyone is protected.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bottom CTA -->
+      <div class="text-center mt-16 reveal">
+        <button class="btn-primary text-base px-8 py-4" data-scroll-to="#cta">
+          <span>Start Your Project</span>
+          <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECURITY SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-surface relative" id="security">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="lock" class="w-4 h-4"></i>
+          <span>Security</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          Your Money's Safe Space
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Military-grade security meets blockchain transparency. Every transaction is protected at the highest level.
+        </p>
+      </div>
+
+      <!-- Security Cards -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="security-card reveal">
+          <div class="security-icon">
+            <i data-lucide="key-round" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">AES-256 Encryption</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Bank-level encryption protects all your data and communications. The same standard used by governments and financial institutions worldwide.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.1s;">
+          <div class="security-icon">
+            <i data-lucide="link" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">XPR Blockchain</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Every transaction is recorded on the XPR blockchain, creating an immutable, transparent ledger that cannot be altered or tampered with.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.2s;">
+          <div class="security-icon">
+            <i data-lucide="hard-drive" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">Google Drive Vault</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            All project documents, contracts, and media are backed up to encrypted Google Drive storage with redundancy across multiple regions.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.3s;">
+          <div class="security-icon">
+            <i data-lucide="file-check" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">Smart Contract Protected</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Self-executing smart contracts automatically enforce terms. No middlemen, no delays, no disputes over payment conditions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ESCROW DEMO SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-white relative" id="escrow">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="eye" class="w-4 h-4"></i>
+          <span>Live Demo</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          See How Escrow Works
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Watch how funds flow securely from homeowner to contractor through our blockchain escrow.
+        </p>
+      </div>
+
+      <!-- Escrow Visual Flow -->
+      <div class="reveal">
+        <!-- Progress Bar -->
+        <div class="mb-12">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-semibold text-text-primary">Escrow Progress</span>
+            <span class="text-sm font-semibold text-accent" id="escrow-progress-text">0%</span>
+          </div>
+          <div class="escrow-progress-bar">
+            <div class="escrow-progress-fill" id="escrow-progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Flow -->
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
+          <!-- Homeowner -->
+          <div class="escrow-entity">
+            <div class="escrow-avatar" id="homeowner-avatar" style="transition: all 0.5s ease;">
+              <i data-lucide="home" class="w-10 h-10 text-accent"></i>
+            </div>
+            <p class="font-semibold text-text-primary">Homeowner</p>
+            <p class="text-xs text-text-secondary">Deposits $25,000</p>
+          </div>
+
+          <!-- Arrow 1 -->
+          <div class="escrow-arrow hidden md:flex">
+            <div class="escrow-line"></div>
+            <i data-lucide="arrow-right" class="w-5 h-5 text-accent"></i>
+          </div>
+          <div class="md:hidden">
+            <i data-lucide="arrow-down" class="w-6 h-6 text-accent"></i>
+          </div>
+
+          <!-- Escrow Lock -->
+          <div class="escrow-entity">
+            <div class="escrow-lock" id="escrow-lock">
+              <i data-lucide="lock" class="w-12 h-12"></i>
+            </div>
+            <p class="font-semibold text-text-primary">XPR Escrow</p>
+            <p class="text-xs text-text-secondary">Funds Secured</p>
+          </div>
+
+          <!-- Arrow 2 -->
+          <div class="escrow-arrow hidden md:flex">
+            <div class="escrow-line" style="background: linear-gradient(90deg, #7C3AED, #10B981);"></div>
+            <i data-lucide="arrow-right" class="w-5 h-5 text-success"></i>
+          </div>
+          <div class="md:hidden">
+            <i data-lucide="arrow-down" class="w-6 h-6 text-success"></i>
+          </div>
+
+          <!-- Contractor -->
+          <div class="escrow-entity">
+            <div class="escrow-avatar" id="contractor-avatar" style="transition: all 0.5s ease;">
+              <i data-lucide="hard-hat" class="w-10 h-10 text-accent-blue"></i>
+            </div>
+            <p class="font-semibold text-text-primary">Contractor</p>
+            <p class="text-xs text-text-secondary">Gets Paid on Completion</p>
+          </div>
+        </div>
+
+        <!-- Steps Timeline -->
+        <div class="mt-16">
+          <div class="flex items-start justify-between gap-4 max-w-2xl mx-auto">
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot completed" data-step="1">
+                <i data-lucide="check" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Deposit</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Funds locked in escrow</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gradient-to-r from-accent to-accent-blue mt-[18px] rounded-full"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="2">
+                <span>2</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Work</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Contractor completes job</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gray-200 mt-[18px] rounded-full" id="step-line-2"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="3">
+                <span>3</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Verify</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Homeowner approves</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gray-200 mt-[18px] rounded-full" id="step-line-3"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="4">
+                <span>4</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Release</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Payment sent</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo Button -->
+        <div class="text-center mt-12">
+          <button class="btn-primary" id="run-escrow-demo">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>Run Escrow Simulation</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA SECTION ===== -->
+  <section class="cta-section py-24 lg:py-32 relative" id="cta">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <!-- Left: Content -->
+        <div class="text-center lg:text-left reveal">
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-6 leading-tight">
+            Ready to Build Smarter?
+          </h2>
+          <p class="text-lg text-white/70 mb-8 max-w-lg mx-auto lg:mx-0">
+            Join thousands of homeowners and contractors who trust GCSC Smart Contract for secure, transparent construction payments.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <div class="relative flex-1 max-w-sm mx-auto lg:mx-0">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                class="cta-input pr-[140px]"
+                aria-label="Email address for early access"
+              >
+              <button class="btn-white absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2.5 text-sm" id="cta-btn">
+                Get Access
+              </button>
+            </div>
+          </div>
+          <p class="text-sm text-white/50 mt-4">
+            <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+            Free to join. No credit card required.
+          </p>
+        </div>
+
+        <!-- Right: Floating Round Logo -->
+        <div class="hidden lg:flex items-center justify-center reveal-scale" style="transition-delay: 0.2s;">
+          <div class="relative">
+            <img
+              src="logo-company.jpg"
+              alt="GCSC"
+              class="w-56 h-56 rounded-full logo-float-cta border-4 border-white/20 object-cover"
+            >
+            <!-- Orbiting elements -->
+            <div class="absolute inset-0" style="animation: spin 20s linear infinite;">
+              <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white/30"></div>
+            </div>
+            <div class="absolute inset-[-20px]" style="animation: spin 30s linear infinite reverse;">
+              <div class="absolute top-1/2 -right-2 -translate-y-1/2 w-3 h-3 rounded-full bg-white/20"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-surface pt-16 pb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <!-- Product -->
+        <div>
+          <h4 class="footer-heading">Product</h4>
+          <ul class="space-y-3">
+            <li><a href="#features" class="footer-link">Features</a></li>
+            <li><a href="#" class="footer-link">Pricing</a></li>
+            <li><a href="#security" class="footer-link">Security</a></li>
+            <li><a href="#" class="footer-link">API</a></li>
+          </ul>
+        </div>
+        <!-- Company -->
+        <div>
+          <h4 class="footer-heading">Company</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="footer-link">About</a></li>
+            <li><a href="#" class="footer-link">Careers</a></li>
+            <li><a href="#" class="footer-link">Blog</a></li>
+            <li><a href="#" class="footer-link">Contact</a></li>
+          </ul>
+        </div>
+        <!-- Legal -->
+        <div>
+          <h4 class="footer-heading">Legal</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="footer-link">Terms of Service</a></li>
+            <li><a href="#" class="footer-link">Privacy Policy</a></li>
+            <li><a href="#" class="footer-link">Cookie Policy</a></li>
+          </ul>
+        </div>
+        <!-- Connect -->
+        <div>
+          <h4 class="footer-heading">Connect</h4>
+          <div class="flex gap-3">
+            <a href="#" class="social-icon" aria-label="Twitter">
+              <i data-lucide="twitter" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="LinkedIn">
+              <i data-lucide="linkedin" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="GitHub">
+              <i data-lucide="github" class="w-5 h-5"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img src="logo-company.jpg" alt="GCSC" class="w-8 h-8 rounded-full object-cover">
+          <p class="text-sm text-text-secondary">
+            &copy; <span id="year"></span> GCSC Smart Contract. All rights reserved.
+          </p>
+        </div>
+        <p class="text-xs text-text-secondary/60">
+          Built on XPR Network. Secured by Blockchain.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== JAVASCRIPT ===== -->
+  <!-- Lenis Smooth Scroll -->
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.0/bundled/lenis.min.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      // ===== Initialize Lucide Icons =====
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
+
+      // ===== Year in Footer =====
+      var yearEl = document.getElementById('year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+      // ===== Lenis Smooth Scroll =====
+      var lenis;
+      try {
+        lenis = new Lenis({
+          duration: 1.2,
+          easing: function(t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
+          direction: 'vertical',
+          gestureDirection: 'vertical',
+          smooth: true,
+          mouseMultiplier: 1,
+          smoothTouch: false,
+          touchMultiplier: 2,
+          infinite: false,
+        });
+
+        function raf(time) {
+          lenis.raf(time);
+          requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        // Connect Lenis to GSAP ScrollTrigger
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(function(time) {
+          lenis.raf(time * 1000);
+        });
+        gsap.ticker.lagSmoothing(0);
+      } catch(e) {
+        console.warn('Lenis failed to initialize:', e);
+      }
+
+      // ===== Smooth Scroll to Sections =====
+      var scrollTargets = document.querySelectorAll('[data-scroll-to]');
+      scrollTargets.forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          e.preventDefault();
+          var target = document.querySelector(this.dataset.scrollTo);
+          if (target) {
+            if (lenis) {
+              lenis.scrollTo(target, { offset: -80 });
+            } else {
+              target.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+          // Close mobile menu if open
+          var mobileMenu = document.getElementById('mobile-menu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+        });
+      });
+
+      // ===== Header Shadow on Scroll =====
+      var header = document.getElementById('header');
+      window.addEventListener('scroll', function() {
+        if (window.scrollY > 10) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+      }, { passive: true });
+
+      // ===== Mobile Menu Toggle =====
+      var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener('click', function() {
+          mobileMenu.classList.toggle('hidden');
+        });
+      }
+
+      // ===== GSAP ScrollTrigger Animations =====
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Reveal animations - fade in up
+      var revealElements = document.querySelectorAll('.reveal');
+      revealElements.forEach(function(el) {
+        var delay = parseFloat(el.style.transitionDelay) || 0;
+        gsap.to(el, {
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+          opacity: 1,
+          y: 0,
+          x: 0,
+          scale: 1,
+          duration: 0.9,
+          delay: delay,
+          ease: 'power3.out',
+        });
+      });
+
+      // Reveal scale animations
+      var revealScaleElements = document.querySelectorAll('.reveal-scale');
+      revealScaleElements.forEach(function(el) {
+        var delay = parseFloat(el.style.transitionDelay) || 0;
+        gsap.to(el, {
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+          opacity: 1,
+          scale: 1,
+          duration: 1,
+          delay: delay,
+          ease: 'back.out(1.2)',
+        });
+      });
+
+      // Stagger cards within sections
+      var featureCards = document.querySelectorAll('#tab-homeowners .feature-card');
+      if (featureCards.length) {
+        gsap.from(featureCards, {
+          scrollTrigger: {
+            trigger: '#tab-homeowners',
+            start: 'top 75%',
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: 'power2.out',
+        });
+      }
+
+      var contractorCards = document.querySelectorAll('#tab-contractors .feature-card');
+      if (contractorCards.length) {
+        gsap.set(contractorCards, { opacity: 0, y: 50 });
+      }
+
+      var stepCards = document.querySelectorAll('.step-card');
+      if (stepCards.length) {
+        gsap.from(stepCards, {
+          scrollTrigger: {
+            trigger: '#how-it-works .grid',
+            start: 'top 75%',
+          },
+          y: 60,
+          opacity: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: 'power2.out',
+        });
+      }
+
+      var securityCards = document.querySelectorAll('.security-card');
+      if (securityCards.length) {
+        gsap.from(securityCards, {
+          scrollTrigger: {
+            trigger: '#security .grid',
+            start: 'top 75%',
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: 'power2.out',
+        });
+      }
+
+      // Hero parallax
+      gsap.to('.hero .orb', {
+        scrollTrigger: {
+          trigger: '.hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1,
+        },
+        y: 100,
+        ease: 'none',
+      });
+
+      // ===== TAB SWITCHING =====
+      var tabBtns = document.querySelectorAll('.tab-btn');
+      var tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tabId = this.dataset.tab;
+
+          // Update buttons
+          tabBtns.forEach(function(b) { b.classList.remove('active'); });
+          this.classList.add('active');
+
+          // Update content with animation
+          tabContents.forEach(function(content) {
+            if (content.classList.contains('active')) {
+              gsap.to(content, {
+                opacity: 0,
+                y: 15,
+                duration: 0.25,
+                onComplete: function() {
+                  content.classList.remove('active');
+                  var target = document.getElementById('tab-' + tabId);
+                  if (target) {
+                    target.classList.add('active');
+                    gsap.fromTo(target,
+                      { opacity: 0, y: 20 },
+                      { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+                    );
+                    // Animate cards inside
+                    var cards = target.querySelectorAll('.feature-card');
+                    gsap.fromTo(cards,
+                      { opacity: 0, y: 40 },
+                      { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'power2.out', delay: 0.1 }
+                    );
+                  }
+                }
+              });
+            }
+          });
+        });
+      });
+
+      // ===== ANIMATED COUNTERS =====
+      var counters = document.querySelectorAll('.counter-value');
+      var countersTriggered = false;
+
+      function animateCounters() {
+        if (countersTriggered) return;
+        var statsRow = document.getElementById('stats-row');
+        if (!statsRow) return;
+        var rect = statsRow.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          countersTriggered = true;
+          counters.forEach(function(counter) {
+            var target = parseInt(counter.dataset.target, 10);
+            var duration = 2000;
+            var start = null;
+
+            function step(timestamp) {
+              if (!start) start = timestamp;
+              var progress = Math.min((timestamp - start) / duration, 1);
+              // Ease out quart
+              var eased = 1 - Math.pow(1 - progress, 4);
+              var current = Math.floor(eased * target);
+              counter.textContent = current.toLocaleString();
+              if (progress < 1) {
+                requestAnimationFrame(step);
+              } else {
+                counter.textContent = target.toLocaleString();
+              }
+            }
+            requestAnimationFrame(step);
+          });
+        }
+      }
+
+      window.addEventListener('scroll', animateCounters, { passive: true });
+      // Check on load too
+      animateCounters();
+
+      // ===== ESCROW DEMO SIMULATION =====
+      var escrowDemoBtn = document.getElementById('run-escrow-demo');
+      if (escrowDemoBtn) {
+        escrowDemoBtn.addEventListener('click', function() {
+          var steps = [2, 3, 4];
+          var progressFill = document.getElementById('escrow-progress-fill');
+          var progressText = document.getElementById('escrow-progress-text');
+          var homeownerAvatar = document.getElementById('homeowner-avatar');
+          var contractorAvatar = document.getElementById('contractor-avatar');
+          var escrowLock = document.getElementById('escrow-lock');
+          var stepLine2 = document.getElementById('step-line-2');
+          var stepLine3 = document.getElementById('step-line-3');
+
+          // Reset
+          steps.forEach(function(s) {
+            var dot = document.querySelector('[data-step="' + s + '"]');
+            if (dot) {
+              dot.classList.remove('completed');
+              dot.innerHTML = '<span>' + s + '</span>';
+            }
+          });
+          if (progressFill) progressFill.style.width = '0%';
+          if (progressText) progressText.textContent = '0%';
+          if (homeownerAvatar) {
+            homeownerAvatar.style.borderColor = '#E2E8F0';
+            homeownerAvatar.style.background = 'linear-gradient(135deg, #F8F9FA, #fff)';
+          }
+          if (contractorAvatar) {
+            contractorAvatar.style.borderColor = '#E2E8F0';
+            contractorAvatar.style.background = 'linear-gradient(135deg, #F8F9FA, #fff)';
+          }
+          if (escrowLock) escrowLock.style.background = 'linear-gradient(135deg, #7C3AED, #3B82F6)';
+          if (stepLine2) { stepLine2.classList.remove('bg-gradient-to-r', 'from-accent', 'to-accent-blue'); stepLine2.classList.add('bg-gray-200'); }
+          if (stepLine3) { stepLine3.classList.remove('bg-gradient-to-r', 'from-accent-blue', 'to-success'); stepLine3.classList.add('bg-gray-200'); }
+
+          this.disabled = true;
+          this.innerHTML = '<svg class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Simulating...';
+
+          // Step 1: Deposit (already completed)
+          if (progressFill) progressFill.style.width = '25%';
+          if (progressText) progressText.textContent = '25%';
+          if (homeownerAvatar) {
+            homeownerAvatar.style.borderColor = '#7C3AED';
+            homeownerAvatar.style.background = 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1))';
+          }
+
+          setTimeout(function() {
+            // Step 2: Work
+            var dot2 = document.querySelector('[data-step="2"]');
+            if (dot2) {
+              dot2.classList.add('completed');
+              dot2.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '50%';
+            if (progressText) progressText.textContent = '50%';
+            if (stepLine2) { stepLine2.classList.remove('bg-gray-200'); stepLine2.classList.add('bg-gradient-to-r', 'from-accent', 'to-accent-blue'); }
+          }, 1200);
+
+          setTimeout(function() {
+            // Step 3: Verify
+            var dot3 = document.querySelector('[data-step="3"]');
+            if (dot3) {
+              dot3.classList.add('completed');
+              dot3.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '75%';
+            if (progressText) progressText.textContent = '75%';
+            if (stepLine3) { stepLine3.classList.remove('bg-gray-200'); stepLine3.classList.add('bg-gradient-to-r', 'from-accent-blue', 'to-success'); }
+            if (escrowLock) escrowLock.style.background = 'linear-gradient(135deg, #10B981, #3B82F6)';
+          }, 2400);
+
+          setTimeout(function() {
+            // Step 4: Release
+            var dot4 = document.querySelector('[data-step="4"]');
+            if (dot4) {
+              dot4.classList.add('completed');
+              dot4.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressText) progressText.textContent = '100%';
+            if (contractorAvatar) {
+              contractorAvatar.style.borderColor = '#10B981';
+              contractorAvatar.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1))';
+            }
+
+            escrowDemoBtn.disabled = false;
+            escrowDemoBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Again';
+          }, 3600);
+        });
+      }
+
+      // ===== CTA BUTTON =====
+      var ctaBtn = document.getElementById('cta-btn');
+      if (ctaBtn) {
+        ctaBtn.addEventListener('click', function() {
+          var input = this.closest('.relative').querySelector('input[type="email"]');
+          if (input && input.value) {
+            alert('Thank you! We will contact you at ' + input.value + ' with early access details.');
+            input.value = '';
+          } else {
+            alert('Please enter your email address.');
+          }
+        });
+      }
+
+      // ===== SPIN KEYFRAME FOR CTA ORBIT =====
+      var styleSheet = document.createElement('style');
+      styleSheet.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+      document.head.appendChild(styleSheet);
+
+    })();
+  </script>
+</body>
+</html>

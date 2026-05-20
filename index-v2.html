@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCSC Smart Contractor — Secure Construction Payments</title>
+  <meta name="description" content="AI-powered construction escrow and milestone payments on XPR Network. No upfront risk for homeowners. Guaranteed payment for contractors.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { 50:'#f5f3ff',100:'#ede9fe',200:'#ddd6fe',300:'#c4b5fd',400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed',700:'#6d28d9',800:'#5b21b6',900:'#4c1d95' },
+            dark: { 900:'#0a0a0f',800:'#12121e',700:'#1a1a2e',600:'#1f1f3a' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0a0a0f; color: #fff; -webkit-font-smoothing: antialiased; }
+    .gradient-text { background: linear-gradient(135deg, #a78bfa, #ff8c00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .glow { box-shadow: 0 0 60px rgba(124,58,237,.15); }
+    .card-hover { transition: all .3s ease; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,.4); border-color: rgba(124,58,237,.3); }
+    .gradient-border { position: relative; border-radius: 20px; padding: 2px; background: linear-gradient(135deg, #7c3aed, #ff8c00); }
+    .gradient-border-inner { background: #12121e; border-radius: 18px; padding: 32px; height: 100%; }
+  </style>
+</head>
+<body class="bg-dark-900 text-white overflow-x-hidden">
+
+  <!-- NAV -->
+  <nav class="fixed top-0 w-full z-50 bg-dark-900/90 backdrop-blur-xl border-b border-white/5">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-sm font-bold">G</div>
+        <span class="font-bold text-lg tracking-tight">GCSC<span class="text-brand-400 text-sm font-medium ml-1">Smart Contractor</span></span>
+      </a>
+      <div class="hidden md:flex gap-8 text-sm text-gray-400">
+        <a href="#how-it-works" class="hover:text-white transition-colors">How it Works</a>
+        <a href="#for-homeowners" class="hover:text-white transition-colors">For Homeowners</a>
+        <a href="#for-contractors" class="hover:text-white transition-colors">For Contractors</a>
+        <a href="#security" class="hover:text-white transition-colors">Security</a>
+      </div>
+      <a href="#beta" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-sm font-semibold transition-all">Join Beta</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="relative min-h-screen flex items-center pt-16">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(124,58,237,.12),transparent)]"></div>
+    <div class="max-w-6xl mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-16 items-center">
+      <div data-aos="fade-up">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs font-semibold tracking-wider uppercase mb-6">
+          <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+          Now in Beta — XPR Network Powered
+        </div>
+        <h1 class="text-5xl md:text-7xl font-black leading-[1.05] tracking-tight mb-6">
+          Pay for Results,<br>Not Promises
+        </h1>
+        <p class="text-lg text-gray-400 leading-relaxed mb-8 max-w-lg">
+          Construction payments, reimagined. Your money stays in blockchain escrow until each milestone is verified. Contractors get guaranteed payment. Homeowners get guaranteed delivery.
+        </p>
+        <div class="flex gap-4 flex-wrap">
+          <a href="#beta" class="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 font-semibold transition-all glow">Join the Beta</a>
+          <a href="#how-it-works" class="px-6 py-3 rounded-xl border border-white/10 hover:border-white/30 font-semibold transition-all">See How It Works</a>
+        </div>
+        <div class="mt-12 flex items-center gap-6 text-sm text-gray-500">
+          <div class="flex items-center gap-2"><span class="text-brand-400">✓</span> No upfront payments</div>
+          <div class="flex items-center gap-2"><span class="text-brand-400">✓</span> Milestone-based</div>
+          <div class="flex items-center gap-2"><span class="text-brand-400">✓</span> Blockchain secured</div>
+        </div>
+      </div>
+      <div class="relative hidden md:block" data-aos="fade-left" data-aos-delay="200">
+        <div class="gradient-border">
+          <div class="gradient-border-inner">
+            <div class="text-center py-12">
+              <div class="text-5xl font-black mb-2 gradient-text">$25,000</div>
+              <div class="text-sm text-gray-400 mb-8">Project Escrow Example</div>
+              <div class="space-y-3 text-left max-w-xs mx-auto">
+                <div class="flex items-center justify-between p-3 rounded-lg bg-dark-800 border border-white/5">
+                  <span class="text-sm text-gray-300">Milestone 1: Foundation</span>
+                  <span class="text-sm font-semibold text-brand-400">$8,000</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-lg bg-dark-800 border border-white/5">
+                  <span class="text-sm text-gray-300">Milestone 2: Framing</span>
+                  <span class="text-sm font-semibold text-brand-400">$10,000</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-lg bg-dark-800 border border-white/5">
+                  <span class="text-sm text-gray-300">Milestone 3: Finish</span>
+                  <span class="text-sm font-semibold text-brand-400">$7,000</span>
+                </div>
+              </div>
+              <div class="mt-6 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
+                ✓ Funds released only after homeowner approval + AI verification
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM / SOLUTION -->
+  <section class="py-24 bg-dark-800">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16" data-aos="fade-up">
+        <h2 class="text-3xl md:text-5xl font-bold mb-4">The Construction Payment Trap</h2>
+        <p class="text-gray-400 max-w-2xl mx-auto text-lg">The way construction payments work today hurts both sides. We fixed it.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="p-8 rounded-2xl bg-dark-700 border border-red-500/10" data-aos="fade-up" data-aos-delay="0">
+          <h3 class="text-red-400 font-bold text-lg mb-4 flex items-center gap-2">❌ Old Way</h3>
+          <ul class="space-y-3 text-gray-400 text-sm">
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">•</span> Homeowner pays 50% upfront — contractor might disappear</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">•</span> Contractor finishes work — homeowner delays final payment for months</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">•</span> Disputes over "quality" lead to lawsuits and liens</li>
+            <li class="flex items-start gap-2"><span class="text-red-400 mt-0.5">•</span> No verifiable history — every new project is a leap of faith</li>
+          </ul>
+        </div>
+        <div class="p-8 rounded-2xl bg-dark-700 border border-brand-500/20 card-hover" data-aos="fade-up" data-aos-delay="100">
+          <h3 class="text-brand-400 font-bold text-lg mb-4 flex items-center gap-2">✅ GCSC Way</h3>
+          <ul class="space-y-3 text-gray-400 text-sm">
+            <li class="flex items-start gap-2"><span class="text-brand-400 mt-0.5">•</span> Funds locked in escrow — contractor cannot access until verified</li>
+            <li class="flex items-start gap-2"><span class="text-brand-400 mt-0.5">•</span> Payment releases automatically after milestone approval</li>
+            <li class="flex items-start gap-2"><span class="text-brand-400 mt-0.5">•</span> AI + inspection verification removes subjective disputes</li>
+            <li class="flex items-start gap-2"><span class="text-brand-400 mt-0.5">•</span> On-chain reputation — every project builds permanent track record</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16" data-aos="fade-up">
+        <h2 class="text-3xl md:text-5xl font-bold mb-4">Three Steps. Zero Trust Issues.</h2>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="text-center" data-aos="fade-up" data-aos-delay="0">
+          <div class="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-2xl font-black mx-auto mb-6">1</div>
+          <h3 class="font-bold text-xl mb-2">Post Your Project</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Describe your construction needs, set budget, timeline, and milestones. Get matched with verified contractors in your area.</p>
+        </div>
+        <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+          <div class="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-2xl font-black mx-auto mb-6">2</div>
+          <h3 class="font-bold text-xl mb-2">Fund Escrow</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Homeowner deposits funds into XPR blockchain escrow. Money is visible but untouchable until verification. Contractor starts work with confidence.</p>
+        </div>
+        <div class="text-center" data-aos="fade-up" data-aos-delay="200">
+          <div class="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-2xl font-black mx-auto mb-6">3</div>
+          <h3 class="font-bold text-xl mb-2">Verify & Release</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">At each milestone, AI + optional inspector verifies completion. Homeowner approves. Payment releases automatically to contractor.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOR HOMEOWNERS -->
+  <section id="for-homeowners" class="py-24 bg-dark-800">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-16 items-center">
+        <div data-aos="fade-right">
+          <div class="text-brand-400 text-sm font-semibold uppercase tracking-wider mb-2">For Homeowners</div>
+          <h2 class="text-3xl md:text-4xl font-bold mb-6">Sleep Well.<br>Your Money is Safe.</h2>
+          <p class="text-gray-400 mb-8 leading-relaxed">No more hoping the contractor shows up after you pay. No more arguing about "good enough." Every dollar is protected until you confirm the work is done right.</p>
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Deposit funds only when ready — no pressure</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">AI photo verification proves milestone completion</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Dispute resolution with arbiter voting</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-brand-500/20 flex items-center justify-center text-brand-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Contractor reputation visible before you hire</span></li>
+          </ul>
+        </div>
+        <div class="p-8 rounded-3xl bg-gradient-to-br from-brand-600/10 to-transparent border border-brand-500/10" data-aos="fade-left">
+          <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5">
+              <div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold">Project: Kitchen Remodel</span><span class="text-xs text-gray-500">$18,500</span></div>
+              <div class="w-full bg-dark-600 rounded-full h-2 mb-2"><div class="bg-brand-500 h-2 rounded-full" style="width: 66%"></div></div>
+              <div class="text-xs text-gray-400">2 of 3 milestones completed • $12,000 released</div>
+            </div>
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs">✓</div>
+                <div><div class="text-sm font-semibold">Milestone 1 Complete</div><div class="text-xs text-gray-500">Demo & Framing — Verified by AI</div></div>
+              </div>
+            </div>
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs">✓</div>
+                <div><div class="text-sm font-semibold">Milestone 2 Complete</div><div class="text-xs text-gray-500">Electrical & Plumbing — Verified by AI</div></div>
+              </div>
+            </div>
+            <div class="p-4 rounded-xl bg-dark-700 border border-dashed border-white/10 opacity-60">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-500 text-xs">○</div>
+                <div><div class="text-sm font-semibold text-gray-400">Milestone 3: Final Finish</div><div class="text-xs text-gray-500">$6,500 pending approval</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOR CONTRACTORS -->
+  <section id="for-contractors" class="py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-16 items-center">
+        <div class="order-2 md:order-1 p-8 rounded-3xl bg-gradient-to-br from-orange-500/10 to-transparent border border-orange-500/10" data-aos="fade-right">
+          <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5 text-center">
+              <div class="text-3xl font-bold text-orange-400 mb-1">98.7%</div>
+              <div class="text-xs text-gray-500">On-Time Payment Rate</div>
+            </div>
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5 text-center">
+              <div class="text-3xl font-bold text-brand-400 mb-1">$0</div>
+              <div class="text-xs text-gray-500">Collection Agency Fees</div>
+            </div>
+            <div class="p-4 rounded-xl bg-dark-700 border border-white/5 text-center">
+              <div class="text-3xl font-bold text-green-400 mb-1">4.9★</div>
+              <div class="text-xs text-gray-500">Average Contractor Rating</div>
+            </div>
+          </div>
+        </div>
+        <div class="order-1 md:order-2" data-aos="fade-left">
+          <div class="text-orange-400 text-sm font-semibold uppercase tracking-wider mb-2">For Contractors</div>
+          <h2 class="text-3xl md:text-4xl font-bold mb-6">Get Paid.<br>Build Your Reputation.</h2>
+          <p class="text-gray-400 mb-8 leading-relaxed">Stop chasing checks. Stop negotiating with homeowners who "forgot" to pay. Every completed milestone pays automatically. Every successful project builds your on-chain reputation — your most valuable asset.</p>
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Payment releases automatically after verification</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">No more collections, no more "I'll pay next week"</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Verified project history = access to better clients and financing</span></li>
+            <li class="flex items-start gap-3"><div class="w-6 h-6 rounded bg-orange-500/20 flex items-center justify-center text-orange-400 text-xs flex-shrink-0 mt-0.5">✓</div><span class="text-gray-300 text-sm">Bid on projects matched to your skills and location</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECURITY -->
+  <section id="security" class="py-24 bg-dark-800">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16" data-aos="fade-up">
+        <h2 class="text-3xl md:text-5xl font-bold mb-4">Built to Protect Both Sides</h2>
+        <p class="text-gray-400 max-w-2xl mx-auto text-lg">Bank-grade security meets blockchain transparency. You don't have to trust anyone — you verify.</p>
+      </div>
+      <div class="grid md:grid-cols-4 gap-6">
+        <div class="p-6 rounded-2xl bg-dark-700 border border-white/5 card-hover text-center" data-aos="fade-up" data-aos-delay="0">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4 text-brand-400 text-xl">🔒</div>
+          <h3 class="font-bold mb-2">XPR Escrow</h3>
+          <p class="text-gray-400 text-sm">Funds live on XPR Network smart contracts. No single party can access them unilaterally.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-dark-700 border border-white/5 card-hover text-center" data-aos="fade-up" data-aos-delay="100">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4 text-brand-400 text-xl">📸</div>
+          <h3 class="font-bold mb-2">AI Verification</h3>
+          <p class="text-gray-400 text-sm">Computer vision analyzes project photos to confirm milestone completion objectively.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-dark-700 border border-white/5 card-hover text-center" data-aos="fade-up" data-aos-delay="200">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4 text-brand-400 text-xl">⚖️</div>
+          <h3 class="font-bold mb-2">Fair Disputes</h3>
+          <p class="text-gray-400 text-sm">If conflict arises, independent arbiters review evidence and vote on-chain. No lawyers required.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-dark-700 border border-white/5 card-hover text-center" data-aos="fade-up" data-aos-delay="300">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mx-auto mb-4 text-brand-400 text-xl">⛓️</div>
+          <h3 class="font-bold mb-2">Immutable History</h3>
+          <p class="text-gray-400 text-sm">Every contract, payment, and review is recorded on blockchain. Reputation cannot be faked or deleted.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BETA CTA -->
+  <section id="beta" class="py-24">
+    <div class="max-w-4xl mx-auto px-6 text-center" data-aos="fade-up">
+      <h2 class="text-3xl md:text-5xl font-bold mb-6">Join the Beta</h2>
+      <p class="text-gray-400 text-lg leading-relaxed mb-8">We're accepting a limited number of homeowners and contractors for our closed beta. Help shape the future of construction payments.</p>
+      <div class="flex justify-center gap-4 flex-wrap">
+        <a href="mailto:beta@gcsc.store?subject=Beta Application" class="px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-500 font-semibold transition-all glow">Apply as Homeowner</a>
+        <a href="mailto:beta@gcsc.store?subject=Contractor Beta Application" class="px-8 py-4 rounded-xl border border-white/10 hover:border-white/30 font-semibold transition-all">Apply as Contractor</a>
+      </div>
+      <p class="mt-6 text-gray-600 text-sm">Beta access is free. No credit card required. Limited spots available.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 py-12 bg-dark-900">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-8 mb-8">
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-sm font-bold">G</div>
+            <span class="font-bold">GCSC Smart Contractor</span>
+          </div>
+          <p class="text-gray-500 text-sm leading-relaxed">Secure construction payments on XPR Network. A product of Global Construction Smart Contract LLC.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Product</h4>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="#how-it-works" class="hover:text-white transition-colors">How it Works</a></li>
+            <li><a href="#for-homeowners" class="hover:text-white transition-colors">For Homeowners</a></li>
+            <li><a href="#for-contractors" class="hover:text-white transition-colors">For Contractors</a></li>
+            <li><a href="#security" class="hover:text-white transition-colors">Security</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Company</h4>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="https://xprnet.org" class="hover:text-white transition-colors">About GCSC</a></li>
+            <li><span class="hover:text-white transition-colors cursor-pointer">Careers</span></li>
+            <li><a href="mailto:hello@gcsc.store" class="hover:text-white transition-colors">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Legal</h4>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><span class="hover:text-white transition-colors cursor-pointer">Privacy Policy</span></li>
+            <li><span class="hover:text-white transition-colors cursor-pointer">Terms of Service</span></li>
+            <li><span class="hover:text-white transition-colors cursor-pointer">Cookie Policy</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-gray-600 text-sm">© 2026 Global Construction Smart Contract LLC. All rights reserved.</p>
+        <div class="flex gap-4 text-sm text-gray-600">
+          <span>Washington State, USA</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    AOS.init({ duration: 800, once: true, offset: 100 });
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' }); });
+    });
+  </script>
+</body>
+</html>
