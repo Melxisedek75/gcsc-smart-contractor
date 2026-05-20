@@ -185,6 +185,7 @@ NEXT: Writing fixes for HIGH-1 and HIGH-2. Starting with stripe-payments.js auth
 
 PROGRESS UPDATE (2026-05-20):
 ✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL, 3 HIGH, 5 MEDIUM, 3 LOW found
+✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL (WS JWT bypass), 3 HIGH (XSS), 5 MEDIUM, 3 LOW
 ✅ SECURITY SUMMARY: SECURITY-HARDENING-SUMMARY.md — comprehensive report of all fixes, tests, backdoor scan (0 found).
 ✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
