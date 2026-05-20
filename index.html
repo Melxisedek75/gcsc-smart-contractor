@@ -1229,7 +1229,31 @@
     </div>
   </section>
 
-  <!-- ===== CTA SECTION ===== -->
+  <!-- ===== LIVE PROJECTS FROM API ===== -->
+  <section id="projects" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <div class="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-6">
+          <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+          <span class="text-sm font-semibold text-accent tracking-wide uppercase">Live Projects</span>
+        </div>
+        <h2 class="heading-font text-4xl md:text-5xl font-black text-text-primary mb-4">Available Projects</h2>
+        <p class="text-xl text-text-secondary max-w-2xl mx-auto">Real construction projects posted by homeowners. Connect, bid, and build.</p>
+        <div class="mt-6 flex justify-center gap-8 text-center">
+          <div><div class="text-3xl font-bold text-accent" id="stat-projects">6</div><div class="text-sm text-text-secondary">Open Projects</div></div>
+          <div><div class="text-3xl font-bold text-accent" id="stat-contractors">2</div><div class="text-sm text-text-secondary">Active Contractors</div></div>
+          <div><div class="text-3xl font-bold text-accent" id="stat-value">$143K</div><div class="text-sm text-text-secondary">Total Value</div></div>
+        </div>
+      </div>
+      <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Projects loaded dynamically -->
+        <div class="col-span-full text-center py-12">
+          <div class="animate-spin w-8 h-8 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p class="text-text-secondary">Loading projects...</p>
+        </div>
+      </div>
+    </div>
+  </section>
   <section class="cta-section py-24 lg:py-32 relative" id="cta">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <div class="grid lg:grid-cols-2 gap-12 items-center">
@@ -1395,6 +1419,37 @@
           lucide.createIcons();
         }
       });
+
+      // ===== Load Projects from API =====
+      (async function loadProjects() {
+        try {
+          var res = await fetch('https://gcsc-backend.onrender.com/api/projects');
+          var projects = await res.json();
+          var grid = document.getElementById('projects-grid');
+          if (!grid || !projects.projects) return;
+          
+          var html = '';
+          projects.projects.forEach(function(p) {
+            var statusColor = p.status === 'open' ? 'bg-green-100 text-green-700' : p.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
+            var statusText = p.status === 'open' ? 'Open for Bids' : p.status === 'in_progress' ? 'In Progress' : 'Completed';
+            html += '<div class="glass-card rounded-2xl p-6 hover:shadow-lg transition-all reveal">' +
+              '<div class="flex items-center justify-between mb-4">' +
+                '<span class="px-3 py-1 rounded-full text-xs font-semibold ' + statusColor + '">' + statusText + '</span>' +
+                '<span class="text-sm text-text-secondary">' + (p.location || 'Remote') + '</span>' +
+              '</div>' +
+              '<h3 class="text-xl font-bold text-text-primary mb-2">' + p.title + '</h3>' +
+              '<p class="text-text-secondary text-sm mb-4 line-clamp-2">' + (p.description || '') + '</p>' +
+              '<div class="flex items-center justify-between pt-4 border-t border-gray-100">' +
+                '<div class="text-sm"><span class="font-semibold text-text-primary">$' + (p.budget_min || 0).toLocaleString() + '</span> - <span class="font-semibold text-text-primary">$' + (p.budget_max || 0).toLocaleString() + '</span></div>' +
+                '<button class="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:opacity-90 transition-opacity">View Details</button>' +
+              '</div>' +
+            '</div>';
+          });
+          grid.innerHTML = html;
+        } catch (e) {
+          console.error('Failed to load projects:', e);
+        }
+      })();
 
       // ===== Year in Footer =====
       var yearEl = document.getElementById('year');
