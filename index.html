@@ -680,10 +680,10 @@
 
         <!-- CTA + Mobile Menu -->
         <div class="flex items-center gap-4 ml-auto">
-          <button class="btn-primary hidden sm:flex" data-scroll-to="#cta">
+          <a href="login.html" class="btn-primary hidden sm:flex">
             <span>Get Started</span>
             <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
+          </a>
           <!-- Mobile Menu Button -->
           <button class="lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors" id="mobile-menu-btn" aria-label="Open menu">
             <i data-lucide="menu" class="w-6 h-6 text-text-primary"></i>
@@ -699,7 +699,7 @@
         <a href="#how-it-works" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">How It Works</a>
         <a href="#security" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Security</a>
         <a href="#escrow" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Escrow</a>
-        <button class="btn-primary w-full mt-4" data-scroll-to="#cta">Get Started</button>
+        <a href="login.html" class="btn-primary w-full mt-4 text-center block">Get Started</a>
       </div>
     </div>
   </header>
@@ -1936,7 +1936,15 @@
       var dashBtn = document.getElementById('cta-dashboard-btn');
       if (dashBtn) {
         dashBtn.addEventListener('click', function() {
-          alert('Dashboard coming soon! Your account is ready.');
+          const user = JSON.parse(localStorage.getItem('gcsc_user') || '{}');
+          const role = user.role || 'homeowner';
+          if (role === 'contractor') {
+            window.location.href = 'dashboard-contractor.html';
+          } else if (role === 'admin') {
+            window.location.href = 'admin.html';
+          } else {
+            window.location.href = 'dashboard-homeowner.html';
+          }
         });
       }
 
