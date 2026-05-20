@@ -157,6 +157,11 @@ SECURITY AUDIT RESULTS (2026-05-20):
 🟢 LOW-2: JWT_SECRET defaults to empty string if env missing
 
 NEXT: Writing fixes for HIGH-1 and HIGH-2. Starting with stripe-payments.js auth fix.
+
+PROGRESS UPDATE (2026-05-20):
+✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
+🔄 HIGH-1 IN PROGRESS: bids.js dynamic SQL — preparing fix
+🔄 MEDIUM-1 IN PROGRESS: stripe-payments.js in-memory storage — preparing DB integration
 ```
 
 ---

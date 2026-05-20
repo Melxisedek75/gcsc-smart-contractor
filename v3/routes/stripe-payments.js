@@ -83,20 +83,37 @@ if (STRIPE_CONFIG.secretKey && STRIPE_CONFIG.secretKey.startsWith('sk_test_')) {
 const escrowPayments = [];
 let nextPaymentId = 1;
 
-// JWT helpers
-function jwtVerify(token) {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Invalid token');
-  const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g,'+').replace(/_/g,'/'), 'base64').toString());
-  if (payload.exp < Math.floor(Date.now()/1000)) throw new Error('Expired');
-  return payload;
-}
+// JWT Authentication — FIXED: Using proper JWT verification with signature check
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const db = require('../database/db');
 
-function getUser(req) {
+async function getUser(req) {
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  try { return jwtVerify(token); } catch { return null; }
+  
+  try {
+    // Proper JWT verification with signature check
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ['HS256'],
+      clockTolerance: 30,
+    });
+    
+    if (!decoded.jti) return null;
+    
+    // Check session is valid and not revoked
+    const { rows } = await db.query(
+      'SELECT * FROM sessions WHERE jti = $1 AND is_revoked = false AND expires_at > NOW()',
+      [decoded.jti]
+    );
+    
+    if (rows.length === 0) return null;
+    
+    return decoded;
+  } catch {
+    return null;
+  }
 }
 
 function json(res, status, data) {
@@ -175,7 +192,7 @@ const stripeRoutes = {
   
   // Confirm payment (webhook or manual)
   'POST /api/stripe/confirm': async (req, res) => {
-    const user = getUser(req);
+    const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     
     const body = await parseBody(req);
