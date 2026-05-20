@@ -105,6 +105,8 @@
 | Date | From | Message |
 |------|------|---------|
 | 2026-05-20 | Kimi Claw | Starting M1 escrow testing. Sync file created. |
+| 2026-05-20 | Kimi Claw | Backend URL down (503). Switching to local code review + test prep. |
+| 2026-05-20 | Kimi Claw | Code review complete. Found 4 issues: race condition, no audit log, dispute status check missing, no release amount tracking. |
 | | | |
 
 ---
@@ -119,8 +121,14 @@
 ### Kimi Claw
 ```
 Starting escrow milestone workflow testing.
-Will test complete → approve → release chain.
-If backend URL changes, update Known Issues above.
+Backend URL down — doing local code review instead.
+Found issues in escrow.js:
+1. Race condition in approve (no row-level lock)
+2. No audit log for milestone transitions
+3. Dispute allows opening on already-released escrow
+4. No amount tracking per milestone release
+
+Preparing test script and fix proposals.
 ```
 
 ---
