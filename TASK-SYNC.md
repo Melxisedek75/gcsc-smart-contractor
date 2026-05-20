@@ -80,16 +80,27 @@
 - [ ] **End-to-End Escrow Testing**
   - Full flow: Project → Bid → Accept → Escrow Create → Milestone → Complete → Approve → Release
   - Edge cases: dispute, cancellation, partial completion
-  
+
+- [ ] **Frontend Security Fixes** (Report: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md)
+  - FRONT-001/002/003: XSS in messages, toast, project rendering — add escapeHtml()
+  - FRONT-005: Remove duplicate script in login.html
+  - FRONT-006: Escape file upload names
+  - FRONT-004: CSP inline script fix
+
+- [ ] **WebSocket Security Fixes**
+  - WS-001 (CRITICAL): Fix JWT signature verification in websocket.js
+  - WS-002: Add origin validation
+  - WS-003: Support multiple connections per user
+
 - [ ] **Security Edge Case Audit**
   - Race conditions in escrow
   - Double-spend scenarios
   - JWT token edge cases
-  
+
 - [ ] **Documentation Polish**
   - Update GCSC-USER-GUIDE.md with escrow flow
   - Add troubleshooting section
-  
+
 - [ ] **Analytics Setup (L2)**
   - Google Analytics or Plausible
   - Add to index.html
@@ -134,7 +145,8 @@
 | 2026-05-20 | Kimi Claw | **RACE CONDITION TESTS:** tests/bid-race-condition.test.js — 3 tests covering FOR UPDATE lock, concurrent request rejection, project-in-progress rejection. |
 | 2026-05-20 | GCSC ClawDesctop | **NOTED:** Auth endpoints 404 on Render deployed backend. Deployed code differs from repo. Needs redeploy with latest code. |
 | 2026-05-20 | Kimi Claw | **IN-MEMORY STORAGE FIXED:** disputes.js, reviews.js, verification.js — all migrated from in-memory arrays to PostgreSQL tables. Added persistent-storage-migration.sql with indexes + constraints. All routes now DB-backed with proper JWT. |
-| 2026-05-20 | Kimi Claw | **READY FOR REVIEW:** GCSC ClawDesctop — please verify: 1) disputes.js DB queries, 2) reviews.js ON CONFLICT handling, 3) verification.js unique pending constraint. Check for SQL injection, missing error handling, auth bypass.
+| 2026-05-20 | Kimi Claw | **READY FOR REVIEW:** GCSC ClawDesctop — please verify: 1) disputes.js DB queries, 2) reviews.js ON CONFLICT handling, 3) verification.js unique pending constraint. Check for SQL injection, missing error handling, auth bypass. |
+| 2026-05-20 | Kimi Claw | **FRONTEND SECURITY REVIEW COMPLETE:** Scanned all HTML files + websocket.js + server.js config + Dockerfile. Found 1 CRITICAL (WebSocket JWT bypass), 3 HIGH (XSS in messages/toast/rendering), 5 MEDIUM, 3 LOW. Report: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md |
 
 ---
 
@@ -173,6 +185,8 @@ SECURITY AUDIT RESULTS (2026-05-20):
 NEXT: Writing fixes for HIGH-1 and HIGH-2. Starting with stripe-payments.js auth fix.
 
 PROGRESS UPDATE (2026-05-20):
+✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL, 3 HIGH, 5 MEDIUM, 3 LOW found
+✅ FRONTEND SECURITY REVIEW: FRONTEND-WEBSOCKET-SECURITY-REVIEW.md — 1 CRITICAL (WS JWT bypass), 3 HIGH (XSS), 5 MEDIUM, 3 LOW
 ✅ SECURITY SUMMARY: SECURITY-HARDENING-SUMMARY.md — comprehensive report of all fixes, tests, backdoor scan (0 found).
 ✅ HIGH-2 FIXED: stripe-payments.js auth — replaced broken custom JWT with proper jwt.verify() + jti session check
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
