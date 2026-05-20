@@ -22,6 +22,8 @@
 ### GCSC ClawDesctop — Primary Developer
 **Ответственность:** Архитектура, написание кода, деплой, инфраструктура
 
+**Режим работы:** Получает задачи от human напрямую, работает в своей сессии, пушит в GitHub
+
 **Задачи:**
 - Backend API (Node.js/Express/PostgreSQL)
 - Frontend (HTML/CSS/JS)
@@ -39,8 +41,10 @@
 ### Kimi Claw — QA / Security / Polish
 **Ответственность:** Тестирование, аудит безопасности, документация, code review
 
+**Режим работы:** Получает задачи от human напрямую, работает в своей сессии, пушит в GitHub
+
 **Задачи:**
-- Code review ВСЕХ коммитов GCSC ClawDesctop
+- Code review ВСЕХ коммитов GCSC ClawDesctop (при git pull)
 - Security audit (SQL injection, XSS, race conditions, auth bypass)
 - Написание тест-планов и тест-кейсов
 - E2E тестирование
