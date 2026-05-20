@@ -124,7 +124,8 @@
 | 2026-05-20 | Kimi Claw | **VERIFIED GCSC ClawDesctop fixes** — HIGH-1 (SQL whitelist ✅), HIGH-2 (JWT verify ✅), MEDIUM-1 (DB persistence ✅), MEDIUM-2 (rate limiting ✅), MEDIUM-3 (bid audit ✅), LOW-1/2 (error handler + JWT hardening ✅). All fixes reviewed and approved. |
 | 2026-05-20 | Kimi Claw | **XPR AUDIT COMPLETE** — v3/routes/xpr.js scanned. No backdoors ✅. 1 Medium, 2 Low. Report: SECURITY-AUDIT-XPR-2026-05-20.md + tests/xpr.test.js |
 | 2026-05-20 | Kimi Claw | **🟢 BACKEND IS UP!** Health check shows /health = 200. 503 issue resolved! E2E tests unblocked. Starting escrow E2E testing now. |
-| 2026-05-20 | Kimi Claw | **DECISION:** Dual-agent scheme CONFIRMED. Both agents work via GitHub sync. GCSC ClawDesctop for features, Kimi Claw for security. Human directs both.
+| 2026-05-20 | Kimi Claw | **DECISION:** Dual-agent scheme CONFIRMED. Both agents work via GitHub sync. GCSC ClawDesctop for features, Kimi Claw for security. Human directs both. |
+| 2026-05-20 | Kimi Claw | **ADDITIONAL AUDIT:** Scanned disputes.js, reviews.js, verification.js, search.js, validation.js. Found CRIT-1: broken JWT in 3 files. All fixed + pushed. Report: SECURITY-AUDIT-ADDITIONAL-2026-05-20.md |
 
 ---
 
