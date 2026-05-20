@@ -1,32 +1,26 @@
 services:
   - type: web
-    name: gcsc-smart-contractor
+    name: gcsc-backend
     runtime: node
-    plan: starter
-    buildCommand: npm install
-    startCommand: node server.js
-    healthCheckPath: /health
-    autoDeploy: true
+    plan: free
+    buildCommand: cd v3 && npm install
+    startCommand: cd v3 && node pure-server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 7d
-      - key: ENCRYPTION_SECRET
-        generateValue: true
-      - key: OTP_EXPIRY_MINUTES
-        value: 15
-      - key: GOOGLE_REDIRECT_URI
-        value: https://gcsc-smart-contractor.onrender.com/dev/oauth/callback
+      - key: FRONTEND_URL
+        value: "https://gcsc.store"
       - key: XPR_CHAIN_ID
-        value: 384da888ccb7
-      - key: CORS_ORIGIN_WHITELIST
-        value: https://gcsc-smart-contractor.onrender.com
-    disk:
-      name: gcsc-data
-      mountPath: /data
-      sizeGB: 1
+        value: "71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd"
+      - key: XPR_API_ENDPOINT
+        value: "https://testnet.protonchain.com"
+      - key: STRIPE_PUBLISHABLE_KEY
+        value: "pk_test_51TYIq72L5mE6p0DUoeWdjUjB2FYjUOcfoVu4DObk587CQuVUW1P5BrEuwT4D8vJS1vZP9h9hRvJbE2BW37AGOJW00OxT01z90"
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

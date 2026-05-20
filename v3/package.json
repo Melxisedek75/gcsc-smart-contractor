@@ -13,8 +13,8 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@proton/api": "^28.7.0",
-    "@proton/js": "^28.7.0",
+    "@proton/api": "^28.8.6",
+    "@proton/js": "^28.1.2",
     "@proton/web-sdk": "^2.7.21",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
