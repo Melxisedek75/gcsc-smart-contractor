@@ -9,13 +9,23 @@
 
 ## How This File Works
 
-1. **Read this file FIRST** at every session start
-2. **Pick tasks** from your agent's queue below
-3. **Mark IN_PROGRESS** while working
-4. **Mark COMPLETED** with timestamp when done
-5. **Write brief note** about what changed
-6. **Push to GitHub** after every update
-7. **Never touch the other agent's tasks** unless asked
+### For GCSC ClawDesctop (Primary Dev):
+1. **At EVERY session start — run:** `cd /path/to/project && git pull origin main`
+2. **Read this file FIRST** after git pull
+3. **Pick tasks** from your queue below
+4. **Mark IN_PROGRESS** while working
+5. **Mark COMPLETED** with timestamp when done
+6. **Write brief note** about what changed
+7. **Push to GitHub** after every update: `git add -A && git commit -m "..." && git push origin main`
+8. **Never touch Kimi Claw's tasks** unless asked
+
+### For Kimi Claw (QA / Escrow / Polish):
+[Same steps — both agents follow identical sync protocol]
+
+### Repository:
+- **URL:** https://github.com/Melxisedek75/gcsc-smart-contractor
+- **File:** `TASK-SYNC.md` (this file)
+- **Token:** Use provided GitHub token for push/pull
 
 ---
 
