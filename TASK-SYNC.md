@@ -163,6 +163,8 @@ PROGRESS UPDATE (2026-05-20):
 ✅ HIGH-1 FIXED: bids.js dynamic SQL — replaced with ALLOWED_FIELDS whitelist pattern
 ✅ MEDIUM-1 FIXED: stripe-payments.js in-memory → database persistence (stripe_payment_intents table)
 ✅ MEDIUM-2 IN PROGRESS: Rate limiting middleware (v3/middleware/rate-limit.js) — auth, financial, general, strict tiers
+✅ LOW-2 FIXED: JWT_SECRET hardening — all routes now fail hard if secret missing
+🔄 NEXT: LOW-1 error sanitization + MEDIUM-3 audit logging for bids
 ```
 
 ---
