@@ -710,51 +710,89 @@ router.post('/:id/accept', requireAuth, requireRole(['homeowner']), async (req, 
             });
         }
 
-        // --- Accept bid and create escrow (transaction) ---
+        // --- Accept bid and create escrow (transaction with row locks) ---
+        // SECURITY FIX: Use FOR UPDATE to prevent race conditions where two
+        // parallel requests accept the same bid and create duplicate escrows.
         const acceptedTerms = req.body.accepted_terms || null;
 
-        const result = await db.transaction(async (client) => {
-            // 1. Accept the bid
-            const bidResult = await client.query(
-                `UPDATE bids SET status = 'accepted', updated_at = NOW()
-                 WHERE id = $1 RETURNING *`,
-                [bidId]
-            );
-            const acceptedBid = bidResult.rows[0];
+        let result;
+        try {
+            result = await db.transaction(async (client) => {
+                // 1. Lock bid row + verify it's still pending
+                const bidLockResult = await client.query(
+                    `SELECT * FROM bids WHERE id = $1 FOR UPDATE`,
+                    [bidId]
+                );
+                const lockedBid = bidLockResult.rows[0];
 
-            // 2. Reject all other pending bids on this project
-            await client.query(
-                `UPDATE bids SET status = 'rejected', updated_at = NOW()
-                 WHERE project_id = $1 AND id != $2 AND status = 'pending'`,
-                [bid.project_id, bidId]
-            );
+                if (!lockedBid) {
+                    throw new Error('Bid not found');
+                }
+                if (lockedBid.status !== 'pending') {
+                    throw new Error(`Bid already ${lockedBid.status}, cannot accept`);
+                }
 
-            // 3. Update project status to in_progress
-            await client.query(
-                `UPDATE projects SET status = 'in_progress', updated_at = NOW()
-                 WHERE id = $1`,
-                [bid.project_id]
-            );
+                // 2. Lock project row + verify status
+                const projectLockResult = await client.query(
+                    `SELECT * FROM projects WHERE id = $1 FOR UPDATE`,
+                    [lockedBid.project_id]
+                );
+                const lockedProject = projectLockResult.rows[0];
 
-            // 4. Create escrow contract
-            const escrowResult = await client.query(
-                `INSERT INTO escrow_contracts
-                 (project_id, bid_id, homeowner_id, contractor_id, amount, status, created_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW())
-                 RETURNING *`,
-                [
-                    bid.project_id,
-                    bidId,
-                    user.id,
-                    bid.contractor_id,
-                    bid.amount,
-                    'pending', // pending until funded
-                ]
-            );
-            const escrow = escrowResult.rows[0];
+                if (!lockedProject) {
+                    throw new Error('Project not found');
+                }
+                if (lockedProject.status !== 'open' && lockedProject.status !== 'bidding') {
+                    throw new Error(`Project already ${lockedProject.status}, cannot accept bids`);
+                }
 
-            return { acceptedBid, escrow };
-        });
+                // 3. Accept the bid
+                const bidResult = await client.query(
+                    `UPDATE bids SET status = 'accepted', updated_at = NOW()
+                     WHERE id = $1 RETURNING *`,
+                    [bidId]
+                );
+                const acceptedBid = bidResult.rows[0];
+
+                // 4. Reject all other pending bids on this project
+                await client.query(
+                    `UPDATE bids SET status = 'rejected', updated_at = NOW()
+                     WHERE project_id = $1 AND id != $2 AND status = 'pending'`,
+                    [lockedBid.project_id, bidId]
+                );
+
+                // 5. Update project status to in_progress
+                await client.query(
+                    `UPDATE projects SET status = 'in_progress', updated_at = NOW()
+                     WHERE id = $1`,
+                    [lockedBid.project_id]
+                );
+
+                // 6. Create escrow contract
+                const escrowResult = await client.query(
+                    `INSERT INTO escrow_contracts
+                     (project_id, bid_id, homeowner_id, contractor_id, amount, status, created_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                     RETURNING *`,
+                    [
+                        lockedBid.project_id,
+                        bidId,
+                        user.id,
+                        lockedBid.contractor_id,
+                        lockedBid.amount,
+                        'pending', // pending until funded
+                    ]
+                );
+                const escrow = escrowResult.rows[0];
+
+                return { acceptedBid, escrow };
+            });
+        } catch (txErr) {
+            if (txErr.message.includes('already')) {
+                return res.status(409).json({ error: txErr.message });
+            }
+            throw txErr;
+        }
 
         // --- Audit log: bid accepted ---
         try {

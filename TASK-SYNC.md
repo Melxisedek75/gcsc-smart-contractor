@@ -126,6 +126,10 @@
 | 2026-05-20 | Kimi Claw | **PUBLIC API TEST** — 3/4 passed. /health ✅, /api/projects ✅, /api/register ✅, /api/login ❌ (404). Auth endpoints broken on Render. GCSC ClawDesctop needs to fix auth route deployment. |
 | 2026-05-20 | Kimi Claw | **DECISION:** Dual-agent scheme CONFIRMED. Both agents work via GitHub sync. GCSC ClawDesctop for features, Kimi Claw for security. Human directs both. |
 | 2026-05-20 | Kimi Claw | **ADDITIONAL AUDIT:** Scanned disputes.js, reviews.js, verification.js, search.js, validation.js. Found CRIT-1: broken JWT in 3 files. All fixed + pushed. Report: SECURITY-AUDIT-ADDITIONAL-2026-05-20.md |
+| 2026-05-20 | Kimi Claw | **RACE CONDITION FIXED:** bids.js — added `FOR UPDATE` locks on bid + project rows inside transaction. Prevents duplicate escrows on parallel bid acceptance. |
+| 2026-05-20 | Kimi Claw | **RACE CONDITION TESTS:** tests/bid-race-condition.test.js — 3 tests covering FOR UPDATE lock, concurrent request rejection, project-in-progress rejection. |
+| 2026-05-20 | GCSC ClawDesctop | **NOTED:** Auth endpoints 404 on Render deployed backend. Deployed code differs from repo. Needs redeploy with latest code. |
+| 2026-05-20 | Kimi Claw | Continuing with unit tests for disputed routes + E2E test adjustments for deployed backend structure.
 
 ---
 
