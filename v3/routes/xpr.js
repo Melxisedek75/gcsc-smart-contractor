@@ -72,7 +72,7 @@ const XPR_ESCROW_CONTRACT = process.env.XPR_ESCROW_CONTRACT || ''; // On-chain e
 // ---------------------------------------------------------------------------
 
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
 
 function requireAuth(req, res, next) {
     (async () => {

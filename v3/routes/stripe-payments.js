@@ -82,7 +82,7 @@ if (STRIPE_CONFIG.secretKey && STRIPE_CONFIG.secretKey.startsWith('sk_test_')) {
 
 // JWT Authentication — FIXED: Using proper JWT verification with signature check
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
 
 async function getUser(req) {
   const auth = req.headers['authorization'] || '';
