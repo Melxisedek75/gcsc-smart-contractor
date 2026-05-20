@@ -253,6 +253,25 @@ router.post('/', requireAuth, requireRole(['contractor']), async (req, res) => {
 
         const bid = result.rows[0];
 
+        // --- Audit log: bid created ---
+        try {
+            await db.query(
+                `INSERT INTO bid_audit_log (bid_id, project_id, action, performed_by, previous_status, new_status, details, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    bid.id,
+                    project_id,
+                    'bid_created',
+                    contractor.id,
+                    null,
+                    'pending',
+                    JSON.stringify({ amount, timeline_days: proposed_timeline_days })
+                ]
+            );
+        } catch (auditErr) {
+            console.error(`[${requestId}] Audit log insert failed (non-critical):`, auditErr.message);
+        }
+
         // --- Update project status to 'bidding' if it's 'open' ---
         if (project.status === 'open') {
             await db.query(
@@ -510,6 +529,25 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
 
         const updatedBid = result.rows[0];
 
+        // --- Audit log: bid updated ---
+        try {
+            await db.query(
+                `INSERT INTO bid_audit_log (bid_id, project_id, action, performed_by, previous_status, new_status, details, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    bidId,
+                    bid.project_id,
+                    'bid_updated',
+                    contractor.id,
+                    'pending',
+                    'pending',
+                    JSON.stringify({ updated_fields: updates.map(u => u.split(' ')[0]) })
+                ]
+            );
+        } catch (auditErr) {
+            console.error(`[${requestId}] Audit log insert failed (non-critical):`, auditErr.message);
+        }
+
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Bid updated: id=${bidId}`);
 
@@ -580,6 +618,25 @@ router.delete('/:id', requireAuth, requireRole(['contractor']), async (req, res)
             `UPDATE bids SET status = 'withdrawn', updated_at = NOW() WHERE id = $1`,
             [bidId]
         );
+
+        // --- Audit log: bid withdrawn ---
+        try {
+            await db.query(
+                `INSERT INTO bid_audit_log (bid_id, project_id, action, performed_by, previous_status, new_status, details, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    bidId,
+                    bid.project_id,
+                    'bid_withdrawn',
+                    contractor.id,
+                    'pending',
+                    'withdrawn',
+                    null
+                ]
+            );
+        } catch (auditErr) {
+            console.error(`[${requestId}] Audit log insert failed (non-critical):`, auditErr.message);
+        }
 
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Bid withdrawn: id=${bidId}`);
@@ -699,6 +756,25 @@ router.post('/:id/accept', requireAuth, requireRole(['homeowner']), async (req, 
             return { acceptedBid, escrow };
         });
 
+        // --- Audit log: bid accepted ---
+        try {
+            await db.query(
+                `INSERT INTO bid_audit_log (bid_id, project_id, action, performed_by, previous_status, new_status, details, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    bidId,
+                    bid.project_id,
+                    'bid_accepted',
+                    user.id,
+                    'pending',
+                    'accepted',
+                    JSON.stringify({ escrow_id: result.escrow.id, amount: bid.amount })
+                ]
+            );
+        } catch (auditErr) {
+            console.error(`[${requestId}] Audit log insert failed (non-critical):`, auditErr.message);
+        }
+
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Bid accepted: id=${bidId}, escrow=${result.escrow.id}, project=${bid.project_id}`);
 
@@ -777,6 +853,28 @@ router.post('/:id/reject', requireAuth, requireRole(['homeowner']), async (req, 
             `UPDATE bids SET status = 'rejected', updated_at = NOW() WHERE id = $1`,
             [bidId]
         );
+
+        // --- Audit log: bid rejected ---
+        try {
+            await db.query(
+                `INSERT INTO bid_audit_log (bid_id, project_id, action, performed_by, previous_status, new_status, details, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+                [
+                    bidId,
+                    bid.project_id,
+                    'bid_rejected',
+                    user.id,
+                    'pending',
+                    'rejected',
+                    null
+                ]
+            );
+        } catch (auditErr) {
+            console.error(`[${requestId}] Audit log insert failed (non-critical):`, auditErr.message);
+        }
+
+        // eslint-disable-next-line no-console
+        console.log(`[${requestId}] Bid rejected: id=${bidId}`);
 
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Bid rejected: id=${bidId}`);
