@@ -1,5 +1,5 @@
 /**
- * Review System Routes (FIXED: Proper JWT)
+ * Review System Routes (FIXED: Database persistence + proper JWT)
  * Contractors and homeowners can leave reviews after project completion
  */
 
@@ -7,10 +7,6 @@ const jwt = require('jsonwebtoken');
 const db = require('../database/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
-
-// FIXME: Move reviews to database table (currently in-memory, data lost on restart)
-const reviews = [];
-let nextReviewId = 1;
 
 async function getUser(req) {
   const auth = req.headers['authorization'] || '';
@@ -68,26 +64,39 @@ const reviewRoutes = {
       return json(res, 400, { error: 'Rating must be 1-5' });
     }
 
-    const review = {
-      id: nextReviewId++,
-      project_id,
-      reviewer_id: user.userId || user.id,
-      target_user_id,
-      rating,
-      comment: comment || '',
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const result = await db.query(
+        `INSERT INTO reviews (project_id, reviewer_id, target_user_id, rating, comment, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (project_id, reviewer_id) DO UPDATE
+         SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, created_at = NOW()
+         RETURNING *`,
+        [
+          parseInt(project_id, 10),
+          user.userId || user.id,
+          parseInt(target_user_id, 10),
+          rating,
+          comment || ''
+        ]
+      );
 
-    reviews.push(review);
+      const review = result.rows[0];
 
-    json(res, 201, {
-      message: 'Review created',
-      review_id: review.id,
-      rating,
-    });
+      json(res, 201, {
+        message: 'Review created',
+        review_id: review.id,
+        rating,
+      });
+    } catch (err) {
+      if (err.message.includes('violates foreign key')) {
+        return json(res, 400, { error: 'Invalid project_id or target_user_id' });
+      }
+      console.error('[Review Error]', err.message);
+      json(res, 500, { error: 'Failed to create review' });
+    }
   },
 
-  // Get reviews for user
+  // Get reviews for target user
   'GET /api/reviews/:user_id': async (req, res) => {
     const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
@@ -96,29 +105,53 @@ const reviewRoutes = {
     if (!match) return json(res, 400, { error: 'Invalid user ID' });
 
     const targetId = parseInt(match[1], 10);
-    const userReviews = reviews.filter(r => r.target_user_id === targetId);
 
-    // Calculate average rating
-    const avgRating = userReviews.length > 0
-      ? userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length
-      : 0;
+    try {
+      const result = await db.query(
+        `SELECT r.*, u.email as reviewer_email
+         FROM reviews r
+         JOIN users u ON r.reviewer_id = u.id
+         WHERE r.target_user_id = $1
+         ORDER BY r.created_at DESC`,
+        [targetId]
+      );
 
-    json(res, 200, {
-      reviews: userReviews,
-      total: userReviews.length,
-      average_rating: Math.round(avgRating * 10) / 10,
-    });
+      const avgResult = await db.query(
+        'SELECT AVG(rating)::numeric(3,1) as average FROM reviews WHERE target_user_id = $1',
+        [targetId]
+      );
+
+      json(res, 200, {
+        reviews: result.rows,
+        total: result.rows.length,
+        average_rating: avgResult.rows[0]?.average || 0,
+      });
+    } catch (err) {
+      console.error('[Review Error]', err.message);
+      json(res, 500, { error: 'Failed to retrieve reviews' });
+    }
   },
 
-  // Get my reviews
+  // Get my reviews (reviews I wrote)
   'GET /api/reviews/my': async (req, res) => {
     const user = await getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
 
-    const userId = user.userId || user.id;
-    const myReviews = reviews.filter(r => r.reviewer_id === userId);
+    try {
+      const result = await db.query(
+        `SELECT r.*, u.email as target_email
+         FROM reviews r
+         JOIN users u ON r.target_user_id = u.id
+         WHERE r.reviewer_id = $1
+         ORDER BY r.created_at DESC`,
+        [user.userId || user.id]
+      );
 
-    json(res, 200, { reviews: myReviews, total: myReviews.length });
+      json(res, 200, { reviews: result.rows, total: result.rows.length });
+    } catch (err) {
+      console.error('[Review Error]', err.message);
+      json(res, 500, { error: 'Failed to retrieve reviews' });
+    }
   },
 };
 
