@@ -1,2533 +1,1960 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.xprnetwork.org;">
-<title>SC Smart Contractor - P2P Construction on XPR Blockchain</title>
-<link rel="icon" type="image/png" href="logo-product.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          bg: { deep: '#050510', dark: '#0a0a1a', card: '#0f0f23' },
-          neon: {
-            purple: '#7C3AED',
-            blue: '#3B82F6',
-            cyan: '#06B6D4',
-            green: '#10B981',
-            red: '#EF4444',
-            pink: '#EC4899',
-          },
-          text: {
-            primary: '#F8FAFC',
-            muted: '#94A3B8',
-            dim: '#64748B',
-          },
-          glass: {
-            base: 'rgba(255,255,255,0.04)',
-            hover: 'rgba(255,255,255,0.07)',
-            border: 'rgba(255,255,255,0.08)',
-            borderHover: 'rgba(255,255,255,0.14)',
-            input: 'rgba(255,255,255,0.05)',
-          }
-        },
-        fontFamily: {
-          sans: ['Inter', 'system-ui', 'sans-serif'],
-          display: ['Space Grotesk', 'Inter', 'sans-serif'],
-          mono: ['JetBrains Mono', 'monospace'],
-        },
-        animation: {
-          'float': 'float 6s ease-in-out infinite',
-          'float-slow': 'float 10s ease-in-out infinite',
-          'float-fast': 'float 4s ease-in-out infinite',
-          'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
-          'pulse-glow-slow': 'pulseGlow 5s ease-in-out infinite',
-          'orbit': 'orbit 20s linear infinite',
-          'orbit-reverse': 'orbit 25s linear infinite reverse',
-          'gradient-shift': 'gradientShift 8s ease-in-out infinite',
-          'scan-line': 'scanLine 4s linear infinite',
-          'shimmer': 'shimmer 2.5s ease-in-out infinite',
-          'fade-up': 'fadeUp 0.6s ease-out forwards',
-          'fade-in': 'fadeIn 0.4s ease-out forwards',
-          'scale-in': 'scaleIn 0.3s ease-out forwards',
-          'slide-up': 'slideUp 0.5s ease-out forwards',
-          'bounce-in': 'bounceIn 0.6s ease-out forwards',
-        },
-        keyframes: {
-          float: {
-            '0%, 100%': { transform: 'translateY(0) translateX(0)' },
-            '25%': { transform: 'translateY(-20px) translateX(10px)' },
-            '50%': { transform: 'translateY(-10px) translateX(-5px)' },
-            '75%': { transform: 'translateY(-25px) translateX(5px)' },
-          },
-          pulseGlow: {
-            '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
-            '50%': { opacity: '0.8', transform: 'scale(1.05)' },
-          },
-          orbit: {
-            '0%': { transform: 'rotate(0deg) translateX(120px) rotate(0deg)' },
-            '100%': { transform: 'rotate(360deg) translateX(120px) rotate(-360deg)' },
-          },
-          gradientShift: {
-            '0%, 100%': { backgroundPosition: '0% 50%' },
-            '50%': { backgroundPosition: '100% 50%' },
-          },
-          scanLine: {
-            '0%': { transform: 'translateY(-100%)' },
-            '100%': { transform: 'translateY(100vh)' },
-          },
-          shimmer: {
-            '0%': { backgroundPosition: '-200% 0' },
-            '100%': { backgroundPosition: '200% 0' },
-          },
-          fadeUp: {
-            '0%': { opacity: '0', transform: 'translateY(30px)' },
-            '100%': { opacity: '1', transform: 'translateY(0)' },
-          },
-          fadeIn: {
-            '0%': { opacity: '0' },
-            '100%': { opacity: '1' },
-          },
-          scaleIn: {
-            '0%': { opacity: '0', transform: 'scale(0.9)' },
-            '100%': { opacity: '1', transform: 'scale(1)' },
-          },
-          slideUp: {
-            '0%': { opacity: '0', transform: 'translateY(50px)' },
-            '100%': { opacity: '1', transform: 'translateY(0)' },
-          },
-          bounceIn: {
-            '0%': { opacity: '0', transform: 'scale(0.3)' },
-            '50%': { transform: 'scale(1.05)' },
-            '70%': { transform: 'scale(0.95)' },
-            '100%': { opacity: '1', transform: 'scale(1)' },
-          },
-        },
-        backgroundSize: {
-          'dot-grid': '24px 24px',
-        },
-      },
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCSC Smart Contractor — AI-Powered Construction Escrow & Milestone Payments</title>
+  <meta name="description" content="Programmable escrow infrastructure for the $12 trillion construction industry. AI-powered milestone payments, on-chain escrow on XPR Network, smart contracts, stablecoin settlements. Build with trust, pay with confidence.">
+  <meta name="keywords" content="construction escrow, smart contracts, milestone payments, blockchain construction, XPR Network, stablecoin payments, contractor reputation, construction infrastructure, AI construction, programmable escrow">
+  <meta name="author" content="GCSC Smart Contractor">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="GCSC Smart Contractor — Programmable Construction Escrow">
+  <meta property="og:description" content="AI-powered escrow and milestone settlement infrastructure for the construction industry. $12T market opportunity.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gcsc.store">
+  <meta property="og:image" content="https://gcsc.store/logo-gcsc-wide.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GCSC Smart Contractor">
+  <meta name="twitter:description" content="Programmable escrow infrastructure for construction. AI, stablecoins, smart contracts.">
+  <link rel="canonical" href="https://gcsc.store">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="logo-product.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "GCSC Smart Contractor",
+    "url": "https://gcsc.store",
+    "logo": "https://gcsc.store/logo-gcsc-wide.png",
+    "description": "Programmable escrow infrastructure for the construction industry using AI, stablecoins, and smart contracts",
+    "founder": {
+      "@type": "Person",
+      "name": "Serhiy Melxisedek"
     },
+    "sameAs": [
+      "https://github.com/Melxisedek75/gcsc-smart-contractor"
+    ]
   }
-</script>
-<style>
-  /* ===== GLOBAL RESETS ===== */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: #050510;
-    color: #F8FAFC;
-    min-height: 100vh;
-    overflow-x: hidden;
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GCSC Smart Contractor",
+    "applicationCategory": "BusinessApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "127"
+    }
   }
+  </script>
+  <meta name="description" content="The first construction marketplace powered by XPR blockchain escrow. Secure smart contracts for homeowners and contractors.">
 
-  /* ===== BACKGROUND LAYERS ===== */
-  .bg-deep-dark { background: linear-gradient(135deg, #050510 0%, #0a0a1a 50%, #080820 100%); }
-  .bg-dot-grid {
-    background-image: radial-gradient(circle, rgba(124,58,237,0.08) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  .bg-scan-lines {
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(59,130,246,0.015) 2px,
-      rgba(59,130,246,0.015) 4px
-    );
-  }
-  .bg-noise {
-    position: relative;
-  }
-  .bg-noise::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  /* ===== GLASSMORPHISM CARDS ===== */
-  .glass-card {
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    transition: all 0.3s ease;
-  }
-  .glass-card:hover {
-    background: rgba(255,255,255,0.07);
-    border-color: rgba(255,255,255,0.14);
-    box-shadow: 0 8px 32px rgba(124,58,237,0.15), 0 0 64px rgba(59,130,246,0.08);
-    transform: translateY(-2px);
-  }
-  .glass-card-strong {
-    background: rgba(255,255,255,0.06);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 24px;
-  }
-  .glass-card-subtle {
-    background: rgba(255,255,255,0.025);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 16px;
-  }
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            surface: '#F8F9FA',
+            border: '#E2E8F0',
+            'text-primary': '#0F172A',
+            'text-secondary': '#475569',
+            accent: '#7C3AED',
+            'accent-blue': '#3B82F6',
+            success: '#10B981',
+          }
+        }
+      }
+    }
+  </script>
 
-  /* ===== GLASS BUTTONS ===== */
-  .glass-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 32px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    font-size: 14px;
-    letter-spacing: 0.02em;
-    color: #F8FAFC;
-    background: rgba(255,255,255,0.06);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-  }
-  .glass-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(59,130,246,0.2) 50%, rgba(6,182,212,0.15) 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 0;
-  }
-  .glass-btn:hover {
-    border-color: rgba(124,58,237,0.5);
-    box-shadow: 0 0 30px rgba(124,58,237,0.3), 0 0 60px rgba(59,130,246,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
-    transform: translateY(-2px);
-  }
-  .glass-btn:hover::before { opacity: 1; }
-  .glass-btn span, .glass-btn svg { position: relative; z-index: 1; }
-  .glass-btn:active { transform: translateY(0) scale(0.98); }
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-  .glass-btn-primary {
-    background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 50%, #06B6D4 100%);
-    border: 1px solid rgba(124,58,237,0.4);
-    box-shadow: 0 0 20px rgba(124,58,237,0.3), 0 4px 16px rgba(59,130,246,0.2);
-  }
-  .glass-btn-primary:hover {
-    box-shadow: 0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(59,130,246,0.25), 0 8px 32px rgba(6,182,212,0.15);
-    border-color: rgba(124,58,237,0.8);
-  }
-  .glass-btn-success {
-    background: linear-gradient(135deg, #059669 0%, #10B981 100%);
-    border: 1px solid rgba(16,185,129,0.4);
-    box-shadow: 0 0 20px rgba(16,185,129,0.2);
-  }
-  .glass-btn-success:hover {
-    box-shadow: 0 0 40px rgba(16,185,129,0.4), 0 8px 32px rgba(16,185,129,0.15);
-  }
-  .glass-btn-danger {
-    background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
-    border: 1px solid rgba(239,68,68,0.4);
-    box-shadow: 0 0 20px rgba(239,68,68,0.2);
-  }
+  <!-- Lucide Icons -->
+  <!-- Trigger rebuild: 2026-05-20T19:52 -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-  /* ===== GRADIENT TEXT ===== */
-  .gradient-text {
-    background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 40%, #06B6D4 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .gradient-text-purple {
-    background: linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .gradient-text-green {
-    background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: auto; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #FFFFFF;
+      color: #0F172A;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 
-  /* ===== GRADIENT BORDERS ===== */
-  .gradient-border {
-    position: relative;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    padding: 1px;
-    background: linear-gradient(135deg, #7C3AED, #3B82F6, #06B6D4);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.5;
-    transition: opacity 0.3s ease;
-  }
-  .gradient-border:hover::before { opacity: 1; }
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #F8F9FA; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-  /* ===== NEON GLOW BOXES ===== */
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(124,58,237,0.2), 0 0 60px rgba(124,58,237,0.08);
-  }
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(59,130,246,0.2), 0 0 60px rgba(59,130,246,0.08);
-  }
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(6,182,212,0.2), 0 0 60px rgba(6,182,212,0.08);
-  }
-  .glow-green {
-    box-shadow: 0 0 20px rgba(16,185,129,0.2), 0 0 60px rgba(16,185,129,0.08);
-  }
-  .glow-hover-purple:hover {
-    box-shadow: 0 0 30px rgba(124,58,237,0.3), 0 0 80px rgba(124,58,237,0.12);
-  }
+    /* ===== GRADIENT ORBS ===== */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.12;
+      pointer-events: none;
+      will-change: transform;
+    }
+    .orb-1 { width: 500px; height: 500px; background: #7C3AED; top: -10%; left: -10%; animation: orb-drift-1 20s ease-in-out infinite; }
+    .orb-2 { width: 400px; height: 400px; background: #3B82F6; top: 20%; right: -8%; animation: orb-drift-2 25s ease-in-out infinite; }
+    .orb-3 { width: 350px; height: 350px; background: #7C3AED; bottom: -5%; left: 30%; animation: orb-drift-3 22s ease-in-out infinite; }
+    @keyframes orb-drift-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(60px, -40px) scale(1.1); }
+      66% { transform: translate(-30px, 30px) scale(0.95); }
+    }
+    @keyframes orb-drift-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-50px, 40px) scale(1.05); }
+      66% { transform: translate(40px, -30px) scale(0.9); }
+    }
+    @keyframes orb-drift-3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(40px, 30px) scale(1.08); }
+      66% { transform: translate(-40px, -20px) scale(0.92); }
+    }
 
-  /* ===== GRADIENT ORBS ===== */
-  .orb {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-  }
-  .orb-purple {
-    background: radial-gradient(circle, rgba(124,58,237,0.35) 0%, rgba(124,58,237,0.05) 50%, transparent 70%);
-    filter: blur(40px);
-  }
-  .orb-blue {
-    background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.04) 50%, transparent 70%);
-    filter: blur(50px);
-  }
-  .orb-cyan {
-    background: radial-gradient(circle, rgba(6,182,212,0.25) 0%, rgba(6,182,212,0.04) 50%, transparent 70%);
-    filter: blur(45px);
-  }
-  .orb-pink {
-    background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, rgba(236,72,153,0.03) 50%, transparent 70%);
-    filter: blur(55px);
-  }
+    /* ===== LOGO LEVITATION ===== */
+    .logo-float {
+      animation: float-header 6s ease-in-out infinite;
+      filter: drop-shadow(0 4px 12px rgba(124,58,237,0.15));
+    }
+    @keyframes float-header {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-4px) rotate(0.3deg); }
+      75% { transform: translateY(4px) rotate(-0.3deg); }
+    }
+    .logo-float-cta {
+      animation: float-cta 4s ease-in-out infinite;
+      filter: drop-shadow(0 20px 40px rgba(124,58,237,0.25));
+    }
+    @keyframes float-cta {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.03); }
+    }
 
-  /* ===== FORM INPUTS ===== */
-  .glass-input {
-    width: 100%;
-    padding: 14px 18px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    color: #F8FAFC;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    outline: none;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .glass-input::placeholder { color: #64748B; }
-  .glass-input:focus {
-    border-color: #7C3AED;
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.15), 0 0 20px rgba(124,58,237,0.1);
-    background: rgba(255,255,255,0.07);
-  }
-  .glass-input.error {
-    border-color: #EF4444;
-    box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
-  }
-  .glass-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: #94A3B8;
-    margin-bottom: 8px;
-    letter-spacing: 0.02em;
-  }
+    /* ===== HEADER / NAV ===== */
+    .header {
+      position: sticky; top: 0; z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid #E2E8F0;
+      box-shadow: 0 1px 20px rgba(15,23,42,0.06);
+    }
+    /* header-logo style removed - using full-width banner instead */
+    .nav-link {
+      position: relative;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+      cursor: pointer;
+    }
+    .nav-link:hover { color: #7C3AED; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 2px;
+      background: #7C3AED;
+      border-radius: 1px;
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after { width: 100%; }
 
-  /* ===== GLASS SELECT ===== */
-  .glass-select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    padding-right: 40px;
-    background-color: rgba(15, 10, 30, 0.9);
-    color: #F8FAFC;
-  }
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 28px;
+      background: #7C3AED; color: #fff;
+      font-size: 14px; font-weight: 600;
+      border-radius: 12px; border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(124,58,237,0.3);
+    }
+    .btn-primary:hover {
+      background: #6D28D9;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(124,58,237,0.4);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-outline {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 28px;
+      background: transparent; color: #0F172A;
+      font-size: 14px; font-weight: 600;
+      border-radius: 12px; border: 1.5px solid #E2E8F0;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-outline:hover {
+      border-color: #7C3AED; color: #7C3AED;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(124,58,237,0.1);
+    }
 
-  .glass-select option {
-    background-color: #1a1530;
-    color: #F8FAFC;
-    padding: 12px 16px;
-    font-size: 14px;
-  }
+    /* ===== HERO ===== */
+    .hero { position: relative; overflow: hidden; }
+    .hero-radial {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
 
-  .glass-select option:hover,
-  .glass-select option:focus,
-  .glass-select option:checked {
-    background-color: #7C3AED;
-    color: #fff;
-  }
+    /* ===== STATS COUNTER ===== */
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #475569;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .stat-divider {
+      width: 1px;
+      height: 50px;
+      background: linear-gradient(180deg, transparent, #E2E8F0, transparent);
+    }
 
-  /* ===== GLASS TOGGLE ===== */
-  .glass-toggle {
-    position: relative;
-    width: 48px;
-    height: 26px;
-    cursor: pointer;
-  }
-  .glass-toggle input { display: none; }
-  .glass-toggle-track {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.08);
-    border-radius: 13px;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-  .glass-toggle-thumb {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    background: linear-gradient(135deg, #7C3AED, #3B82F6);
-    border-radius: 50%;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 8px rgba(124,58,237,0.4);
-  }
-  .glass-toggle input:checked ~ .glass-toggle-track {
-    background: rgba(124,58,237,0.2);
-    border-color: rgba(124,58,237,0.3);
-  }
-  .glass-toggle input:checked ~ .glass-toggle-thumb {
-    transform: translateX(22px);
-    box-shadow: 0 0 12px rgba(124,58,237,0.6);
-  }
+    /* ===== TABS ===== */
+    .tab-btn {
+      position: relative;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #475569;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.3s ease;
+      border-radius: 12px;
+    }
+    .tab-btn.active { color: #7C3AED; background: rgba(124,58,237,0.08); }
+    .tab-btn:hover:not(.active) { color: #0F172A; background: #F8F9FA; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
-  /* ===== GLASS TABS ===== */
-  .glass-tabs {
-    display: inline-flex;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    padding: 4px;
-    gap: 4px;
-  }
-  .glass-tab {
-    padding: 10px 24px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    color: #94A3B8;
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-  }
-  .glass-tab:hover { color: #F8FAFC; }
-  .glass-tab.active {
-    color: #F8FAFC;
-    background: linear-gradient(135deg, rgba(124,58,237,0.3) 0%, rgba(59,130,246,0.2) 100%);
-    box-shadow: 0 2px 12px rgba(124,58,237,0.2);
-  }
+    /* ===== FEATURE CARDS ===== */
+    .feature-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 20px;
+      padding: 32px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.03), rgba(59,130,246,0.03));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(15,23,42,0.1);
+      border-color: rgba(124,58,237,0.2);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));
+      color: #7C3AED;
+      margin-bottom: 20px;
+    }
 
-  /* ===== GLASS NAVBAR ===== */
-  .glass-nav {
-    background: rgba(5,5,16,0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .glass-nav-link {
-    position: relative;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #94A3B8;
-    text-decoration: none;
-    transition: color 0.3s ease;
-    border-radius: 10px;
-  }
-  .glass-nav-link:hover {
-    color: #F8FAFC;
-    background: rgba(255,255,255,0.04);
-  }
-  .glass-nav-link.active {
-    color: #F8FAFC;
-    background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(59,130,246,0.15) 100%);
-  }
+    /* ===== HOW IT WORKS STEPS ===== */
+    .step-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .step-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(15,23,42,0.08);
+      border-color: rgba(124,58,237,0.2);
+    }
+    .step-number {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 8px 20px rgba(124,58,237,0.3);
+    }
+    .step-connector {
+      position: absolute;
+      top: 65px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, #7C3AED, #3B82F6);
+      opacity: 0.3;
+      z-index: -1;
+    }
+    .step-card:last-child .step-connector { display: none; }
 
-  /* ===== STAT NUMBER ===== */
-  .stat-number {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 2.5rem;
-    line-height: 1;
-    letter-spacing: -0.02em;
-  }
-  .stat-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #94A3B8;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-top: 6px;
-  }
+    /* ===== SECURITY BADGES ===== */
+    .security-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .security-card::after {
+      content: '';
+      position: absolute; inset: -1px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.4s ease;
+      filter: blur(8px);
+    }
+    .security-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(124,58,237,0.3);
+      box-shadow: 0 20px 50px rgba(124,58,237,0.1);
+    }
+    .security-card:hover::after { opacity: 0.15; }
+    .security-icon {
+      width: 64px; height: 64px;
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));
+      color: #7C3AED;
+    }
 
-  /* ===== STATUS BADGES ===== */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 20px;
-    letter-spacing: 0.02em;
-  }
-  .badge-online {
-    background: rgba(16,185,129,0.12);
-    color: #34D399;
-    border: 1px solid rgba(16,185,129,0.2);
-    box-shadow: 0 0 12px rgba(16,185,129,0.1);
-  }
-  .badge-pending {
-    background: rgba(245,158,11,0.12);
-    color: #FBBF24;
-    border: 1px solid rgba(245,158,11,0.2);
-  }
-  .badge-offline {
-    background: rgba(239,68,68,0.12);
-    color: #F87171;
-    border: 1px solid rgba(239,68,68,0.2);
-  }
-  .badge-verified {
-    background: rgba(59,130,246,0.12);
-    color: #60A5FA;
-    border: 1px solid rgba(59,130,246,0.2);
-    box-shadow: 0 0 12px rgba(59,130,246,0.1);
-  }
+    /* ===== ESCROW DEMO ===== */
+    .escrow-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .escrow-entity {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .escrow-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      background: linear-gradient(135deg, #F8F9FA, #fff);
+      border: 2px solid #E2E8F0;
+    }
+    .escrow-lock {
+      width: 100px; height: 100px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 40px;
+      box-shadow: 0 12px 40px rgba(124,58,237,0.3);
+      position: relative;
+      animation: pulse-lock 3s ease-in-out infinite;
+    }
+    @keyframes pulse-lock {
+      0%, 100% { box-shadow: 0 12px 40px rgba(124,58,237,0.3); transform: scale(1); }
+      50% { box-shadow: 0 16px 50px rgba(124,58,237,0.45); transform: scale(1.03); }
+    }
+    .escrow-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+    .escrow-line {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #E2E8F0, #7C3AED);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .escrow-line::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, #7C3AED, transparent);
+      animation: flow-line 2s ease-in-out infinite;
+    }
+    @keyframes flow-line {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    .escrow-step-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #F8F9FA;
+      border: 2px solid #E2E8F0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      transition: all 0.4s ease;
+    }
+    .escrow-step-dot.completed {
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      border-color: transparent;
+      color: #fff;
+    }
+    .escrow-progress-bar {
+      height: 8px;
+      background: #E2E8F0;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .escrow-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7C3AED, #3B82F6);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-  /* ===== SCROLLBAR ===== */
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: #0a0a1a; }
-  ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.5); }
+    /* ===== CTA SECTION ===== */
+    .cta-section {
+      background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .cta-input {
+      padding: 16px 24px;
+      font-size: 16px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      outline: none;
+      width: 100%;
+      max-width: 360px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    .cta-input::placeholder { color: rgba(255,255,255,0.6); }
+    .cta-input:focus {
+      border-color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    .btn-white {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 16px 32px;
+      background: #fff; color: #7C3AED;
+      font-size: 15px; font-weight: 700;
+      border-radius: 14px; border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      white-space: nowrap;
+    }
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    }
 
-  /* ===== SECTION DIVIDER ===== */
-  .section-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.3), rgba(59,130,246,0.3), rgba(6,182,212,0.2), transparent);
-  }
+    /* ===== FOOTER ===== */
+    .footer-link {
+      color: #475569;
+      font-size: 14px;
+      transition: color 0.3s ease;
+      text-decoration: none;
+    }
+    .footer-link:hover { color: #7C3AED; }
+    .footer-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+    .social-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: #F8F9FA;
+      display: flex; align-items: center; justify-content: center;
+      color: #475569;
+      transition: all 0.3s ease;
+      border: 1px solid #E2E8F0;
+    }
+    .social-icon:hover {
+      background: #7C3AED;
+      color: #fff;
+      border-color: #7C3AED;
+      transform: translateY(-3px);
+    }
 
-  /* ===== ICON CIRCLES ===== */
-  .icon-circle {
-    width: 56px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 16px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-  .icon-circle-sm {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-  }
+    /* ===== ANIMATED COUNTER ===== */
+    .counter-value { display: inline-block; }
 
-  /* ===== PROGRESS BAR ===== */
-  .glass-progress {
-    height: 6px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .glass-progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, #7C3AED, #3B82F6, #06B6D4);
-    transition: width 0.8s ease;
-    box-shadow: 0 0 10px rgba(124,58,237,0.4);
-  }
+    /* ===== SECTION LABELS ===== */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(124,58,237,0.08);
+      color: #7C3AED;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
 
-  /* ===== TOOLTIP ===== */
-  .glass-tooltip {
-    position: absolute;
-    padding: 8px 14px;
-    font-size: 12px;
-    color: #F8FAFC;
-    background: rgba(15,15,35,0.95);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    pointer-events: none;
-    opacity: 0;
-    transform: translateY(4px);
-    transition: all 0.2s ease;
-    z-index: 50;
-    white-space: nowrap;
-  }
-  .glass-tooltip-parent:hover .glass-tooltip {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    /* ===== CHECKMARK ANIMATION ===== */
+    .checkmark-circle {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .checkmark-circle.show {
+      opacity: 1;
+      transform: scale(1);
+    }
 
-  /* ===== AVATAR ===== */
-  .glass-avatar {
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.1);
-    background: linear-gradient(135deg, #7C3AED, #3B82F6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: #fff;
-    box-shadow: 0 0 20px rgba(124,58,237,0.3);
-  }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .step-connector { display: none; }
+      .stat-number { font-size: 28px; }
+    }
+    @media (max-width: 768px) {
+      .stat-divider { display: none; }
+      .escrow-arrow { transform: rotate(90deg); margin: 16px 0; }
+      .step-connector { display: none; }
+      .nav-desktop { display: none; }
+    }
 
-  /* ===== WALLET CARD ===== */
-  .wallet-card {
-    background: linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(59,130,246,0.1) 50%, rgba(6,182,212,0.08) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(124,58,237,0.2);
-    border-radius: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .wallet-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(from 0deg, transparent, rgba(124,58,237,0.03), transparent, rgba(59,130,246,0.03), transparent);
-    animation: rotate 10s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes rotate { 100% { transform: rotate(360deg); } }
+    /* ===== REVEAL CLASSES ===== */
+    .reveal { opacity: 0; transform: translateY(40px); }
+    .reveal-left { opacity: 0; transform: translateX(-40px); }
+    .reveal-right { opacity: 0; transform: translateX(40px); }
+    .reveal-scale { opacity: 0; transform: scale(0.9); }
 
-  /* ===== ANIMATED BORDER ===== */
-  .animated-border {
-    position: relative;
-    overflow: hidden;
-  }
-  .animated-border::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: conic-gradient(from 0deg, #7C3AED, #3B82F6, #06B6D4, #7C3AED);
-    border-radius: inherit;
-    z-index: -1;
-    animation: rotate 4s linear infinite;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  .animated-border:hover::before { opacity: 1; }
-
-  /* ===== OTP INPUTS ===== */
-  .otp-input {
-    width: 56px;
-    height: 64px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 24px;
-    font-weight: 700;
-    text-align: center;
-    color: #F8FAFC;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    outline: none;
-    transition: all 0.3s ease;
-  }
-  .otp-input:focus {
-    border-color: #7C3AED;
-    box-shadow: 0 0 20px rgba(124,58,237,0.3), inset 0 0 20px rgba(124,58,237,0.05);
-    background: rgba(124,58,237,0.08);
-  }
-
-  /* ===== CONFETTI CANVAS ===== */
-  #confetti-canvas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* ===== HAMBURGER MENU ===== */
-  .hamburger {
-    width: 28px;
-    height: 20px;
-    position: relative;
-    cursor: pointer;
-    display: none;
-  }
-  .hamburger span {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: #F8FAFC;
-    border-radius: 2px;
-    transition: all 0.3s ease;
-  }
-  .hamburger span:nth-child(1) { top: 0; }
-  .hamburger span:nth-child(2) { top: 50%; transform: translateY(-50%); }
-  .hamburger span:nth-child(3) { bottom: 0; }
-  .hamburger.active span:nth-child(1) { top: 50%; transform: translateY(-50%) rotate(45deg); }
-  .hamburger.active span:nth-child(2) { opacity: 0; }
-  .hamburger.active span:nth-child(3) { bottom: 50%; transform: translateY(50%) rotate(-45deg); }
-
-  /* ===== MOBILE MENU ===== */
-  .mobile-menu {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    width: 280px;
-    height: 100vh;
-    background: rgba(10,10,26,0.98);
-    backdrop-filter: blur(30px);
-    z-index: 100;
-    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 80px 24px 24px;
-    border-left: 1px solid rgba(255,255,255,0.08);
-  }
-  .mobile-menu.open { right: 0; }
-  .mobile-menu-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 99;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-  }
-  .mobile-menu-overlay.open { opacity: 1; pointer-events: all; }
-
-  /* ===== PAGE TRANSITIONS ===== */
-  .page-section {
-    display: none;
-    animation: fadeIn 0.4s ease-out;
-  }
-  .page-section.active { display: block; }
-  #page-auth.page-section.active { display: flex; }
-
-  /* ===== MISC UTILITIES ===== */
-  .text-shadow-glow { text-shadow: 0 0 30px rgba(124,58,237,0.5); }
-  .ring-glow:focus { outline: none; box-shadow: 0 0 0 3px rgba(124,58,237,0.3); }
-  .shimmer-bg {
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%);
-    background-size: 200% 100%;
-    animation: shimmer 2.5s ease-in-out infinite;
-  }
-
-  /* ===== MEDIA QUERIES ===== */
-  @media (max-width: 768px) {
-    .hamburger { display: block; }
-    .desktop-nav { display: none !important; }
-    .stat-number { font-size: 1.8rem; }
-  }
-  @media (min-width: 769px) {
-    .mobile-menu, .mobile-menu-overlay { display: none !important; }
-  }
-
-  /* ===== STAR FIELD EFFECT ===== */
-  .star {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    background: #fff;
-    border-radius: 50%;
-    opacity: 0;
-    animation: twinkle 3s ease-in-out infinite;
-  }
-  @keyframes twinkle {
-    0%, 100% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 0.8; transform: scale(1); }
-  }
-
-  /* ===== NOTIFICATION TOAST ===== */
-  .toast-container {
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    z-index: 200;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .toast {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
-    border-radius: 14px;
-    backdrop-filter: blur(20px);
-    font-size: 14px;
-    font-weight: 500;
-    animation: slideInRight 0.4s ease-out forwards;
-    max-width: 360px;
-  }
-  .toast-success {
-    background: rgba(16,185,129,0.15);
-    border: 1px solid rgba(16,185,129,0.25);
-    color: #34D399;
-  }
-  .toast-error {
-    background: rgba(239,68,68,0.15);
-    border: 1px solid rgba(239,68,68,0.25);
-    color: #F87171;
-  }
-  .toast-info {
-    background: rgba(59,130,246,0.15);
-    border: 1px solid rgba(59,130,246,0.25);
-    color: #60A5FA;
-  }
-  @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(40px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slideOutRight {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(40px); }
-  }
-  .toast-exit { animation: slideOutRight 0.3s ease-in forwards; }
-
-  /* ===== RESPONSIVE GRID ===== */
-  .grid-responsive-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
-  .grid-responsive-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .grid-responsive-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  @media (max-width: 1024px) {
-    .grid-responsive-4 { grid-template-columns: repeat(2, 1fr); }
-    .grid-responsive-3 { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .grid-responsive-4 { grid-template-columns: 1fr; }
-    .grid-responsive-3 { grid-template-columns: 1fr; }
-    .grid-responsive-2 { grid-template-columns: 1fr; }
-  }
-</style>
+    /* ===== GCSC LOGO ORB ===== */
+    .gcsc-logo-orb {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px; color: #fff;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      box-shadow: 0 0 0 2px rgba(255,255,255,.15), 0 0 0 5px rgba(124,58,237,.12), 0 4px 16px rgba(124,58,237,.3), inset 0 2px 4px rgba(255,255,255,.3), inset 0 -2px 4px rgba(0,0,0,.2);
+      position: relative; overflow: hidden; flex-shrink: 0;
+    }
+    .gcsc-logo-orb::before {
+      content: ''; position: absolute;
+      top: 1px; left: 5px; width: 30px; height: 15px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.45), transparent);
+      pointer-events: none;
+    }
+    .gcsc-logo-orb-lg {
+      width: 112px; height: 112px;
+      font-size: 36px; letter-spacing: -1px;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.12), 0 0 0 8px rgba(124,58,237,.1), 0 8px 32px rgba(124,58,237,.35), inset 0 3px 6px rgba(255,255,255,.3), inset 0 -3px 6px rgba(0,0,0,.2);
+    }
+    .gcsc-logo-orb-lg::before {
+      width: 84px; height: 42px; left: 14px; top: 3px;
+    }
+    .gcsc-logo-orb-xl {
+      width: 64px; height: 64px;
+      font-size: 22px; letter-spacing: -1px;
+    }
+    .gcsc-logo-orb-xl::before {
+      width: 48px; height: 24px; left: 8px; top: 2px;
+    }
+    .gcsc-logo-orb-sm {
+      width: 32px; height: 32px;
+      font-size: 10px; letter-spacing: -0.3px;
+    }
+    .gcsc-logo-orb-sm::before {
+      width: 24px; height: 12px; left: 4px; top: 1px;
+    }
+    .gcsc-logo-orb-2xl {
+      width: 224px; height: 224px;
+      font-size: 72px; letter-spacing: -2px;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.1), 0 0 0 12px rgba(124,58,237,.08), 0 12px 48px rgba(124,58,237,.3), inset 0 4px 8px rgba(255,255,255,.3), inset 0 -4px 8px rgba(0,0,0,.2);
+    }
+    .gcsc-logo-orb-2xl::before {
+      width: 168px; height: 84px; left: 28px; top: 4px;
+    }
+  </style>
 </head>
+<body class="font-inter antialiased">
 
-<body class="bg-deep-dark min-h-screen bg-noise">
+  <!-- ===== FULL-WIDE LOGO BANNER ===== -->
+  <div class="w-full bg-white flex items-center justify-center py-5 gap-4 border-b border-gray-100">
+    <img
+      src="logo-gcsc-wide.png"
+      alt="GCSC Smart Contractor"
+      class="h-auto block"
+      style="max-height: 180px; object-fit: contain;"
+    >
+  </div>
 
-<!-- ===== BACKGROUND EFFECTS ===== -->
-<div class="fixed inset-0 pointer-events-none z-0">
-  <!-- Dot grid -->
-  <div class="absolute inset-0 bg-dot-grid opacity-40"></div>
-  <!-- Scan lines -->
-  <div class="absolute inset-0 bg-scan-lines"></div>
-  <!-- Gradient orbs -->
-  <div class="orb orb-purple w-[600px] h-[600px] -top-[200px] -left-[200px] animate-float-slow"></div>
-  <div class="orb orb-blue w-[500px] h-[500px] top-[40%] -right-[150px] animate-float" style="animation-delay: -2s;"></div>
-  <div class="orb orb-cyan w-[400px] h-[400px] bottom-[10%] left-[10%] animate-float-slow" style="animation-delay: -4s;"></div>
-  <div class="orb orb-pink w-[350px] h-[350px] top-[20%] right-[30%] animate-float-fast" style="animation-delay: -1s;"></div>
-  <!-- Stars -->
-  <div id="star-field"></div>
-</div>
+  <!-- ===== HEADER / NAV ===== -->
+  <header class="header" id="header">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-[64px]">
+        <!-- Desktop Nav -->
+        <nav class="hidden lg:flex items-center gap-8 nav-desktop mx-auto">
+          <span class="nav-link" data-scroll-to="#features">Features</span>
+          <span class="nav-link" data-scroll-to="#how-it-works">How It Works</span>
+          <span class="nav-link" data-scroll-to="#security">Security</span>
+          <span class="nav-link" data-scroll-to="#escrow">Escrow</span>
+        </nav>
 
-<!-- ===== TOAST CONTAINER ===== -->
-<div class="toast-container" id="toast-container"></div>
-
-<!-- ===== MOBILE MENU OVERLAY ===== -->
-<div class="mobile-menu-overlay" id="mobile-overlay"></div>
-
-<!-- ===== MOBILE MENU ===== -->
-<div class="mobile-menu" id="mobile-menu">
-  <nav class="flex flex-col gap-2" id="mobile-nav-links">
-    <!-- Populated by JS -->
-  </nav>
-</div>
-
-<!-- ===== NAVIGATION ===== -->
-<nav class="glass-nav fixed top-0 left-0 right-0 z-50" id="main-nav">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-[72px]">
-      <!-- Left: Logos -->
-      <a href="#home" class="flex items-center gap-3 nav-link" data-page="home">
-        <img src="logo-company.jpg" alt="GCSC" class="w-10 h-10 rounded-full border border-white/10" onerror="this.style.display='none'">
-        <img src="logo-product-wide.png" alt="SC Smart Contractor" class="h-8 hidden sm:block" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block'">
-        <span id="logo-fallback" class="hidden font-display font-bold text-lg gradient-text">SC SMART CONTRACTOR</span>
-      </a>
-      <!-- Center/Right: Nav links desktop -->
-      <div class="desktop-nav flex items-center gap-1" id="desktop-nav-links">
-        <!-- Populated by JS -->
-      </div>
-      <!-- Hamburger -->
-      <div class="hamburger" id="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
+        <!-- CTA + Mobile Menu -->
+        <div class="flex items-center gap-4 ml-auto">
+          <a href="login.html" class="btn-primary hidden sm:flex">
+            <span>Get Started</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+          <!-- Mobile Menu Button -->
+          <button class="lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors" id="mobile-menu-btn" aria-label="Open menu">
+            <i data-lucide="menu" class="w-6 h-6 text-text-primary"></i>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-</nav>
 
-<!-- ===== CONFETTI CANVAS ===== -->
-<canvas id="confetti-canvas"></canvas>
+    <!-- Mobile Menu -->
+    <div class="lg:hidden hidden" id="mobile-menu">
+      <div class="px-4 py-6 border-t border-border bg-white/95 backdrop-blur-xl space-y-4">
+        <a href="#features" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Features</a>
+        <a href="#how-it-works" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">How It Works</a>
+        <a href="#security" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Security</a>
+        <a href="#escrow" class="block py-3 px-4 rounded-xl text-text-secondary hover:bg-surface hover:text-accent font-medium transition-colors mobile-link">Escrow</a>
+        <a href="login.html" class="btn-primary w-full mt-4 text-center block">Get Started</a>
+      </div>
+    </div>
+  </header>
 
-<!-- ============================================================ -->
-<!-- PAGE 1: HOME                                                 -->
-<!-- ============================================================ -->
-<section id="page-home" class="page-section active pt-[72px]">
+  <!-- ===== HERO SECTION ===== -->
+  <section class="hero min-h-screen flex items-center relative" id="hero">
+    <div class="hero-radial"></div>
+    <!-- Gradient Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
 
-  <!-- HERO -->
-  <div class="relative min-h-screen flex items-center overflow-hidden">
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative z-10 w-full">
       <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-        <!-- Left: Text -->
+        <!-- Left Content -->
         <div class="text-center lg:text-left">
-          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card-subtle mb-8 animate-fade-up">
-            <span class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></span>
-            <span class="text-sm font-medium text-neon-cyan">Powered by XPR Blockchain</span>
+          <div class="section-label mx-auto lg:mx-0 reveal">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>XPR Blockchain Powered</span>
           </div>
-          <h1 class="font-display font-bold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.05] mb-6 animate-fade-up" style="animation-delay: 0.1s;">
-            <span class="gradient-text text-shadow-glow">SC SMART</span><br>
-            <span class="text-text-primary">CONTRACTOR</span>
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-text-primary leading-[1.05] tracking-tight mb-6 reveal" style="transition-delay: 0.2s;">
+            Build with Trust.<br>
+            <span class="bg-gradient-to-r from-accent to-accent-blue bg-clip-text text-transparent">Pay with Confidence.</span>
           </h1>
-          <p class="text-text-muted text-lg sm:text-xl leading-relaxed mb-10 max-w-xl mx-auto lg:mx-0 animate-fade-up" style="animation-delay: 0.2s;">
-            The peer-to-peer construction marketplace revolutionizing how homeowners and contractors connect, contract, and collaborate — secured on the XPR blockchain.
+          <p class="text-lg sm:text-xl text-text-secondary leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 reveal" style="transition-delay: 0.3s;">
+            The first construction marketplace powered by XPR blockchain escrow. Smart contracts protect every payment, every milestone, every project.
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-up" style="animation-delay: 0.3s;">
-            <button class="glass-btn glass-btn-primary" onclick="SC.navigate('register')">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12 reveal" style="transition-delay: 0.4s;">
+            <button class="btn-primary text-base px-8 py-4" data-scroll-to="#cta">
               <span>Get Started</span>
+              <i data-lucide="arrow-right" class="w-5 h-5"></i>
             </button>
-            <button class="glass-btn" onclick="SC.navigate('login')">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-              <span>Login</span>
+            <button class="btn-outline text-base px-8 py-4" data-scroll-to="#how-it-works">
+              <span>Learn More</span>
+              <i data-lucide="play-circle" class="w-5 h-5"></i>
             </button>
           </div>
-          <!-- Trust badges -->
-          <div class="flex flex-wrap items-center gap-6 mt-12 justify-center lg:justify-start animate-fade-up" style="animation-delay: 0.4s;">
-            <div class="flex items-center gap-2 text-text-dim text-sm">
-              <svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              <span>Smart Contracts</span>
+
+          <!-- Stats -->
+          <div class="flex flex-wrap items-center justify-center lg:justify-start gap-6 sm:gap-0 reveal" style="transition-delay: 0.5s;" id="stats-row">
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number"><span class="counter-value" data-target="2847">0</span>+</div>
+              <div class="stat-label">Contracts</div>
             </div>
-            <div class="flex items-center gap-2 text-text-dim text-sm">
-              <svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              <span>Escrow Payments</span>
+            <div class="stat-divider hidden sm:block"></div>
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number">$<span class="counter-value" data-target="12">0</span>M+</div>
+              <div class="stat-label">Secured</div>
             </div>
-            <div class="flex items-center gap-2 text-text-dim text-sm">
-              <svg class="w-4 h-4 text-neon-green" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              <span>XPR Secured</span>
+            <div class="stat-divider hidden sm:block"></div>
+            <div class="text-center sm:px-6 lg:px-8">
+              <div class="stat-number"><span class="counter-value" data-target="500">0</span>+</div>
+              <div class="stat-label">Contractors</div>
             </div>
           </div>
         </div>
-        <!-- Right: Visual -->
-        <div class="hidden lg:flex justify-center items-center relative">
-          <div class="relative w-[400px] h-[400px]">
-            <!-- Orbiting elements -->
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="w-64 h-64 rounded-full border border-white/5"></div>
-            </div>
-            <div class="absolute inset-0 flex items-center justify-center animate-orbit">
-              <div class="w-16 h-16 glass-card-strong flex items-center justify-center glow-purple">
-                <svg class="w-8 h-8 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+
+        <!-- Right Visual -->
+        <div class="hidden lg:flex items-center justify-center reveal-scale" style="transition-delay: 0.3s;">
+          <div class="relative">
+            <!-- Main floating card -->
+            <div class="relative w-[420px] h-[420px] rounded-[40px] bg-gradient-to-br from-accent/5 to-accent-blue/5 border border-border/60 flex items-center justify-center" style="animation: float-cta 8s ease-in-out infinite;">
+              <div class="text-center">
+                <div class="w-32 h-32 rounded-full mx-auto mb-6 flex items-center justify-center" style="background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));">
+                  <img src="logo-company.png" alt="GCSC" class="w-28 h-28 rounded-full object-cover">
+                </div>
+                <h3 class="text-2xl font-bold text-text-primary mb-2">GCSC Smart Contract</h3>
+                <p class="text-text-secondary">Blockchain Escrow</p>
+                <!-- Floating badges -->
+                <div class="flex justify-center gap-3 mt-6">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-accent/10 text-accent">
+                    <i data-lucide="shield" class="w-3 h-3"></i> Protected
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-accent-blue/10 text-accent-blue">
+                    <i data-lucide="zap" class="w-3 h-3"></i> Instant
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="absolute inset-0 flex items-center justify-center animate-orbit-reverse">
-              <div class="w-14 h-14 glass-card-strong flex items-center justify-center glow-blue" style="animation-delay: -5s;">
-                <svg class="w-7 h-7 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <!-- Floating mini cards -->
+            <div class="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 border border-border/60" style="animation: float-header 5s ease-in-out infinite;">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <i data-lucide="check-circle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-text-primary">Payment Released</p>
+                  <p class="text-[10px] text-text-secondary">Milestone 2 of 3</p>
+                </div>
               </div>
             </div>
-            <!-- Center card -->
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="w-40 h-40 glass-card-strong flex flex-col items-center justify-center glow-cyan">
-                <svg class="w-14 h-14 text-neon-cyan mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <span class="font-display font-bold text-sm gradient-text">ON CHAIN</span>
+            <div class="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl p-4 border border-border/60" style="animation: float-header 7s ease-in-out infinite 1s;">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+                  <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-text-primary">$24,500 in Escrow</p>
+                  <p class="text-[10px] text-text-secondary">AES-256 Encrypted</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- STATS ROW -->
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <div class="grid-responsive-4" id="home-stats">
-      <!-- Populated by JS -->
-    </div>
-  </div>
+  <!-- ===== FEATURES TABS SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-surface relative" id="features">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Features</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          Built for Everyone in Construction
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Whether you are hiring or getting hired, our smart contract platform protects both sides.
+        </p>
+      </div>
 
-  <div class="section-divider max-w-4xl mx-auto"></div>
+      <!-- Tabs -->
+      <div class="flex justify-center gap-2 mb-12 reveal" style="transition-delay: 0.1s;">
+        <button class="tab-btn active" data-tab="homeowners">
+          <span class="flex items-center gap-2">
+            <i data-lucide="home" class="w-4 h-4"></i>
+            For Homeowners
+          </span>
+        </button>
+        <button class="tab-btn" data-tab="contractors">
+          <span class="flex items-center gap-2">
+            <i data-lucide="hard-hat" class="w-4 h-4"></i>
+            For Contractors
+          </span>
+        </button>
+      </div>
 
-  <!-- FEATURES SECTION -->
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-    <div class="text-center mb-16">
-      <span class="text-sm font-semibold text-neon-purple tracking-widest uppercase">Platform Features</span>
-      <h2 class="font-display font-bold text-3xl sm:text-4xl mt-4 mb-4">
-        <span class="gradient-text">Why Choose SC Smart Contractor?</span>
-      </h2>
-      <p class="text-text-muted max-w-2xl mx-auto">Built on cutting-edge blockchain technology for transparency, security, and efficiency.</p>
-    </div>
-    <div class="grid-responsive-4" id="home-features">
-      <!-- Populated by JS -->
-    </div>
-  </div>
-
-  <div class="section-divider max-w-4xl mx-auto"></div>
-
-  <!-- HOW IT WORKS -->
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-    <div class="text-center mb-16">
-      <span class="text-sm font-semibold text-neon-cyan tracking-widest uppercase">How It Works</span>
-      <h2 class="font-display font-bold text-3xl sm:text-4xl mt-4 mb-4">
-        <span class="gradient-text">Three Steps to Construction</span>
-      </h2>
-      <p class="text-text-muted max-w-2xl mx-auto">From posting your project to completion — streamlined and secured.</p>
-    </div>
-    <div class="grid-responsive-3" id="home-steps">
-      <!-- Populated by JS -->
-    </div>
-  </div>
-
-  <div class="section-divider max-w-4xl mx-auto"></div>
-
-  <!-- TRUST BADGES -->
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-    <div class="text-center mb-16">
-      <span class="text-sm font-semibold text-neon-green tracking-widest uppercase">Trusted & Verified</span>
-      <h2 class="font-display font-bold text-3xl sm:text-4xl mt-4 mb-4">
-        <span class="gradient-text">Secure by Design</span>
-      </h2>
-    </div>
-    <div class="grid-responsive-3" id="home-trust">
-      <!-- Populated by JS -->
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer class="relative z-10 border-t border-white/[0.06] mt-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div class="grid md:grid-cols-4 gap-12">
-        <!-- Brand -->
-        <div class="md:col-span-2">
-          <div class="flex items-center gap-3 mb-6">
-            <img src="logo-company.jpg" alt="GCSC" class="w-10 h-10 rounded-full border border-white/10" onerror="this.style.display='none'">
-            <img src="logo-company-wide.jpg" alt="GCSC" class="h-8" onerror="this.style.display='none'">
-            <img src="logo-product-wide.png" alt="SC" class="h-7 opacity-80" onerror="this.style.display='none'">
+      <!-- Tab Content: Homeowners -->
+      <div class="tab-content active" id="tab-homeowners">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-card reveal">
+            <div class="feature-icon">
+              <i data-lucide="file-plus" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Post Your Project</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Describe your construction project in minutes. Set your budget, timeline, and requirements. Get matched with qualified contractors instantly.
+            </p>
           </div>
-          <p class="text-text-muted leading-relaxed max-w-sm">
-            SC Smart Contractor — a decentralized peer-to-peer construction marketplace powered by the XPR Network blockchain.
+          <div class="feature-card reveal" style="transition-delay: 0.1s;">
+            <div class="feature-icon">
+              <i data-lucide="trending-down" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Receive Competitive Bids</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Multiple contractors bid on your project. Compare prices, portfolios, and ratings. Choose the best fit for your budget and vision.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.2s;">
+            <div class="feature-icon">
+              <i data-lucide="shield-check" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Escrow Protection</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Your funds are held in a secure XPR blockchain escrow. Payments are only released when milestones are completed to your satisfaction.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.3s;">
+            <div class="feature-icon">
+              <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Milestone Tracking</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Track progress with automated milestone verification. Each phase is documented, verified, and approved before payment release.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.4s;">
+            <div class="feature-icon">
+              <i data-lucide="message-square" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Direct Messaging</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Communicate directly with your contractor through our secure platform. All conversations are encrypted and stored for reference.
+            </p>
+          </div>
+          <div class="feature-card reveal" style="transition-delay: 0.5s;">
+            <div class="feature-icon">
+              <i data-lucide="star" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Verified Reviews</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Read authentic reviews from verified homeowners. Our blockchain-backed review system ensures every rating is genuine and tamper-proof.
+            </p>
+          </div>
+        </div>
+        <!-- Product Logo in Features -->
+        <div class="mt-16 text-center reveal">
+          <p class="text-sm text-text-secondary mb-4">Powered by</p>
+          <img src="logo-company.png" alt="GCSC" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+        </div>
+      </div>
+
+      <!-- Tab Content: Contractors -->
+      <div class="tab-content" id="tab-contractors">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="search" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Find Quality Jobs</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Browse a curated list of construction projects in your area. Filter by project type, budget range, and location to find the perfect match.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="send" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Place Bids Easily</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Submit professional bids with detailed proposals, timelines, and pricing. Stand out with your portfolio and verified credentials.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="wallet" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Guaranteed Payment</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Funds are locked in escrow before work begins. Get paid automatically when milestones are verified. No more chasing payments.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="award" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Build Your Reputation</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Earn blockchain-verified credentials and ratings. Your reputation grows with every completed project, attracting higher-value clients.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Business Analytics</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Track your earnings, win rates, and project history. Use data insights to optimize your bidding strategy and grow your business.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i data-lucide="users" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-text-primary mb-2 relative">Network & Grow</h3>
+            <p class="text-text-secondary leading-relaxed relative">
+              Connect with other professionals in the industry. Join a community of verified contractors and access exclusive partnership opportunities.
+            </p>
+          </div>
+        </div>
+        <!-- Product Logo in Features -->
+        <div class="mt-16 text-center">
+          <p class="text-sm text-text-secondary mb-4">Powered by</p>
+          <img src="logo-company.png" alt="GCSC" class="h-12 mx-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-white relative" id="how-it-works">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="route" class="w-4 h-4"></i>
+          <span>Process</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          How It Works
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Three simple steps to secure, smart construction contracts powered by blockchain.
+        </p>
+      </div>
+
+      <!-- Steps -->
+      <div class="grid md:grid-cols-3 gap-8 relative">
+        <!-- Step 1 -->
+        <div class="step-card reveal">
+          <div class="step-connector hidden md:block"></div>
+          <div class="step-number">1</div>
+          <div class="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-6 text-accent">
+            <i data-lucide="file-text" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Post Your Project</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Homeowners describe their project needs, set a budget range, and specify their timeline. Our AI helps optimize your project listing for the best contractor matches.
           </p>
-          <div class="flex items-center gap-4 mt-6">
-            <span class="badge badge-verified">
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-              XPR Network
-            </span>
-            <span class="badge badge-online">
-              <span class="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse"></span>
-              Mainnet Live
-            </span>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card reveal" style="transition-delay: 0.15s;">
+          <div class="step-connector hidden md:block"></div>
+          <div class="step-number">2</div>
+          <div class="w-16 h-16 rounded-2xl bg-accent-blue/10 flex items-center justify-center mx-auto mb-6 text-accent-blue">
+            <i data-lucide="users" class="w-8 h-8"></i>
           </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Contractors Bid</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Verified contractors review your project and submit competitive bids. Compare portfolios, read verified reviews, and chat with prospects before making your choice.
+          </p>
         </div>
-        <!-- Links -->
-        <div>
-          <h4 class="font-semibold text-text-primary mb-4">Platform</h4>
-          <ul class="space-y-3" id="footer-links-platform"></ul>
-        </div>
-        <div>
-          <h4 class="font-semibold text-text-primary mb-4">Resources</h4>
-          <ul class="space-y-3" id="footer-links-resources"></ul>
+
+        <!-- Step 3 -->
+        <div class="step-card reveal" style="transition-delay: 0.3s;">
+          <div class="step-number">3</div>
+          <div class="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-6 text-success">
+            <i data-lucide="shield-check" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-text-primary mb-3">Smart Contract Escrow</h3>
+          <p class="text-text-secondary leading-relaxed">
+            Funds are locked in XPR blockchain escrow. As each milestone is completed and approved, payment is automatically released. Everyone is protected.
+          </p>
         </div>
       </div>
-      <div class="border-t border-white/[0.06] mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <p class="text-text-dim text-sm"> SC Smart Contractor. All rights reserved.</p>
-        <p class="text-text-dim text-sm font-mono">Powered by XPR Network</p>
+
+      <!-- Bottom CTA -->
+      <div class="text-center mt-16 reveal">
+        <button class="btn-primary text-base px-8 py-4" data-scroll-to="#cta">
+          <span>Start Your Project</span>
+          <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECURITY SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-surface relative" id="security">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="lock" class="w-4 h-4"></i>
+          <span>Security</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          Your Money's Safe Space
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Military-grade security meets blockchain transparency. Every transaction is protected at the highest level.
+        </p>
+      </div>
+
+      <!-- Security Cards -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="security-card reveal">
+          <div class="security-icon">
+            <i data-lucide="key-round" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">AES-256 Encryption</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Bank-level encryption protects all your data and communications. The same standard used by governments and financial institutions worldwide.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.1s;">
+          <div class="security-icon">
+            <i data-lucide="link" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">XPR Blockchain</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Every transaction is recorded on the XPR blockchain, creating an immutable, transparent ledger that cannot be altered or tampered with.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.2s;">
+          <div class="security-icon">
+            <i data-lucide="hard-drive" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">Google Drive Vault</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            All project documents, contracts, and media are backed up to encrypted Google Drive storage with redundancy across multiple regions.
+          </p>
+        </div>
+
+        <div class="security-card reveal" style="transition-delay: 0.3s;">
+          <div class="security-icon">
+            <i data-lucide="file-check" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-text-primary mb-2">Smart Contract Protected</h3>
+          <p class="text-sm text-text-secondary leading-relaxed">
+            Self-executing smart contracts automatically enforce terms. No middlemen, no delays, no disputes over payment conditions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ESCROW DEMO SECTION ===== -->
+  <section class="py-24 lg:py-32 bg-white relative" id="escrow">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+        <div class="section-label mx-auto">
+          <i data-lucide="eye" class="w-4 h-4"></i>
+          <span>Live Demo</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+          See How Escrow Works
+        </h2>
+        <p class="text-lg text-text-secondary">
+          Watch how funds flow securely from homeowner to contractor through our blockchain escrow.
+        </p>
+      </div>
+
+      <!-- Escrow Visual Flow -->
+      <div class="reveal">
+        <!-- Progress Bar -->
+        <div class="mb-12">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-semibold text-text-primary">Escrow Progress</span>
+            <span class="text-sm font-semibold text-accent" id="escrow-progress-text">0%</span>
+          </div>
+          <div class="escrow-progress-bar">
+            <div class="escrow-progress-fill" id="escrow-progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Flow -->
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
+          <!-- Homeowner -->
+          <div class="escrow-entity">
+            <div class="escrow-avatar" id="homeowner-avatar" style="transition: all 0.5s ease;">
+              <i data-lucide="home" class="w-10 h-10 text-accent"></i>
+            </div>
+            <p class="font-semibold text-text-primary">Homeowner</p>
+            <p class="text-xs text-text-secondary">Deposits $25,000</p>
+          </div>
+
+          <!-- Arrow 1 -->
+          <div class="escrow-arrow hidden md:flex">
+            <div class="escrow-line"></div>
+            <i data-lucide="arrow-right" class="w-5 h-5 text-accent"></i>
+          </div>
+          <div class="md:hidden">
+            <i data-lucide="arrow-down" class="w-6 h-6 text-accent"></i>
+          </div>
+
+          <!-- Escrow Lock -->
+          <div class="escrow-entity">
+            <div class="escrow-lock" id="escrow-lock">
+              <i data-lucide="lock" class="w-12 h-12"></i>
+            </div>
+            <p class="font-semibold text-text-primary">XPR Escrow</p>
+            <p class="text-xs text-text-secondary">Funds Secured</p>
+          </div>
+
+          <!-- Arrow 2 -->
+          <div class="escrow-arrow hidden md:flex">
+            <div class="escrow-line" style="background: linear-gradient(90deg, #7C3AED, #10B981);"></div>
+            <i data-lucide="arrow-right" class="w-5 h-5 text-success"></i>
+          </div>
+          <div class="md:hidden">
+            <i data-lucide="arrow-down" class="w-6 h-6 text-success"></i>
+          </div>
+
+          <!-- Contractor -->
+          <div class="escrow-entity">
+            <div class="escrow-avatar" id="contractor-avatar" style="transition: all 0.5s ease;">
+              <i data-lucide="hard-hat" class="w-10 h-10 text-accent-blue"></i>
+            </div>
+            <p class="font-semibold text-text-primary">Contractor</p>
+            <p class="text-xs text-text-secondary">Gets Paid on Completion</p>
+          </div>
+        </div>
+
+        <!-- Steps Timeline -->
+        <div class="mt-16">
+          <div class="flex items-start justify-between gap-4 max-w-2xl mx-auto">
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot completed" data-step="1">
+                <i data-lucide="check" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Deposit</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Funds locked in escrow</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gradient-to-r from-accent to-accent-blue mt-[18px] rounded-full"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="2">
+                <span>2</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Work</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Contractor completes job</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gray-200 mt-[18px] rounded-full" id="step-line-2"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="3">
+                <span>3</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Verify</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Homeowner approves</p>
+            </div>
+            <div class="flex-1 h-[2px] bg-gray-200 mt-[18px] rounded-full" id="step-line-3"></div>
+            <div class="flex flex-col items-center gap-3 flex-1">
+              <div class="escrow-step-dot" data-step="4">
+                <span>4</span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-text-primary text-center">Release</p>
+              <p class="text-[10px] sm:text-xs text-text-secondary text-center hidden sm:block">Payment sent</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo Button -->
+        <div class="text-center mt-12">
+          <button class="btn-primary" id="run-escrow-demo">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>Run Escrow Simulation</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== LIVE PROJECTS FROM API ===== -->
+  <section id="projects" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <div class="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-6">
+          <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+          <span class="text-sm font-semibold text-accent tracking-wide uppercase">Live Projects</span>
+        </div>
+        <h2 class="heading-font text-4xl md:text-5xl font-black text-text-primary mb-4">Available Projects</h2>
+        <p class="text-xl text-text-secondary max-w-2xl mx-auto">Real construction projects posted by homeowners. Connect, bid, and build.</p>
+        <div class="mt-6 flex justify-center gap-8 text-center">
+          <div><div class="text-3xl font-bold text-accent" id="stat-projects">6</div><div class="text-sm text-text-secondary">Open Projects</div></div>
+          <div><div class="text-3xl font-bold text-accent" id="stat-contractors">2</div><div class="text-sm text-text-secondary">Active Contractors</div></div>
+          <div><div class="text-3xl font-bold text-accent" id="stat-value">$143K</div><div class="text-sm text-text-secondary">Total Value</div></div>
+        </div>
+      </div>
+      <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Projects loaded dynamically -->
+        <div class="col-span-full text-center py-12">
+          <div class="animate-spin w-8 h-8 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p class="text-text-secondary">Loading projects...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="cta-section py-24 lg:py-32 relative" id="cta">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <!-- Left: Content -->
+        <div class="text-center lg:text-left reveal">
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-6 leading-tight">
+            Ready to Build Smarter?
+          </h2>
+          <p class="text-lg text-white/70 mb-8 max-w-lg mx-auto lg:mx-0">
+            Join thousands of homeowners and contractors who trust GCSC Smart Contract for secure, transparent construction payments.
+          </p>
+          <!-- STEP 1: Email + Role -->
+          <div id="step1" class="flex flex-col gap-4 justify-center lg:justify-start">
+            <div class="relative flex-1 max-w-sm mx-auto lg:mx-0">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                class="cta-input pr-[140px]"
+                id="cta-email"
+                aria-label="Email address for early access"
+              >
+              <button class="btn-white absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2.5 text-sm" id="cta-btn">
+                Get Access
+              </button>
+            </div>
+            <div class="flex gap-3 justify-center lg:justify-start">
+              <label class="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                <input type="radio" name="cta-role" value="homeowner" checked class="accent-accent">
+                Homeowner
+              </label>
+              <label class="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                <input type="radio" name="cta-role" value="contractor" class="accent-accent">
+                Contractor
+              </label>
+            </div>
+          </div>
+
+          <!-- STEP 2: OTP + Password (hidden initially) -->
+          <div id="step2" class="hidden flex-col gap-4 justify-center lg:justify-start max-w-sm mx-auto lg:mx-0">
+            <p class="text-sm text-white/70">Enter the OTP sent to <span id="otp-email" class="text-white font-semibold"></span></p>
+            <input type="text" placeholder="Enter OTP code" id="cta-otp" class="cta-input" maxlength="6">
+            <input type="password" placeholder="Create password" id="cta-password" class="cta-input">
+            <input type="password" placeholder="Confirm password" id="cta-password2" class="cta-input">
+            <button class="btn-white px-5 py-2.5 text-sm font-semibold" id="cta-verify-btn">
+              Complete Registration
+            </button>
+            <button class="text-sm text-white/50 hover:text-white/80 transition-colors" id="cta-resend-btn">
+              Resend OTP
+            </button>
+          </div>
+
+          <!-- STEP 3: Success (hidden initially) -->
+          <div id="step3" class="hidden flex-col gap-4 justify-center lg:justify-start text-center lg:text-left">
+            <div class="text-4xl mb-2">🎉</div>
+            <h3 class="text-xl font-bold text-white">Welcome to GCSC!</h3>
+            <p class="text-white/70 text-sm">Your account is ready. Start posting projects or bidding today.</p>
+            <button class="btn-white px-6 py-2.5 text-sm font-semibold" id="cta-dashboard-btn">
+              Go to Dashboard
+            </button>
+          </div>
+          <p class="text-sm text-white/50 mt-4">
+            <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+            Free to join. No credit card required.
+          </p>
+        </div>
+
+        <!-- Right: Floating Round Logo -->
+        <div class="hidden lg:flex items-center justify-center reveal-scale" style="transition-delay: 0.2s;">
+          <div class="relative">
+            <img
+              src="logo-company.png"
+              alt="GCSC"
+              class="w-56 h-56 rounded-full logo-float-cta border-4 border-white/20 object-cover"
+            >
+            <!-- Orbiting elements -->
+            <div class="absolute inset-0" style="animation: spin 20s linear infinite;">
+              <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white/30"></div>
+            </div>
+            <div class="absolute inset-[-20px]" style="animation: spin 30s linear infinite reverse;">
+              <div class="absolute top-1/2 -right-2 -translate-y-1/2 w-3 h-3 rounded-full bg-white/20"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-surface pt-16 pb-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <!-- Product -->
+        <div>
+          <h4 class="footer-heading">Product</h4>
+          <ul class="space-y-3">
+            <li><a href="#features" class="footer-link">Features</a></li>
+            <li><a href="#" class="footer-link">Pricing</a></li>
+            <li><a href="#security" class="footer-link">Security</a></li>
+            <li><a href="#" class="footer-link">API</a></li>
+          </ul>
+        </div>
+        <!-- Company -->
+        <div>
+          <h4 class="footer-heading">Company</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="footer-link">About</a></li>
+            <li><a href="#" class="footer-link">Careers</a></li>
+            <li><a href="#" class="footer-link">Blog</a></li>
+            <li><a href="#" class="footer-link">Contact</a></li>
+          </ul>
+        </div>
+        <!-- Legal -->
+        <div>
+          <h4 class="footer-heading">Legal</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="footer-link">Terms of Service</a></li>
+            <li><a href="#" class="footer-link">Privacy Policy</a></li>
+            <li><a href="#" class="footer-link">Cookie Policy</a></li>
+          </ul>
+        </div>
+        <!-- Connect -->
+        <div>
+          <h4 class="footer-heading">Connect</h4>
+          <div class="flex gap-3">
+            <a href="#" class="social-icon" aria-label="Twitter">
+              <i data-lucide="twitter" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="LinkedIn">
+              <i data-lucide="linkedin" class="w-5 h-5"></i>
+            </a>
+            <a href="#" class="social-icon" aria-label="GitHub">
+              <i data-lucide="github" class="w-5 h-5"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img src="logo-company.png" alt="GCSC" class="w-8 h-8 rounded-full object-cover">
+          <p class="text-sm text-text-secondary">
+            &copy; <span id="year"></span> GCSC Smart Contract. All rights reserved.
+          </p>
+        </div>
+        <p class="text-xs text-text-secondary/60">
+          Built on XPR Network. Secured by Blockchain.
+        </p>
       </div>
     </div>
   </footer>
-</section>
 
-<!-- ============================================================ -->
-<!-- PAGE 2: LOGIN / REGISTER                                     -->
-<!-- ============================================================ -->
-<section id="page-auth" class="page-section flex-page pt-[72px] min-h-screen items-center justify-center px-4">
-  <div class="relative z-10 w-full max-w-md">
-    <!-- Auth card -->
-    <div class="glass-card-strong p-8 sm:p-10">
-      <!-- Logo -->
-      <div class="flex justify-center mb-8">
-        <div class="w-20 h-20 rounded-2xl glass-card flex items-center justify-center glow-purple">
-          <img src="logo-product.png" alt="SC" class="w-12 h-12 object-contain" onerror="this.parentElement.innerHTML='<span class=\'font-display font-bold text-2xl gradient-text\'>SC</span>'">
-        </div>
-      </div>
-      <!-- Tabs -->
-      <div class="flex justify-center mb-8">
-        <div class="glass-tabs" id="auth-tabs">
-          <button class="glass-tab active" data-tab="login" onclick="SC.switchAuthTab('login')">Login</button>
-          <button class="glass-tab" data-tab="register" onclick="SC.switchAuthTab('register')">Register</button>
-        </div>
-      </div>
-      <!-- Login Form -->
-      <div id="auth-login-form">
-        <div class="mb-5">
-          <label class="glass-label">Phone Number</label>
-          <input type="tel" class="glass-input" id="login-phone" placeholder="+1 (555) 000-0000" maxlength="20">
-        </div>
-        <button class="glass-btn glass-btn-primary w-full mt-6" onclick="SC.handleLogin()" id="btn-login">
-          <span>Send OTP</span>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-        </button>
-      </div>
-      <!-- OTP Verification -->
-      <div id="auth-otp-form" class="hidden">
-        <p class="text-text-muted text-center text-sm mb-2">Enter the 6-digit code sent to your phone</p>
-        <p class="text-neon-cyan text-center text-sm font-mono mb-6" id="otp-phone-display"></p>
-        <div class="flex gap-3 justify-center mb-6" id="otp-inputs">
-          <input type="text" class="otp-input" maxlength="1" data-index="0">
-          <input type="text" class="otp-input" maxlength="1" data-index="1">
-          <input type="text" class="otp-input" maxlength="1" data-index="2">
-          <input type="text" class="otp-input" maxlength="1" data-index="3">
-          <input type="text" class="otp-input" maxlength="1" data-index="4">
-          <input type="text" class="otp-input" maxlength="1" data-index="5">
-        </div>
-        <button class="glass-btn glass-btn-primary w-full" onclick="SC.handleOTPVerify()" id="btn-verify">
-          <span>Verify & Continue</span>
-        </button>
-        <button class="glass-btn w-full mt-3" onclick="SC.backToLogin()">
-          <span>Back to Login</span>
-        </button>
-      </div>
-      <!-- Register Form -->
-      <div id="auth-register-form" class="hidden">
-        <div class="mb-4">
-          <label class="glass-label">Full Name</label>
-          <input type="text" class="glass-input" id="reg-name" placeholder="John Doe" maxlength="100">
-        </div>
-        <div class="mb-4">
-          <label class="glass-label">Phone Number</label>
-          <input type="tel" class="glass-input" id="reg-phone" placeholder="+1 (555) 000-0000" maxlength="20">
-        </div>
-        <div class="mb-4">
-          <label class="glass-label">I am a...</label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="cursor-pointer">
-              <input type="radio" name="reg-role" value="homeowner" class="peer hidden" checked>
-              <div class="glass-card p-4 text-center peer-checked:border-neon-purple peer-checked:shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-all">
-                <svg class="w-6 h-6 mx-auto mb-2 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                <span class="text-sm font-medium">Homeowner</span>
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="reg-role" value="contractor" class="peer hidden">
-              <div class="glass-card p-4 text-center peer-checked:border-neon-blue peer-checked:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
-                <svg class="w-6 h-6 mx-auto mb-2 text-neon-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                <span class="text-sm font-medium">Contractor</span>
-              </div>
-            </label>
-          </div>
-        </div>
-        <div class="mb-6">
-          <label class="glass-label">XPR Network Account (optional)</label>
-          <input type="text" class="glass-input font-mono" id="reg-xpr" placeholder="yourname" maxlength="12">
-          <p class="text-text-dim text-xs mt-2">If you don't have one, we'll create it for you.</p>
-        </div>
-        <button class="glass-btn glass-btn-primary w-full" onclick="SC.handleRegister()" id="btn-register">
-          <span>Create Account</span>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </button>
-      </div>
-      <!-- Success -->
-      <div id="auth-success" class="hidden text-center py-8">
-        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-neon-green to-neon-cyan flex items-center justify-center mx-auto mb-6 animate-bounce-in" style="box-shadow: 0 0 40px rgba(16,185,129,0.4);">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-        </div>
-        <h3 class="font-display font-bold text-xl gradient-text-green mb-2">Success!</h3>
-        <p class="text-text-muted mb-6" id="auth-success-msg">Your account has been created.</p>
-        <button class="glass-btn glass-btn-primary w-full" onclick="SC.navigate('dashboard')">
-          <span>Go to Dashboard</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
+  <!-- ===== JAVASCRIPT ===== -->
+  <!-- Lenis Smooth Scroll -->
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.0/bundled/lenis.min.js"></script>
+  <script>
+    (function() {
+      'use strict';
 
-<!-- ============================================================ -->
-<!-- PAGE 3: DASHBOARD (HOMEOWNER)                                -->
-<!-- ============================================================ -->
-<section id="page-dashboard" class="page-section pt-[72px]">
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Welcome Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="font-display font-bold text-2xl sm:text-3xl mb-1">
-          <span class="text-text-primary">Welcome back, </span>
-          <span class="gradient-text" id="dash-username">User</span>
-        </h1>
-        <p class="text-text-muted text-sm" id="dash-role-badge">Homeowner</p>
-      </div>
-      <div class="flex gap-3">
-        <button class="glass-btn glass-btn-primary" onclick="SC.navigate('post-project')">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          <span>New Project</span>
-        </button>
-      </div>
-    </div>
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="dash-stats"></div>
-    <!-- Main Content Grid -->
-    <div class="grid lg:grid-cols-3 gap-6">
-      <!-- Active Projects (2 cols) -->
-      <div class="lg:col-span-2">
-        <div class="glass-card p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="font-display font-semibold text-lg text-text-primary">Active Projects</h2>
-            <button class="text-neon-purple text-sm font-medium hover:underline">View All</button>
-          </div>
-          <div class="space-y-4" id="dash-projects"></div>
-        </div>
-      </div>
-      <!-- Sidebar -->
-      <div class="space-y-6">
-        <!-- Quick Actions -->
-        <div class="glass-card p-6">
-          <h3 class="font-display font-semibold text-sm text-text-primary mb-4">Quick Actions</h3>
-          <div class="space-y-3" id="dash-quick-actions"></div>
-        </div>
-        <!-- Recent Activity -->
-        <div class="glass-card p-6">
-          <h3 class="font-display font-semibold text-sm text-text-primary mb-4">Recent Activity</h3>
-          <div class="space-y-3" id="dash-activity"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      // ===== Initialize Lucide Icons =====
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
 
-<!-- ============================================================ -->
-<!-- PAGE 4: DASHBOARD (CONTRACTOR)                               -->
-<!-- ============================================================ -->
-<section id="page-contractor" class="page-section pt-[72px]">
-  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="font-display font-bold text-2xl sm:text-3xl mb-1">
-          <span class="text-text-primary">Contractor Dashboard</span>
-        </h1>
-        <p class="text-text-muted text-sm">Find projects and manage your bids</p>
-      </div>
-      <span class="badge badge-verified" id="contractor-verified-badge">
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        Verified Contractor
-      </span>
-    </div>
-    <!-- Filter Bar -->
-    <div class="glass-card p-4 mb-6">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <input type="text" class="glass-input flex-1" placeholder="Search projects..." id="contractor-search">
-        <div class="flex gap-3 flex-wrap">
-          <select class="glass-input glass-select min-w-[140px]" id="filter-category">
-            <option value="">All Categories</option>
-            <option value="roofing">Roofing</option>
-            <option value="plumbing">Plumbing</option>
-            <option value="electrical">Electrical</option>
-            <option value="remodeling">Remodeling</option>
-            <option value="landscaping">Landscaping</option>
-          </select>
-          <select class="glass-input glass-select min-w-[140px]" id="filter-location">
-            <option value="">All Locations</option>
-            <option value="ny">New York</option>
-            <option value="la">Los Angeles</option>
-            <option value="chicago">Chicago</option>
-            <option value="houston">Houston</option>
-            <option value="miami">Miami</option>
-          </select>
-          <button class="glass-btn" onclick="SC.applyFilters()">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-            <span>Filter</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="contractor-stats"></div>
-    <!-- Available Projects Grid -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-display font-semibold text-lg text-text-primary">Available Projects</h2>
-        <span class="text-text-muted text-sm" id="projects-count"></span>
-      </div>
-      <div class="grid-responsive-3" id="contractor-projects"></div>
-    </div>
-    <!-- My Bids -->
-    <div class="glass-card p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="font-display font-semibold text-lg text-text-primary">My Bids</h2>
-        <span class="badge badge-pending" id="my-bids-count">0 Active</span>
-      </div>
-      <div class="space-y-4" id="contractor-bids"></div>
-    </div>
-  </div>
-</section>
+      // ===== Load Projects from API =====
+      (async function loadProjects() {
+        try {
+          var res = await fetch('https://gcsc-backend.onrender.com/api/projects');
+          var projects = await res.json();
+          var grid = document.getElementById('projects-grid');
+          if (!grid || !projects.projects) return;
+          
+          var html = '';
+          projects.projects.forEach(function(p) {
+            var statusColor = p.status === 'open' ? 'bg-green-100 text-green-700' : p.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700';
+            var statusText = p.status === 'open' ? 'Open for Bids' : p.status === 'in_progress' ? 'In Progress' : 'Completed';
+            html += '<div class="glass-card rounded-2xl p-6 hover:shadow-lg transition-all reveal">' +
+              '<div class="flex items-center justify-between mb-4">' +
+                '<span class="px-3 py-1 rounded-full text-xs font-semibold ' + statusColor + '">' + statusText + '</span>' +
+                '<span class="text-sm text-text-secondary">' + (p.location || 'Remote') + '</span>' +
+              '</div>' +
+              '<h3 class="text-xl font-bold text-text-primary mb-2">' + p.title + '</h3>' +
+              '<p class="text-text-secondary text-sm mb-4 line-clamp-2">' + (p.description || '') + '</p>' +
+              '<div class="flex items-center justify-between pt-4 border-t border-gray-100">' +
+                '<div class="text-sm"><span class="font-semibold text-text-primary">$' + (p.budget_min || 0).toLocaleString() + '</span> - <span class="font-semibold text-text-primary">$' + (p.budget_max || 0).toLocaleString() + '</span></div>' +
+                '<button class="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:opacity-90 transition-opacity">View Details</button>' +
+              '</div>' +
+            '</div>';
+          });
+          grid.innerHTML = html;
+        } catch (e) {
+          console.error('Failed to load projects:', e);
+        }
+      })();
 
-<!-- ============================================================ -->
-<!-- PAGE 5: POST PROJECT                                         -->
-<!-- ============================================================ -->
-<section id="page-post-project" class="page-section pt-[72px]">
-  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="font-display font-bold text-2xl sm:text-3xl mb-2">
-        <span class="gradient-text">Post a New Project</span>
-      </h1>
-      <p class="text-text-muted">Describe your construction project and let qualified contractors bid on it.</p>
-    </div>
-    <!-- Form -->
-    <div class="glass-card-strong p-6 sm:p-8 mb-6">
-      <div class="space-y-6">
-        <div>
-          <label class="glass-label">Project Title <span class="text-neon-red">*</span></label>
-          <input type="text" class="glass-input" id="project-title" placeholder="e.g., Kitchen Remodeling - 200 sq ft" maxlength="200">
-        </div>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label class="glass-label">Category <span class="text-neon-red">*</span></label>
-            <select class="glass-input glass-select" id="project-category">
-              <option value="">Select category</option>
-              <option value="roofing">Roofing</option>
-              <option value="plumbing">Plumbing</option>
-              <option value="electrical">Electrical</option>
-              <option value="remodeling">Remodeling</option>
-              <option value="landscaping">Landscaping</option>
-              <option value="flooring">Flooring</option>
-              <option value="painting">Painting</option>
-              <option value="hvac">HVAC</option>
-              <option value="framing">Framing</option>
-              <option value="concrete">Concrete</option>
-            </select>
-          </div>
-          <div>
-            <label class="glass-label">Location <span class="text-neon-red">*</span></label>
-            <input type="text" class="glass-input" id="project-location" placeholder="City, State" maxlength="100">
-          </div>
-        </div>
-        <div>
-          <label class="glass-label">Project Description <span class="text-neon-red">*</span></label>
-          <textarea class="glass-input" id="project-description" rows="5" placeholder="Describe your project in detail — scope, materials, timeline, special requirements..." maxlength="2000" style="resize: vertical;"></textarea>
-          <div class="flex justify-between mt-2">
-            <button class="text-neon-purple text-sm font-medium flex items-center gap-2 hover:underline" onclick="SC.generateAIScope()">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              Generate AI Scope
-            </button>
-            <span class="text-text-dim text-xs" id="desc-char-count">0 / 2000</span>
-          </div>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label class="glass-label">Budget Range (USD)</label>
-            <div class="grid grid-cols-2 gap-3">
-              <input type="number" class="glass-input" id="project-budget-min" placeholder="Min $" min="0">
-              <input type="number" class="glass-input" id="project-budget-max" placeholder="Max $" min="0">
-            </div>
-          </div>
-          <div>
-            <label class="glass-label">Desired Timeline</label>
-            <select class="glass-input glass-select" id="project-timeline">
-              <option value="">Select timeline</option>
-              <option value="1-week">Within 1 week</option>
-              <option value="2-weeks">Within 2 weeks</option>
-              <option value="1-month">Within 1 month</option>
-              <option value="2-months">1-2 months</option>
-              <option value="3-months+">3+ months</option>
-              <option value="flexible">Flexible</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label class="glass-label">Project Images (optional)</label>
-          <div class="glass-card-subtle p-8 text-center cursor-pointer hover:bg-white/[0.06] transition-colors border-dashed border-2" id="project-image-dropzone" onclick="document.getElementById('project-images').click()">
-            <svg class="w-10 h-10 mx-auto mb-3 text-text-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            <p class="text-text-muted text-sm">Click to upload or drag and drop</p>
-            <p class="text-text-dim text-xs mt-1">PNG, JPG up to 10MB each</p>
-          </div>
-          <input type="file" class="hidden" id="project-images" multiple accept="image/*">
-        </div>
-      </div>
-    </div>
-    <!-- Action Buttons -->
-    <div class="flex flex-col sm:flex-row gap-4 justify-end">
-      <button class="glass-btn" onclick="SC.navigate('dashboard')">
-        <span>Cancel</span>
-      </button>
-      <button class="glass-btn glass-btn-primary" onclick="SC.submitProject()">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        <span>Post Project</span>
-      </button>
-    </div>
-    <!-- Preview Card -->
-    <div class="mt-8" id="project-preview" style="display: none;">
-      <h3 class="font-display font-semibold text-lg text-text-primary mb-4">Preview</h3>
-      <div class="glass-card p-6" id="project-preview-content"></div>
-    </div>
-  </div>
-</section>
+      // ===== Year in Footer =====
+      var yearEl = document.getElementById('year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-<!-- ============================================================ -->
-<!-- PAGE 6: PROFILE                                              -->
-<!-- ============================================================ -->
-<section id="page-profile" class="page-section pt-[72px]">
-  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Profile Card -->
-    <div class="glass-card-strong p-6 sm:p-8 mb-6">
-      <div class="flex flex-col sm:flex-row items-center gap-6">
-        <!-- Avatar -->
-        <div class="relative">
-          <div class="w-24 h-24 glass-avatar text-3xl" id="profile-avatar">JD</div>
-          <span class="absolute -bottom-1 -right-1 badge badge-online text-xs" id="profile-status">
-            <span class="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse"></span>
-            Online
-          </span>
-        </div>
-        <!-- Info -->
-        <div class="text-center sm:text-left flex-1">
-          <h1 class="font-display font-bold text-2xl text-text-primary" id="profile-name">John Doe</h1>
-          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-2">
-            <span class="badge badge-verified" id="profile-role-badge">Homeowner</span>
-            <span class="text-text-muted font-mono text-sm" id="profile-xpr">@johndoe</span>
-          </div>
-          <p class="text-text-muted text-sm mt-3" id="profile-joined">Member since January 2024</p>
-        </div>
-        <!-- Edit button -->
-        <button class="glass-btn" onclick="SC.toggleEditProfile()">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          <span>Edit</span>
-        </button>
-      </div>
-    </div>
+      // ===== SERVER STATUS =====
+      (async function() {
+        try {
+          var res = await fetch('https://gcsc-backend.onrender.com/api/health', { method: 'GET' });
+          if (res.ok) {
+            var badge = document.createElement('div');
+            badge.innerHTML = '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:6px;\">\u003c/span>Online';
+            badge.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:rgba(15,23,42,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);';
+            document.body.appendChild(badge);
+          }
+        } catch (e) {
+          var badge = document.createElement('div');
+          badge.innerHTML = '<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;background:#EF4444;margin-right:6px;\">\u003c/span>Offline';
+          badge.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:rgba(15,23,42,0.85);color:#fff;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);';
+          document.body.appendChild(badge);
+        }
+      })();
 
-    <!-- Wallet Section -->
-    <div class="wallet-card p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <div class="icon-circle icon-circle-sm">
-            <svg class="w-5 h-5 text-neon-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-          </div>
-          <h2 class="font-display font-semibold text-lg text-text-primary">XPR Wallet</h2>
-        </div>
-        <span class="badge badge-verified">Connected</span>
-      </div>
-      <div class="glass-card-subtle p-4">
-        <label class="glass-label text-xs">Public Key</label>
-        <div class="flex gap-3">
-          <code class="flex-1 glass-input font-mono text-sm py-3 break-all" id="wallet-public-key">PUB_K1_6RMS3nE7...9a2Bc4De</code>
-          <button class="glass-btn p-3" onclick="SC.copyToClipboard('wallet-public-key')" title="Copy">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
+      // ===== Lenis Smooth Scroll =====
+      var lenis;
+      try {
+        lenis = new Lenis({
+          duration: 1.2,
+          easing: function(t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
+          direction: 'vertical',
+          gestureDirection: 'vertical',
+          smooth: true,
+          mouseMultiplier: 1,
+          smoothTouch: false,
+          touchMultiplier: 2,
+          infinite: false,
+        });
 
-    <!-- Settings -->
-    <div class="glass-card p-6 mb-6">
-      <h2 class="font-display font-semibold text-lg text-text-primary mb-6">Settings</h2>
-      <div class="space-y-6" id="profile-settings">
-        <!-- Populated by JS -->
-      </div>
-    </div>
+        function raf(time) {
+          lenis.raf(time);
+          requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
 
-    <!-- Danger Zone -->
-    <div class="glass-card p-6 border-neon-red/20" style="border-color: rgba(239,68,68,0.2);">
-      <h2 class="font-display font-semibold text-lg text-neon-red mb-4">Danger Zone</h2>
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p class="text-text-primary font-medium">Logout</p>
-          <p class="text-text-muted text-sm">End your current session and return to login.</p>
-        </div>
-        <button class="glass-btn glass-btn-danger" onclick="SC.logout()">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
-
-
-<!-- ============================================================ -->
-<!-- JAVASCRIPT                                                   -->
-<!-- ============================================================ -->
-<script>
-// ===== IMMEDIATELY INVOKED FUNCTION EXPRESSION =====
-(function() {
-  'use strict';
-
-  // ===== STATE =====
-  const state = {
-    currentUser: null,
-    currentPage: 'home',
-    isLoggedIn: false,
-    userRole: null, // 'homeowner' | 'contractor'
-    jwt: null,
-    projects: [],
-    bids: [],
-    activity: [],
-    darkMode: true,
-    notifications: true,
-    twoFactor: false,
-  };
-
-  // ===== CONSTANTS =====
-  const API_BASE = 'https://api.xprnetwork.org/v1';
-  const PAGES = {
-    home: 'page-home',
-    login: 'page-auth',
-    register: 'page-auth',
-    dashboard: 'page-dashboard',
-    contractor: 'page-contractor',
-    'post-project': 'page-post-project',
-    profile: 'page-profile',
-  };
-  const PUBLIC_PAGES = ['home', 'login', 'register'];
-  const NAV_LINKS_PUBLIC = [
-    { label: 'Home', page: 'home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { label: 'Login', page: 'login', icon: 'M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1' },
-  ];
-  const NAV_LINKS_HOMEOWNER = [
-    { label: 'Home', page: 'home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { label: 'Dashboard', page: 'dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-    { label: 'Post Project', page: 'post-project', icon: 'M12 4v16m8-8H4' },
-    { label: 'Profile', page: 'profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-  ];
-  const NAV_LINKS_CONTRACTOR = [
-    { label: 'Home', page: 'home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { label: 'Find Work', page: 'contractor', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
-    { label: 'Profile', page: 'profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-  ];
-  const FEATURES = [
-    { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', title: 'Smart Contracts', desc: 'Blockchain-secured agreements with automatic escrow release and dispute resolution.' },
-    { icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', title: 'Secure Escrow', desc: 'Funds held in blockchain escrow until project milestones are completed and verified.' },
-    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', title: 'Transparent Bidding', desc: 'Compare bids from verified contractors with full price transparency and history.' },
-    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', title: 'Verified Network', desc: 'All contractors are KYC verified with on-chain reputation and review history.' },
-  ];
-  const STEPS = [
-    { num: '01', title: 'Post Your Project', desc: 'Describe your construction needs, set your budget, and publish to the network.' },
-    { num: '02', title: 'Receive Bids', desc: 'Verified contractors submit competitive bids secured by smart contracts.' },
-    { num: '03', title: 'Build & Pay', desc: 'Work progresses with milestone-based payments held in blockchain escrow.' },
-  ];
-  const TRUST_BADGES = [
-    { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', title: 'Smart Contract Escrow', desc: 'All payments secured in blockchain escrow with milestone-based releases.' },
-    { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'KYC Verified Contractors', desc: 'Every contractor is identity verified before joining the platform.' },
-    { icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', title: 'End-to-End Encryption', desc: 'Messages and documents encrypted with industry-standard protocols.' },
-  ];
-  const SETTINGS = [
-    { key: 'darkMode', label: 'Dark Mode', desc: 'Use dark theme throughout the app', default: true },
-    { key: 'notifications', label: 'Push Notifications', desc: 'Get notified about bids, messages, and updates', default: true },
-    { key: 'twoFactor', label: 'Two-Factor Authentication', desc: 'Require OTP for sensitive operations', default: false },
-    { key: 'emailNotif', label: 'Email Notifications', desc: 'Receive updates via email', default: true },
-    { key: 'publicProfile', label: 'Public Profile', desc: 'Allow others to view your profile', default: true },
-    { key: 'autoBid', label: 'Auto-bid Suggestions', desc: 'Get AI-powered bidding suggestions', default: false },
-  ];
-
-  // ===== DEMO DATA =====
-  const demoProjects = [
-    { id: 1, title: 'Bathroom Renovation - Master Suite', category: 'Remodeling', location: 'New York, NY', budget: '$15,000 - $25,000', timeline: '2-3 months', status: 'open', bids: 4, desc: 'Complete master bathroom renovation including new fixtures, tiling, plumbing, and lighting.', posted: '2 days ago' },
-    { id: 2, title: 'Kitchen Countertop Replacement', category: 'Remodeling', location: 'Los Angeles, CA', budget: '$5,000 - $8,000', timeline: '2 weeks', status: 'open', bids: 7, desc: 'Replace existing kitchen countertops with quartz. Approximately 45 sq ft of surface area.', posted: '1 day ago' },
-    { id: 3, title: 'Full Roof Replacement - Shingle', category: 'Roofing', location: 'Chicago, IL', budget: '$12,000 - $18,000', timeline: '1 week', status: 'open', bids: 3, desc: 'Remove and replace asphalt shingle roof on single-family home. Approximately 2,500 sq ft.', posted: '5 hours ago' },
-    { id: 4, title: 'Electrical Panel Upgrade', category: 'Electrical', location: 'Houston, TX', budget: '$2,500 - $4,000', timeline: '1-2 days', status: 'open', bids: 6, desc: 'Upgrade 100A electrical panel to 200A. Includes permits and inspection.', posted: '3 days ago' },
-    { id: 5, title: 'Backyard Landscaping Design', category: 'Landscaping', location: 'Miami, FL', budget: '$8,000 - $15,000', timeline: '1 month', status: 'open', bids: 2, desc: 'Complete backyard landscaping with patio, irrigation system, and native plants.', posted: '12 hours ago' },
-    { id: 6, title: 'HVAC System Installation', category: 'HVAC', location: 'Phoenix, AZ', budget: '$6,000 - $10,000', timeline: '3-5 days', status: 'open', bids: 5, desc: 'Install new central AC unit with ductwork. 2,000 sq ft home.', posted: '1 day ago' },
-  ];
-  const demoBids = [
-    { id: 1, project: 'Bathroom Renovation', amount: '$18,500', status: 'pending', date: '2 hours ago' },
-    { id: 2, project: 'Kitchen Countertop', amount: '$6,200', status: 'accepted', date: '1 day ago' },
-    { id: 3, project: 'Roof Replacement', amount: '$14,000', status: 'rejected', date: '3 days ago' },
-  ];
-  const demoActivity = [
-    { action: 'New bid received', target: 'Bathroom Renovation', time: '10 min ago', type: 'bid' },
-    { action: 'Project posted', target: 'Kitchen Countertop', time: '2 hours ago', type: 'project' },
-    { action: 'Milestone completed', target: 'Roof Replacement', time: '1 day ago', type: 'milestone' },
-    { action: 'Payment released', target: 'Electrical Panel', time: '2 days ago', type: 'payment' },
-  ];
-  const demoMyProjects = [
-    { id: 1, title: 'Kitchen Remodeling', status: 'active', progress: 65, bids: 8, budget: '$25,000' },
-    { id: 2, title: 'Garage Door Replacement', status: 'bidding', progress: 20, bids: 3, budget: '$3,500' },
-    { id: 3, title: 'Deck Construction', status: 'planning', progress: 5, bids: 0, budget: '$12,000' },
-  ];
-
-  // ===== UTILITY FUNCTIONS =====
-  function el(tag, classes, text) {
-    const e = document.createElement(tag);
-    if (classes) e.className = classes;
-    if (text !== undefined && text !== null) {
-      if (typeof text === 'string') {
-        // SECURITY: never use innerHTML, always textContent
-        e.textContent = text;
-      } else if (text instanceof Node) {
-        e.appendChild(text);
+        // Connect Lenis to GSAP ScrollTrigger
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(function(time) {
+          lenis.raf(time * 1000);
+        });
+        gsap.ticker.lagSmoothing(0);
+      } catch(e) {
+        console.warn('Lenis failed to initialize:', e);
       }
-    }
-    return e;
-  }
 
-  function svgIcon(path, cls) {
-    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    s.setAttribute('class', cls || 'w-6 h-6');
-    s.setAttribute('fill', 'none');
-    s.setAttribute('stroke', 'currentColor');
-    s.setAttribute('viewBox', '0 0 24 24');
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('stroke-linecap', 'round');
-    p.setAttribute('stroke-linejoin', 'round');
-    p.setAttribute('stroke-width', '2');
-    p.setAttribute('d', path);
-    s.appendChild(p);
-    return s;
-  }
+      // ===== Smooth Scroll to Sections =====
+      var scrollTargets = document.querySelectorAll('[data-scroll-to]');
+      scrollTargets.forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          e.preventDefault();
+          var target = document.querySelector(this.dataset.scrollTo);
+          if (target) {
+            if (lenis) {
+              lenis.scrollTo(target, { offset: -80 });
+            } else {
+              target.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+          // Close mobile menu if open
+          var mobileMenu = document.getElementById('mobile-menu');
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+        });
+      });
 
-  // ===== TOAST NOTIFICATIONS =====
-  function showToast(message, type) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = el('div', 'toast toast-' + (type || 'info'));
-    const icon = el('span', '');
-    if (type === 'success') {
-      icon.appendChild(svgIcon('M5 13l4 4L19 7', 'w-5 h-5'));
-    } else if (type === 'error') {
-      icon.appendChild(svgIcon('M6 18L18 6M6 6l12 12', 'w-5 h-5'));
-    } else {
-      icon.appendChild(svgIcon('M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'w-5 h-5'));
-    }
-    toast.appendChild(icon);
-    toast.appendChild(el('span', '', message));
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.classList.add('toast-exit');
-      setTimeout(() => toast.remove(), 300);
-    }, 4000);
-  }
+      // ===== Header Shadow on Scroll =====
+      var header = document.getElementById('header');
+      window.addEventListener('scroll', function() {
+        if (window.scrollY > 10) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+      }, { passive: true });
 
-  // ===== API HELPER =====
-  async function api(endpoint, options) {
-    const url = API_BASE + endpoint;
-    const opts = Object.assign({ headers: {} }, options);
-    opts.headers['Content-Type'] = 'application/json';
-    if (state.jwt) {
-      opts.headers['Authorization'] = 'Bearer ' + state.jwt;
-    }
-    try {
-      const response = await fetch(url, opts);
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err || 'API Error');
+      // ===== Mobile Menu Toggle =====
+      var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener('click', function() {
+          mobileMenu.classList.toggle('hidden');
+        });
       }
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      showToast(error.message || 'Network error. Please try again.', 'error');
-      throw error;
-    }
-  }
 
-  // ===== SESSION STORAGE =====
-  function saveSession() {
-    const data = {
-      jwt: state.jwt,
-      user: state.currentUser,
-      role: state.userRole,
-    };
-    try {
-      sessionStorage.setItem('sc_session', JSON.stringify(data));
-    } catch (e) { /* ignore quota errors */ }
-  }
+      // ===== GSAP ScrollTrigger Animations =====
+      gsap.registerPlugin(ScrollTrigger);
 
-  function loadSession() {
-    try {
-      const raw = sessionStorage.getItem('sc_session');
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (data.jwt) {
-          state.jwt = data.jwt;
-          state.currentUser = data.user;
-          state.userRole = data.role;
-          state.isLoggedIn = true;
-          return true;
+      // Reveal animations - fade in up
+      var revealElements = document.querySelectorAll('.reveal');
+      revealElements.forEach(function(el) {
+        var delay = parseFloat(el.style.transitionDelay) || 0;
+        gsap.to(el, {
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+          opacity: 1,
+          y: 0,
+          x: 0,
+          scale: 1,
+          duration: 0.9,
+          delay: delay,
+          ease: 'power3.out',
+        });
+      });
+
+      // Reveal scale animations
+      var revealScaleElements = document.querySelectorAll('.reveal-scale');
+      revealScaleElements.forEach(function(el) {
+        var delay = parseFloat(el.style.transitionDelay) || 0;
+        gsap.to(el, {
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 85%',
+            toggleActions: 'play none none none',
+          },
+          opacity: 1,
+          scale: 1,
+          duration: 1,
+          delay: delay,
+          ease: 'back.out(1.2)',
+        });
+      });
+
+      // Stagger cards within sections
+      var featureCards = document.querySelectorAll('#tab-homeowners .feature-card');
+      if (featureCards.length) {
+        gsap.from(featureCards, {
+          scrollTrigger: {
+            trigger: '#tab-homeowners',
+            start: 'top 75%',
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: 'power2.out',
+        });
+      }
+
+      var contractorCards = document.querySelectorAll('#tab-contractors .feature-card');
+      if (contractorCards.length) {
+        gsap.set(contractorCards, { opacity: 0, y: 50 });
+      }
+
+      var stepCards = document.querySelectorAll('.step-card');
+      if (stepCards.length) {
+        gsap.from(stepCards, {
+          scrollTrigger: {
+            trigger: '#how-it-works .grid',
+            start: 'top 75%',
+          },
+          y: 60,
+          opacity: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: 'power2.out',
+        });
+      }
+
+      var securityCards = document.querySelectorAll('.security-card');
+      if (securityCards.length) {
+        gsap.from(securityCards, {
+          scrollTrigger: {
+            trigger: '#security .grid',
+            start: 'top 75%',
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: 'power2.out',
+        });
+      }
+
+      // Hero parallax
+      gsap.to('.hero .orb', {
+        scrollTrigger: {
+          trigger: '.hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1,
+        },
+        y: 100,
+        ease: 'none',
+      });
+
+      // ===== TAB SWITCHING =====
+      var tabBtns = document.querySelectorAll('.tab-btn');
+      var tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tabId = this.dataset.tab;
+
+          // Update buttons
+          tabBtns.forEach(function(b) { b.classList.remove('active'); });
+          this.classList.add('active');
+
+          // Update content with animation
+          tabContents.forEach(function(content) {
+            if (content.classList.contains('active')) {
+              gsap.to(content, {
+                opacity: 0,
+                y: 15,
+                duration: 0.25,
+                onComplete: function() {
+                  content.classList.remove('active');
+                  var target = document.getElementById('tab-' + tabId);
+                  if (target) {
+                    target.classList.add('active');
+                    gsap.fromTo(target,
+                      { opacity: 0, y: 20 },
+                      { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+                    );
+                    // Animate cards inside
+                    var cards = target.querySelectorAll('.feature-card');
+                    gsap.fromTo(cards,
+                      { opacity: 0, y: 40 },
+                      { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'power2.out', delay: 0.1 }
+                    );
+                  }
+                }
+              });
+            }
+          });
+        });
+      });
+
+      // ===== ANIMATED COUNTERS =====
+      var counters = document.querySelectorAll('.counter-value');
+      var countersTriggered = false;
+
+      function animateCounters() {
+        if (countersTriggered) return;
+        var statsRow = document.getElementById('stats-row');
+        if (!statsRow) return;
+        var rect = statsRow.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          countersTriggered = true;
+          counters.forEach(function(counter) {
+            var target = parseInt(counter.dataset.target, 10);
+            var duration = 2000;
+            var start = null;
+
+            function step(timestamp) {
+              if (!start) start = timestamp;
+              var progress = Math.min((timestamp - start) / duration, 1);
+              // Ease out quart
+              var eased = 1 - Math.pow(1 - progress, 4);
+              var current = Math.floor(eased * target);
+              counter.textContent = current.toLocaleString();
+              if (progress < 1) {
+                requestAnimationFrame(step);
+              } else {
+                counter.textContent = target.toLocaleString();
+              }
+            }
+            requestAnimationFrame(step);
+          });
         }
       }
-    } catch (e) { /* ignore */ }
-    return false;
-  }
 
-  function clearSession() {
-    state.jwt = null;
-    state.currentUser = null;
-    state.userRole = null;
-    state.isLoggedIn = false;
-    try {
-      sessionStorage.removeItem('sc_session');
-    } catch (e) { /* ignore */ }
-  }
+      window.addEventListener('scroll', animateCounters, { passive: true });
+      // Check on load too
+      animateCounters();
 
-  // ===== SPA ROUTER =====
-  function navigate(page) {
-    if (!PUBLIC_PAGES.includes(page) && !state.isLoggedIn) {
-      page = 'login';
-    }
-    // Auth tab switching
-    if (page === 'register') {
-      state.currentPage = 'login';
-      setTimeout(() => switchAuthTab('register'), 50);
-    } else if (page === 'login') {
-      state.currentPage = 'login';
-      setTimeout(() => switchAuthTab('login'), 50);
-    } else {
-      state.currentPage = page;
-    }
+      // ===== ESCROW DEMO SIMULATION =====
+      var escrowDemoBtn = document.getElementById('run-escrow-demo');
+      if (escrowDemoBtn) {
+        escrowDemoBtn.addEventListener('click', function() {
+          var steps = [2, 3, 4];
+          var progressFill = document.getElementById('escrow-progress-fill');
+          var progressText = document.getElementById('escrow-progress-text');
+          var homeownerAvatar = document.getElementById('homeowner-avatar');
+          var contractorAvatar = document.getElementById('contractor-avatar');
+          var escrowLock = document.getElementById('escrow-lock');
+          var stepLine2 = document.getElementById('step-line-2');
+          var stepLine3 = document.getElementById('step-line-3');
 
-    // Update URL hash
-    window.location.hash = state.currentPage;
+          // Reset
+          steps.forEach(function(s) {
+            var dot = document.querySelector('[data-step="' + s + '"]');
+            if (dot) {
+              dot.classList.remove('completed');
+              dot.innerHTML = '<span>' + s + '</span>';
+            }
+          });
+          if (progressFill) progressFill.style.width = '0%';
+          if (progressText) progressText.textContent = '0%';
+          if (homeownerAvatar) {
+            homeownerAvatar.style.borderColor = '#E2E8F0';
+            homeownerAvatar.style.background = 'linear-gradient(135deg, #F8F9FA, #fff)';
+          }
+          if (contractorAvatar) {
+            contractorAvatar.style.borderColor = '#E2E8F0';
+            contractorAvatar.style.background = 'linear-gradient(135deg, #F8F9FA, #fff)';
+          }
+          if (escrowLock) escrowLock.style.background = 'linear-gradient(135deg, #7C3AED, #3B82F6)';
+          if (stepLine2) { stepLine2.classList.remove('bg-gradient-to-r', 'from-accent', 'to-accent-blue'); stepLine2.classList.add('bg-gray-200'); }
+          if (stepLine3) { stepLine3.classList.remove('bg-gradient-to-r', 'from-accent-blue', 'to-success'); stepLine3.classList.add('bg-gray-200'); }
 
-    // Show/hide pages
-    Object.values(PAGES).forEach(function(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove('active');
-    });
-    const pageId = PAGES[state.currentPage];
-    if (pageId) {
-      const el = document.getElementById(pageId);
-      if (el) {
-        el.classList.add('active');
-        el.style.animation = 'none';
-        el.offsetHeight; // force reflow
-        el.style.animation = '';
-      }
-    }
+          this.disabled = true;
+          this.innerHTML = '<svg class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Simulating...';
 
-    updateNav();
-    renderCurrentPage();
-    window.scrollTo(0, 0);
-  }
+          // Step 1: Deposit (already completed)
+          if (progressFill) progressFill.style.width = '25%';
+          if (progressText) progressText.textContent = '25%';
+          if (homeownerAvatar) {
+            homeownerAvatar.style.borderColor = '#7C3AED';
+            homeownerAvatar.style.background = 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1))';
+          }
 
-  function renderCurrentPage() {
-    switch (state.currentPage) {
-      case 'home': renderHome(); break;
-      case 'login': renderAuth(); break;
-      case 'dashboard': renderDashboard(); break;
-      case 'contractor': renderContractor(); break;
-      case 'post-project': renderPostProject(); break;
-      case 'profile': renderProfile(); break;
-    }
-  }
+          setTimeout(function() {
+            // Step 2: Work
+            var dot2 = document.querySelector('[data-step="2"]');
+            if (dot2) {
+              dot2.classList.add('completed');
+              dot2.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '50%';
+            if (progressText) progressText.textContent = '50%';
+            if (stepLine2) { stepLine2.classList.remove('bg-gray-200'); stepLine2.classList.add('bg-gradient-to-r', 'from-accent', 'to-accent-blue'); }
+          }, 1200);
 
-  // ===== NAVIGATION RENDERING =====
-  function updateNav() {
-    const links = !state.isLoggedIn ? NAV_LINKS_PUBLIC :
-      state.userRole === 'contractor' ? NAV_LINKS_CONTRACTOR : NAV_LINKS_HOMEOWNER;
+          setTimeout(function() {
+            // Step 3: Verify
+            var dot3 = document.querySelector('[data-step="3"]');
+            if (dot3) {
+              dot3.classList.add('completed');
+              dot3.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '75%';
+            if (progressText) progressText.textContent = '75%';
+            if (stepLine3) { stepLine3.classList.remove('bg-gray-200'); stepLine3.classList.add('bg-gradient-to-r', 'from-accent-blue', 'to-success'); }
+            if (escrowLock) escrowLock.style.background = 'linear-gradient(135deg, #10B981, #3B82F6)';
+          }, 2400);
 
-    // Desktop
-    const desktop = document.getElementById('desktop-nav-links');
-    if (desktop) {
-      desktop.innerHTML = '';
-      links.forEach(function(link) {
-        const a = el('a', 'glass-nav-link' + (link.page === state.currentPage ? ' active' : '') + ' nav-link');
-        a.href = '#' + link.page;
-        a.appendChild(svgIcon(link.icon, 'w-4 h-4 mr-2'));
-        const span = el('span', '', link.label);
-        a.appendChild(span);
-        a.addEventListener('click', function(e) {
-          e.preventDefault();
-          navigate(link.page);
+          setTimeout(function() {
+            // Step 4: Release
+            var dot4 = document.querySelector('[data-step="4"]');
+            if (dot4) {
+              dot4.classList.add('completed');
+              dot4.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            }
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressText) progressText.textContent = '100%';
+            if (contractorAvatar) {
+              contractorAvatar.style.borderColor = '#10B981';
+              contractorAvatar.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1))';
+            }
+
+            escrowDemoBtn.disabled = false;
+            escrowDemoBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Run Again';
+          }, 3600);
         });
-        desktop.appendChild(a);
-      });
-    }
+      }
 
-    // Mobile
-    const mobile = document.getElementById('mobile-nav-links');
-    if (mobile) {
-      mobile.innerHTML = '';
-      links.forEach(function(link) {
-        const a = el('a', 'flex items-center gap-3 px-4 py-3 rounded-xl text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors');
-        a.href = '#' + link.page;
-        a.appendChild(svgIcon(link.icon, 'w-5 h-5'));
-        a.appendChild(el('span', 'font-medium', link.label));
-        a.addEventListener('click', function(e) {
-          e.preventDefault();
-          closeMobileMenu();
-          navigate(link.page);
+      // ===== MULTI-STEP REGISTRATION =====
+      const API_URL = 'https://gcsc-backend.onrender.com';
+      let currentEmail = '';
+      let currentRole = 'homeowner';
+      
+      function showStep(n) {
+        document.getElementById('step1').classList.add('hidden');
+        document.getElementById('step2').classList.add('hidden');
+        document.getElementById('step3').classList.add('hidden');
+        document.getElementById('step1').classList.remove('flex');
+        document.getElementById('step2').classList.remove('flex');
+        document.getElementById('step3').classList.remove('flex');
+        const el = document.getElementById('step' + n);
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      }
+      
+      // Step 1: Send OTP
+      var ctaBtn = document.getElementById('cta-btn');
+      if (ctaBtn) {
+        ctaBtn.addEventListener('click', async function() {
+          var input = document.getElementById('cta-email');
+          var role = document.querySelector('input[name="cta-role"]:checked')?.value || 'homeowner';
+          if (input && input.value && input.value.includes('@')) {
+            currentEmail = input.value;
+            currentRole = role;
+            ctaBtn.disabled = true;
+            ctaBtn.textContent = 'Sending...';
+            try {
+              var res = await fetch(API_URL + '/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: input.value, password: 'TempPass123!', name: 'Beta User', role: role })
+              });
+              var data = await res.json();
+              if (res.ok) {
+                document.getElementById('otp-email').textContent = input.value;
+                showStep(2);
+              } else {
+                alert(data.message || 'Something went wrong. Please try again.');
+                ctaBtn.disabled = false;
+                ctaBtn.textContent = 'Get Access';
+              }
+            } catch (e) {
+              alert('Server is warming up. Please try again in 30 seconds.');
+              ctaBtn.disabled = false;
+              ctaBtn.textContent = 'Get Access';
+            }
+          } else {
+            alert('Please enter a valid email address.');
+          }
         });
-        mobile.appendChild(a);
-      });
-    }
-  }
-
-  // ===== MOBILE MENU =====
-  function toggleMobileMenu() {
-    const menu = document.getElementById('mobile-menu');
-    const overlay = document.getElementById('mobile-overlay');
-    const hamburger = document.getElementById('hamburger');
-    if (menu && overlay && hamburger) {
-      const open = menu.classList.contains('open');
-      if (open) {
-        closeMobileMenu();
-      } else {
-        menu.classList.add('open');
-        overlay.classList.add('open');
-        hamburger.classList.add('active');
       }
-    }
-  }
-
-  function closeMobileMenu() {
-    const menu = document.getElementById('mobile-menu');
-    const overlay = document.getElementById('mobile-overlay');
-    const hamburger = document.getElementById('hamburger');
-    if (menu) menu.classList.remove('open');
-    if (overlay) overlay.classList.remove('open');
-    if (hamburger) hamburger.classList.remove('active');
-  }
-
-  // ===== PAGE 1: HOME =====
-  function renderHome() {
-    // Stats
-    const statsEl = document.getElementById('home-stats');
-    if (statsEl) {
-      statsEl.innerHTML = '';
-      const stats = [
-        { num: '2,847', label: 'Smart Contracts', color: 'text-neon-purple' },
-        { num: '12,400+', label: 'Users', color: 'text-neon-blue' },
-        { num: '$8.2M', label: 'Volume (XPR)', color: 'text-neon-cyan' },
-        { num: '98.7%', label: 'Satisfaction', color: 'text-neon-green' },
-      ];
-      stats.forEach(function(s) {
-        const card = el('div', 'glass-card p-6 text-center');
-        const num = el('div', 'stat-number ' + s.color, s.num);
-        const lbl = el('div', 'stat-label', s.label);
-        card.appendChild(num);
-        card.appendChild(lbl);
-        statsEl.appendChild(card);
-      });
-    }
-
-    // Features
-    const featuresEl = document.getElementById('home-features');
-    if (featuresEl) {
-      featuresEl.innerHTML = '';
-      FEATURES.forEach(function(f) {
-        const card = el('div', 'glass-card p-6');
-        const iconDiv = el('div', 'icon-circle mb-4');
-        iconDiv.appendChild(svgIcon(f.icon, 'w-6 h-6 text-neon-purple'));
-        card.appendChild(iconDiv);
-        card.appendChild(el('h3', 'font-display font-semibold text-lg text-text-primary mb-2', f.title));
-        card.appendChild(el('p', 'text-text-muted text-sm leading-relaxed', f.desc));
-        featuresEl.appendChild(card);
-      });
-    }
-
-    // Steps
-    const stepsEl = document.getElementById('home-steps');
-    if (stepsEl) {
-      stepsEl.innerHTML = '';
-      STEPS.forEach(function(s, i) {
-        const card = el('div', 'glass-card p-6 relative overflow-hidden');
-        const num = el('div', 'font-display font-bold text-6xl text-white/[0.03] absolute -top-2 -right-2', s.num);
-        card.appendChild(num);
-        const num2 = el('div', 'font-display font-bold text-xl gradient-text mb-3', 'Step ' + s.num);
-        card.appendChild(num2);
-        card.appendChild(el('h3', 'font-display font-semibold text-lg text-text-primary mb-2', s.title));
-        card.appendChild(el('p', 'text-text-muted text-sm leading-relaxed', s.desc));
-        stepsEl.appendChild(card);
-      });
-    }
-
-    // Trust
-    const trustEl = document.getElementById('home-trust');
-    if (trustEl) {
-      trustEl.innerHTML = '';
-      TRUST_BADGES.forEach(function(t) {
-        const card = el('div', 'glass-card p-6');
-        const iconDiv = el('div', 'icon-circle mb-4');
-        iconDiv.appendChild(svgIcon(t.icon, 'w-6 h-6 text-neon-green'));
-        card.appendChild(iconDiv);
-        card.appendChild(el('h3', 'font-display font-semibold text-lg text-text-primary mb-2', t.title));
-        card.appendChild(el('p', 'text-text-muted text-sm leading-relaxed', t.desc));
-        trustEl.appendChild(card);
-      });
-    }
-
-    // Footer links
-    const footerPlatform = document.getElementById('footer-links-platform');
-    if (footerPlatform) {
-      footerPlatform.innerHTML = '';
-      ['Post a Project', 'Find Work', 'How It Works', 'Pricing'].forEach(function(t) {
-        const li = el('li', '');
-        const a = el('a', 'text-text-muted hover:text-text-primary text-sm transition-colors cursor-pointer', t);
-        li.appendChild(a);
-        footerPlatform.appendChild(li);
-      });
-    }
-    const footerResources = document.getElementById('footer-links-resources');
-    if (footerResources) {
-      footerResources.innerHTML = '';
-      ['Documentation', 'API Reference', 'XPR Network', 'Support'].forEach(function(t) {
-        const li = el('li', '');
-        const a = el('a', 'text-text-muted hover:text-text-primary text-sm transition-colors cursor-pointer', t);
-        li.appendChild(a);
-        footerResources.appendChild(li);
-      });
-    }
-
-    // Generate stars
-    const starField = document.getElementById('star-field');
-    if (starField && starField.children.length === 0) {
-      for (let i = 0; i < 50; i++) {
-        const star = el('div', 'star');
-        star.style.left = Math.random() * 100 + '%';
-        star.style.top = Math.random() * 100 + '%';
-        star.style.animationDelay = Math.random() * 3 + 's';
-        star.style.animationDuration = (2 + Math.random() * 3) + 's';
-        starField.appendChild(star);
-      }
-    }
-  }
-
-  // ===== PAGE 2: AUTH =====
-  function renderAuth() {
-    // Already rendered in HTML, just ensure correct tab
-  }
-
-  function switchAuthTab(tab) {
-    const loginForm = document.getElementById('auth-login-form');
-    const otpForm = document.getElementById('auth-otp-form');
-    const regForm = document.getElementById('auth-register-form');
-    const successForm = document.getElementById('auth-success');
-    const tabs = document.querySelectorAll('.glass-tab');
-
-    tabs.forEach(function(t) {
-      t.classList.toggle('active', t.dataset.tab === tab);
-    });
-
-    if (loginForm) loginForm.classList.add('hidden');
-    if (otpForm) otpForm.classList.add('hidden');
-    if (regForm) regForm.classList.add('hidden');
-    if (successForm) successForm.classList.add('hidden');
-
-    if (tab === 'login') {
-      if (loginForm) loginForm.classList.remove('hidden');
-    } else if (tab === 'register') {
-      if (regForm) regForm.classList.remove('hidden');
-    }
-  }
-
-  function handleLogin() {
-    const phoneInput = document.getElementById('login-phone');
-    if (!phoneInput || !phoneInput.value.trim()) {
-      showToast('Please enter your phone number', 'error');
-      phoneInput.classList.add('error');
-      return;
-    }
-    phoneInput.classList.remove('error');
-    // Show OTP form
-    const loginForm = document.getElementById('auth-login-form');
-    const otpForm = document.getElementById('auth-otp-form');
-    const phoneDisplay = document.getElementById('otp-phone-display');
-    if (loginForm) loginForm.classList.add('hidden');
-    if (otpForm) otpForm.classList.remove('hidden');
-    if (phoneDisplay) phoneDisplay.textContent = phoneInput.value.trim();
-    // Focus first OTP
-    setTimeout(() => {
-      const firstOtp = document.querySelector('.otp-input[data-index="0"]');
-      if (firstOtp) firstOtp.focus();
-    }, 100);
-    showToast('OTP sent to your phone', 'success');
-  }
-
-  function handleOTPVerify() {
-    const inputs = document.querySelectorAll('.otp-input');
-    let otp = '';
-    inputs.forEach(function(inp) { otp += inp.value || ''; });
-    if (otp.length < 6) {
-      showToast('Please enter the complete 6-digit code', 'error');
-      return;
-    }
-    // Demo login
-    state.isLoggedIn = true;
-    state.userRole = 'homeowner';
-    state.currentUser = { name: 'John Doe', phone: '+1 (555) 000-0000', xpr: 'johndoe' };
-    state.jwt = 'demo_jwt_token_' + Date.now();
-    saveSession();
-    showToast('Login successful!', 'success');
-    navigate('dashboard');
-  }
-
-  function backToLogin() {
-    const loginForm = document.getElementById('auth-login-form');
-    const otpForm = document.getElementById('auth-otp-form');
-    if (loginForm) loginForm.classList.remove('hidden');
-    if (otpForm) otpForm.classList.add('hidden');
-    // Clear OTP inputs
-    document.querySelectorAll('.otp-input').forEach(function(inp) { inp.value = ''; });
-  }
-
-  function handleRegister() {
-    const nameInput = document.getElementById('reg-name');
-    const phoneInput = document.getElementById('reg-phone');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const phone = phoneInput ? phoneInput.value.trim() : '';
-
-    if (!name) {
-      showToast('Please enter your full name', 'error');
-      if (nameInput) nameInput.classList.add('error');
-      return;
-    }
-    if (nameInput) nameInput.classList.remove('error');
-    if (!phone) {
-      showToast('Please enter your phone number', 'error');
-      if (phoneInput) phoneInput.classList.add('error');
-      return;
-    }
-    if (phoneInput) phoneInput.classList.remove('error');
-
-    const roleEl = document.querySelector('input[name="reg-role"]:checked');
-    const role = roleEl ? roleEl.value : 'homeowner';
-    const xprInput = document.getElementById('reg-xpr');
-    const xpr = xprInput ? xprInput.value.trim() : '';
-
-    state.isLoggedIn = true;
-    state.userRole = role;
-    state.currentUser = { name: name, phone: phone, xpr: xpr || name.toLowerCase().replace(/\s/g, '') };
-    state.jwt = 'demo_jwt_token_' + Date.now();
-    saveSession();
-
-    // Show success
-    const regForm = document.getElementById('auth-register-form');
-    const successForm = document.getElementById('auth-success');
-    const successMsg = document.getElementById('auth-success-msg');
-    if (regForm) regForm.classList.add('hidden');
-    if (successForm) {
-      successForm.classList.remove('hidden');
-      successForm.style.animation = 'fadeIn 0.5s ease-out';
-    }
-    if (successMsg) successMsg.textContent = 'Welcome to SC Smart Contractor, ' + name + '!';
-    fireConfetti();
-    showToast('Account created successfully!', 'success');
-  }
-
-  // OTP input handling
-  function setupOTPInputs() {
-    const container = document.getElementById('otp-inputs');
-    if (!container) return;
-    container.addEventListener('input', function(e) {
-      const target = e.target;
-      if (!target.classList.contains('otp-input')) return;
-      target.value = target.value.replace(/\D/g, '').slice(0, 1);
-      const idx = parseInt(target.dataset.index);
-      if (target.value && idx < 5) {
-        const next = document.querySelector('.otp-input[data-index="' + (idx + 1) + '"]');
-        if (next) next.focus();
-      }
-    });
-    container.addEventListener('keydown', function(e) {
-      const target = e.target;
-      if (!target.classList.contains('otp-input')) return;
-      const idx = parseInt(target.dataset.index);
-      if (e.key === 'Backspace' && !target.value && idx > 0) {
-        const prev = document.querySelector('.otp-input[data-index="' + (idx - 1) + '"]');
-        if (prev) { prev.focus(); prev.value = ''; }
-      }
-    });
-    container.addEventListener('paste', function(e) {
-      e.preventDefault();
-      const data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-      data.split('').forEach(function(ch, i) {
-        const inp = document.querySelector('.otp-input[data-index="' + i + '"]');
-        if (inp) inp.value = ch;
-      });
-    });
-  }
-
-  // ===== PAGE 3: DASHBOARD (HOMEOWNER) =====
-  function renderDashboard() {
-    if (!state.isLoggedIn) { navigate('login'); return; }
-    if (state.userRole !== 'homeowner') { navigate('contractor'); return; }
-
-    const nameEl = document.getElementById('dash-username');
-    if (nameEl) nameEl.textContent = state.currentUser ? state.currentUser.name : 'User';
-
-    // Stats
-    const statsEl = document.getElementById('dash-stats');
-    if (statsEl) {
-      statsEl.innerHTML = '';
-      const stats = [
-        { num: '3', label: 'Active', color: 'text-neon-purple' },
-        { num: '8', label: 'Total Bids', color: 'text-neon-blue' },
-        { num: '2', label: 'Completed', color: 'text-neon-green' },
-        { num: '$41.5K', label: 'In Escrow', color: 'text-neon-cyan' },
-      ];
-      stats.forEach(function(s) {
-        const card = el('div', 'glass-card p-4');
-        const num = el('div', 'stat-number ' + s.color, s.num);
-        const lbl = el('div', 'stat-label', s.label);
-        card.appendChild(num);
-        card.appendChild(lbl);
-        statsEl.appendChild(card);
-      });
-    }
-
-    // Projects
-    const projectsEl = document.getElementById('dash-projects');
-    if (projectsEl) {
-      projectsEl.innerHTML = '';
-      demoMyProjects.forEach(function(p) {
-        const row = el('div', 'glass-card-subtle p-4');
-        const top = el('div', 'flex items-center justify-between mb-3');
-        const left = el('div', '');
-        const title = el('h4', 'font-semibold text-text-primary mb-1', p.title);
-        const meta = el('div', 'flex items-center gap-3 text-xs text-text-muted');
-        const budget = el('span', '', p.budget);
-        meta.appendChild(budget);
-        const dot1 = el('span', '', '\u00B7');
-        meta.appendChild(dot1);
-        const bids = el('span', '', p.bids + ' bids');
-        meta.appendChild(bids);
-        left.appendChild(title);
-        left.appendChild(meta);
-
-        const badgeClass = p.status === 'active' ? 'badge-online' : p.status === 'bidding' ? 'badge-pending' : 'badge-verified';
-        const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
-        const badge = el('span', 'badge ' + badgeClass, statusLabel);
-        top.appendChild(left);
-        top.appendChild(badge);
-        row.appendChild(top);
-
-        // Progress
-        const progressWrap = el('div', '');
-        const progressLabel = el('div', 'flex justify-between text-xs mb-1');
-        progressLabel.appendChild(el('span', 'text-text-muted', 'Progress'));
-        progressLabel.appendChild(el('span', 'text-neon-cyan font-medium', p.progress + '%'));
-        progressWrap.appendChild(progressLabel);
-        const bar = el('div', 'glass-progress');
-        const fill = el('div', 'glass-progress-fill');
-        fill.style.width = p.progress + '%';
-        bar.appendChild(fill);
-        progressWrap.appendChild(bar);
-        row.appendChild(progressWrap);
-
-        projectsEl.appendChild(row);
-      });
-    }
-
-    // Quick Actions
-    const quickEl = document.getElementById('dash-quick-actions');
-    if (quickEl) {
-      quickEl.innerHTML = '';
-      const actions = [
-        { label: 'Post New Project', icon: 'M12 4v16m8-8H4', action: function() { navigate('post-project'); } },
-        { label: 'View All Bids', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', action: function() { showToast('Coming soon!', 'info'); } },
-        { label: 'My Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', action: function() { navigate('profile'); } },
-      ];
-      actions.forEach(function(a) {
-        const btn = el('button', 'w-full glass-card-subtle p-3 flex items-center gap-3 text-left hover:bg-white/[0.06] transition-colors');
-        const iconDiv = el('div', 'icon-circle icon-circle-sm');
-        iconDiv.appendChild(svgIcon(a.icon, 'w-4 h-4 text-neon-purple'));
-        btn.appendChild(iconDiv);
-        btn.appendChild(el('span', 'text-text-primary text-sm font-medium', a.label));
-        btn.addEventListener('click', a.action);
-        quickEl.appendChild(btn);
-      });
-    }
-
-    // Activity
-    const activityEl = document.getElementById('dash-activity');
-    if (activityEl) {
-      activityEl.innerHTML = '';
-      demoActivity.forEach(function(a) {
-        const item = el('div', 'flex items-start gap-3');
-        const dot = el('div', 'w-2 h-2 rounded-full mt-2 flex-shrink-0');
-        const dotColor = a.type === 'bid' ? 'bg-neon-blue' : a.type === 'payment' ? 'bg-neon-green' : a.type === 'milestone' ? 'bg-neon-purple' : 'bg-neon-cyan';
-        dot.className += ' ' + dotColor;
-        item.appendChild(dot);
-        const text = el('div', '');
-        text.appendChild(el('p', 'text-text-primary text-sm', a.action));
-        const sub = el('p', 'text-text-muted text-xs', a.target + ' \u00B7 ' + a.time);
-        text.appendChild(sub);
-        item.appendChild(text);
-        activityEl.appendChild(item);
-      });
-    }
-  }
-
-  // ===== PAGE 4: CONTRACTOR DASHBOARD =====
-  function renderContractor() {
-    if (!state.isLoggedIn) { navigate('login'); return; }
-    if (state.userRole === 'homeowner') { navigate('dashboard'); return; }
-
-    // Stats
-    const statsEl = document.getElementById('contractor-stats');
-    if (statsEl) {
-      statsEl.innerHTML = '';
-      const stats = [
-        { num: '12', label: 'Available', color: 'text-neon-purple' },
-        { num: '3', label: 'My Bids', color: 'text-neon-blue' },
-        { num: '8', label: 'Won', color: 'text-neon-green' },
-        { num: '$52K', label: 'Earnings', color: 'text-neon-cyan' },
-      ];
-      stats.forEach(function(s) {
-        const card = el('div', 'glass-card p-4');
-        const num = el('div', 'stat-number ' + s.color, s.num);
-        const lbl = el('div', 'stat-label', s.label);
-        card.appendChild(num);
-        card.appendChild(lbl);
-        statsEl.appendChild(card);
-      });
-    }
-
-    // Project count
-    const countEl = document.getElementById('projects-count');
-    if (countEl) countEl.textContent = demoProjects.length + ' projects found';
-
-    // Available Projects
-    const projectsEl = document.getElementById('contractor-projects');
-    if (projectsEl) {
-      projectsEl.innerHTML = '';
-      demoProjects.forEach(function(p) {
-        const card = el('div', 'glass-card p-5');
-        const header = el('div', 'flex items-start justify-between mb-3');
-        const cat = el('span', 'text-xs font-medium text-neon-purple bg-neon-purple/10 px-2 py-1 rounded-lg', p.category);
-        header.appendChild(cat);
-        const time = el('span', 'text-xs text-text-muted', p.posted);
-        header.appendChild(time);
-        card.appendChild(header);
-
-        card.appendChild(el('h3', 'font-display font-semibold text-lg text-text-primary mb-2', p.title));
-        card.appendChild(el('p', 'text-text-muted text-sm mb-4 line-clamp-2', p.desc));
-
-        const meta = el('div', 'flex flex-wrap gap-4 text-xs text-text-muted mb-4');
-        meta.appendChild(el('span', '', p.location));
-        const dot = el('span', '', '\u00B7');
-        meta.appendChild(dot);
-        meta.appendChild(el('span', '', p.budget));
-        meta.appendChild(el('span', '', '\u00B7'));
-        meta.appendChild(el('span', '', p.timeline));
-        card.appendChild(meta);
-
-        const footer = el('div', 'flex items-center justify-between');
-        const bids = el('span', 'text-sm text-text-muted', p.bids + ' bids');
-        footer.appendChild(bids);
-        const bidBtn = el('button', 'glass-btn glass-btn-primary py-2 px-5 text-sm');
-        bidBtn.textContent = 'Place Bid';
-        bidBtn.addEventListener('click', function() { showToast('Bid form coming soon!', 'info'); });
-        footer.appendChild(bidBtn);
-        card.appendChild(footer);
-
-        projectsEl.appendChild(card);
-      });
-    }
-
-    // My Bids
-    const bidsEl = document.getElementById('contractor-bids');
-    if (bidsEl) {
-      bidsEl.innerHTML = '';
-      demoBids.forEach(function(b) {
-        const row = el('div', 'glass-card-subtle p-4 flex items-center justify-between');
-        const left = el('div', '');
-        left.appendChild(el('h4', 'font-medium text-text-primary', b.project));
-        left.appendChild(el('p', 'text-xs text-text-muted', b.date));
-        row.appendChild(left);
-        const right = el('div', 'flex items-center gap-3');
-        right.appendChild(el('span', 'font-semibold text-neon-cyan', b.amount));
-        const badgeClass = b.status === 'accepted' ? 'badge-online' : b.status === 'rejected' ? 'badge-offline' : 'badge-pending';
-        const statusLabel = b.status.charAt(0).toUpperCase() + b.status.slice(1);
-        right.appendChild(el('span', 'badge ' + badgeClass, statusLabel));
-        row.appendChild(right);
-        bidsEl.appendChild(row);
-      });
-    }
-
-    const myBidsCount = document.getElementById('my-bids-count');
-    if (myBidsCount) myBidsCount.textContent = demoBids.length + ' Active';
-  }
-
-  function applyFilters() {
-    showToast('Filters applied!', 'info');
-  }
-
-  // ===== PAGE 5: POST PROJECT =====
-  function renderPostProject() {
-    if (!state.isLoggedIn) { navigate('login'); return; }
-  }
-
-  function generateAIScope() {
-    const descInput = document.getElementById('project-description');
-    if (!descInput) return;
-    const title = document.getElementById('project-title');
-    const titleVal = title ? title.value.trim() : '';
-    if (!titleVal) {
-      showToast('Please enter a project title first', 'error');
-      return;
-    }
-    showToast('AI is generating scope of work...', 'info');
-    setTimeout(function() {
-      const aiScope = 'SCOPE OF WORK (AI Generated)\n\n1. SITE PREPARATION\n   - Protect existing structures and landscaping\n   - Obtain necessary permits\n   - Set up temporary utilities if needed\n\n2. DEMOLITION & REMOVAL\n   - Remove existing materials as specified\n   - Dispose of debris per local regulations\n\n3. INSTALLATION / CONSTRUCTION\n   - Execute work per project specifications\n   - Use specified materials and techniques\n   - Maintain quality standards throughout\n\n4. CLEANUP & INSPECTION\n   - Thorough site cleanup\n   - Final walkthrough with homeowner\n   - Address any punch list items\n\nNote: This is an AI-generated scope. Please review and customize as needed.';
-      descInput.value = aiScope;
-      updateCharCount();
-      showToast('AI scope generated!', 'success');
-    }, 2000);
-  }
-
-  function updateCharCount() {
-    const desc = document.getElementById('project-description');
-    const count = document.getElementById('desc-char-count');
-    if (desc && count) {
-      count.textContent = desc.value.length + ' / 2000';
-    }
-  }
-
-  function submitProject() {
-    const title = document.getElementById('project-title');
-    const category = document.getElementById('project-category');
-    const location = document.getElementById('project-location');
-    const description = document.getElementById('project-description');
-
-    let valid = true;
-    if (!title || !title.value.trim()) {
-      if (title) title.classList.add('error');
-      valid = false;
-    } else if (title) title.classList.remove('error');
-    if (!category || !category.value) {
-      if (category) category.classList.add('error');
-      valid = false;
-    } else if (category) category.classList.remove('error');
-    if (!location || !location.value.trim()) {
-      if (location) location.classList.add('error');
-      valid = false;
-    } else if (location) location.classList.remove('error');
-    if (!description || !description.value.trim()) {
-      if (description) description.classList.add('error');
-      valid = false;
-    } else if (description) description.classList.remove('error');
-
-    if (!valid) {
-      showToast('Please fill in all required fields', 'error');
-      return;
-    }
-
-    showToast('Project posted successfully!', 'success');
-    fireConfetti();
-    setTimeout(function() { navigate('dashboard'); }, 1500);
-  }
-
-  // ===== PAGE 6: PROFILE =====
-  function renderProfile() {
-    if (!state.isLoggedIn) { navigate('login'); return; }
-
-    const user = state.currentUser || { name: 'User', xpr: 'user' };
-    const initials = user.name.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
-
-    const avatarEl = document.getElementById('profile-avatar');
-    if (avatarEl) avatarEl.textContent = initials;
-    const nameEl = document.getElementById('profile-name');
-    if (nameEl) nameEl.textContent = user.name;
-    const roleBadge = document.getElementById('profile-role-badge');
-    if (roleBadge) roleBadge.textContent = state.userRole ? state.userRole.charAt(0).toUpperCase() + state.userRole.slice(1) : 'User';
-    const xprEl = document.getElementById('profile-xpr');
-    if (xprEl) xprEl.textContent = '@' + (user.xpr || 'user');
-
-    // Settings
-    const settingsEl = document.getElementById('profile-settings');
-    if (settingsEl) {
-      settingsEl.innerHTML = '';
-      SETTINGS.forEach(function(s) {
-        const item = el('div', 'flex items-center justify-between');
-        const text = el('div', '');
-        text.appendChild(el('p', 'text-text-primary font-medium', s.label));
-        text.appendChild(el('p', 'text-text-muted text-sm', s.desc));
-        item.appendChild(text);
-        const toggle = el('label', 'glass-toggle');
-        const input = el('input', '');
-        input.type = 'checkbox';
-        input.checked = state[s.key] !== undefined ? state[s.key] : s.default;
-        input.addEventListener('change', function() {
-          state[s.key] = this.checked;
-          showToast(s.label + ' ' + (this.checked ? 'enabled' : 'disabled'), 'info');
+      
+      // Step 2: Verify OTP + Create Account
+      var verifyBtn = document.getElementById('cta-verify-btn');
+      if (verifyBtn) {
+        verifyBtn.addEventListener('click', async function() {
+          var otp = document.getElementById('cta-otp').value;
+          var pass = document.getElementById('cta-password').value;
+          var pass2 = document.getElementById('cta-password2').value;
+          
+          if (!otp || otp.length < 4) { alert('Please enter the OTP code.'); return; }
+          if (!pass || pass.length < 6) { alert('Password must be at least 6 characters.'); return; }
+          if (pass !== pass2) { alert('Passwords do not match.'); return; }
+          
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = 'Verifying...';
+          
+          try {
+            var res = await fetch(API_URL + '/api/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: currentEmail, otp: otp, password: pass, role: currentRole, full_name: currentEmail.split('@')[0] })
+            });
+            var data = await res.json();
+            if (res.ok) {
+              localStorage.setItem('gcsc_token', data.token);
+              localStorage.setItem('gcsc_user', JSON.stringify(data.user));
+              showStep(3);
+            } else {
+              alert(data.error || 'Invalid OTP. Please try again.');
+              verifyBtn.disabled = false;
+              verifyBtn.textContent = 'Complete Registration';
+            }
+          } catch (e) {
+            alert('Server error. Please try again.');
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Complete Registration';
+          }
         });
-        toggle.appendChild(input);
-        const track = el('div', 'glass-toggle-track');
-        toggle.appendChild(track);
-        const thumb = el('div', 'glass-toggle-thumb');
-        toggle.appendChild(thumb);
-        item.appendChild(toggle);
-        settingsEl.appendChild(item);
-      });
-    }
-  }
+      }
+      
+      // Resend OTP
+      var resendBtn = document.getElementById('cta-resend-btn');
+      if (resendBtn) {
+        resendBtn.addEventListener('click', async function() {
+          resendBtn.textContent = 'Sending...';
+          try {
+            await fetch(API_URL + '/api/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: currentEmail, password: 'TempPass123!', name: 'Beta User', role: currentRole })
+            });
+            resendBtn.textContent = 'OTP resent! Check your email.';
+            setTimeout(() => resendBtn.textContent = 'Resend OTP', 3000);
+          } catch (e) {
+            resendBtn.textContent = 'Resend OTP';
+            alert('Error sending OTP.');
+          }
+        });
+      }
+      
+      // Go to Dashboard
+      var dashBtn = document.getElementById('cta-dashboard-btn');
+      if (dashBtn) {
+        dashBtn.addEventListener('click', function() {
+          const user = JSON.parse(localStorage.getItem('gcsc_user') || '{}');
+          const role = user.role || 'homeowner';
+          if (role === 'contractor') {
+            window.location.href = 'dashboard-contractor.html';
+          } else if (role === 'admin') {
+            window.location.href = 'admin.html';
+          } else {
+            window.location.href = 'dashboard-homeowner.html';
+          }
+        });
+      }
 
-  function toggleEditProfile() {
-    showToast('Edit profile coming soon!', 'info');
-  }
+      // ===== SPIN KEYFRAME FOR CTA ORBIT =====
+      var styleSheet = document.createElement('style');
+      styleSheet.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+      document.head.appendChild(styleSheet);
 
-  function copyToClipboard(elementId) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const text = el.textContent || '';
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function() {
-        showToast('Copied to clipboard!', 'success');
-      });
-    } else {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast('Copied to clipboard!', 'success');
-    }
-  }
-
-  // ===== CONFETTI =====
-  function fireConfetti() {
-    const canvas = document.getElementById('confetti-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const particles = [];
-    const colors = ['#7C3AED', '#3B82F6', '#06B6D4', '#10B981', '#EC4899', '#F59E0B'];
-    for (let i = 0; i < 120; i++) {
-      particles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        vx: (Math.random() - 0.5) * 16,
-        vy: (Math.random() - 0.5) * 16 - 4,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: Math.random() * 6 + 3,
-        life: 1,
-        decay: 0.005 + Math.random() * 0.01,
-      });
-    }
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let alive = 0;
-      particles.forEach(function(p) {
-        if (p.life <= 0) return;
-        alive++;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.15;
-        p.vx *= 0.99;
-        p.life -= p.decay;
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 10;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      });
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
-      if (alive > 0) requestAnimationFrame(animate);
-      else ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    animate();
-  }
-
-  // ===== LOGOUT =====
-  function logout() {
-    clearSession();
-    showToast('Logged out successfully', 'info');
-    navigate('home');
-  }
-
-  // ===== HASH CHANGE HANDLER =====
-  function handleHashChange() {
-    const hash = window.location.hash.replace('#', '') || 'home';
-    if (PAGES[hash]) {
-      navigate(hash);
-    }
-  }
-
-  // ===== INITIALIZATION =====
-  function init() {
-    // Load session
-    loadSession();
-
-    // Setup OTP inputs
-    setupOTPInputs();
-
-    // Character count for description
-    const descInput = document.getElementById('project-description');
-    if (descInput) {
-      descInput.addEventListener('input', updateCharCount);
-    }
-
-    // Hamburger
-    const hamburger = document.getElementById('hamburger');
-    if (hamburger) hamburger.addEventListener('click', toggleMobileMenu);
-
-    // Mobile overlay
-    const overlay = document.getElementById('mobile-overlay');
-    if (overlay) overlay.addEventListener('click', closeMobileMenu);
-
-    // Hash routing
-    window.addEventListener('hashchange', handleHashChange);
-
-    // Initial route
-    handleHashChange();
-
-    // Initial render
-    renderCurrentPage();
-  }
-
-  // ===== EXPOSED API =====
-  window.SC = {
-    navigate: navigate,
-    switchAuthTab: switchAuthTab,
-    handleLogin: handleLogin,
-    handleOTPVerify: handleOTPVerify,
-    backToLogin: backToLogin,
-    handleRegister: handleRegister,
-    logout: logout,
-    generateAIScope: generateAIScope,
-    submitProject: submitProject,
-    applyFilters: applyFilters,
-    toggleEditProfile: toggleEditProfile,
-    copyToClipboard: copyToClipboard,
-  };
-
-  // ===== BOOT =====
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-})();
-</script>
+    })();
+  </script>
 </body>
 </html>
