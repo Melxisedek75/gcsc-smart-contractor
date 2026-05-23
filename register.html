@@ -127,8 +127,8 @@
                 <label class="flex items-start gap-3 mb-5 cursor-pointer">
                     <input type="checkbox" id="termsCheck" class="mt-1 w-4 h-4 rounded border-2 border-border text-accent focus:ring-accent" required>
                     <span class="text-sm text-text-secondary leading-relaxed">
-                        I agree to the <a href="#" class="text-accent font-medium hover:underline">Terms of Service</a> and
-                        <a href="#" class="text-accent font-medium hover:underline">Privacy Policy</a>
+                        I agree to the <a href="terms-of-service.html" target="_blank" class="text-accent font-medium hover:underline">Terms of Service</a> and
+                        <a href="privacy-policy.html" target="_blank" class="text-accent font-medium hover:underline">Privacy Policy</a>
                     </span>
                 </label>
 
@@ -171,6 +171,53 @@
                     <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
                 </button>
             </div>
+        </div>
+
+        <!-- Step 3: Contractor License Verification -->
+        <div id="step3" class="step">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-accent"></i>
+                </div>
+                <h2 class="text-xl font-bold text-text-primary">License Verification</h2>
+                <p class="text-text-secondary text-sm mt-1">Required for all contractors in Washington State</p>
+            </div>
+            <form id="verifyForm" onsubmit="handleContractorVerify(event)">
+                <label class="block text-sm font-semibold text-text-primary mb-2">Full Name / Business Name</label>
+                <input type="text" id="verifyName" placeholder="John Smith Construction LLC" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary placeholder-gray-400 focus:border-accent focus:outline-none mb-4" required>
+
+                <label class="block text-sm font-semibold text-text-primary mb-2">WA L&I License Number</label>
+                <input type="text" id="verifyLicense" placeholder="JOHNSC1234J1" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary placeholder-gray-400 focus:border-accent focus:outline-none mb-4" required>
+                <p class="text-xs text-text-secondary mb-4">Format: e.g. JOHNSC1234J1. Verify at <a href="https://secure.lni.wa.gov/verify/" target="_blank" class="text-accent underline">L&I Verify</a>.</p>
+
+                <label class="block text-sm font-semibold text-text-primary mb-2">License Type</label>
+                <select id="verifyLicenseType" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary focus:border-accent focus:outline-none mb-4 bg-white" required>
+                    <option value="">Select license type...</option>
+                    <option value="general">General Contractor</option>
+                    <option value="specialty">Specialty Contractor</option>
+                    <option value="electrical">Electrical Contractor</option>
+                    <option value="plumbing">Plumbing Contractor</option>
+                </select>
+
+                <label class="block text-sm font-semibold text-text-primary mb-2">Bond Amount</label>
+                <select id="verifyBond" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary focus:border-accent focus:outline-none mb-4 bg-white" required>
+                    <option value="">Select bond amount...</option>
+                    <option value="30000">$30,000 (General Contractor)</option>
+                    <option value="15000">$15,000 (Specialty Contractor)</option>
+                </select>
+
+                <label class="block text-sm font-semibold text-text-primary mb-2">Insurance Provider</label>
+                <input type="text" id="verifyInsurance" placeholder="e.g. State Farm, Progressive" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary placeholder-gray-400 focus:border-accent focus:outline-none mb-4">
+
+                <label class="block text-sm font-semibold text-text-primary mb-2">Insurance Policy Number</label>
+                <input type="text" id="verifyPolicy" placeholder="POL-12345678" class="w-full px-4 py-3 border-2 border-border rounded-12 text-text-primary placeholder-gray-400 focus:border-accent focus:outline-none mb-5">
+
+                <button type="submit" id="submitVerifyBtn" class="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
+                    <span id="submitVerifyText">Submit for Review</span>
+                    <div id="submitVerifyLoader" class="loader hidden"></div>
+                </button>
+            </form>
+            <p class="text-center text-xs text-text-secondary/60 mt-4">Your account will be activated after manual review. Typical review time: 1–2 business days.</p>
         </div>
 
         <!-- Divider -->
@@ -311,14 +358,55 @@
                     localStorage.setItem('gcsc_role', selectedRole);
                     localStorage.setItem('gcsc_user', JSON.stringify(data.user || { email: currentEmail, role: selectedRole }));
                     showToast('Account created successfully!', 'success');
-                    setTimeout(() => {
-                        window.location.href = selectedRole === 'contractor' ? 'dashboard-contractor.html' : 'dashboard-homeowner.html';
-                    }, 500);
+                    if (selectedRole === 'contractor') {
+                        showStep(3);
+                        setTimeout(() => lucide.createIcons(), 200);
+                    } else {
+                        setTimeout(() => {
+                            window.location.href = 'dashboard-homeowner.html';
+                        }, 500);
+                    }
                 }
             } catch (err) {
                 showToast(err.message || 'Invalid OTP', 'error');
             } finally {
                 setLoading('verifyBtn', 'verifyText', 'verifyLoader', false);
+            }
+        }
+
+        async function handleContractorVerify(e) {
+            e.preventDefault();
+            const payload = {
+                document_type: document.getElementById('verifyLicenseType').value,
+                document_number: document.getElementById('verifyLicense').value.trim(),
+                bond_amount: document.getElementById('verifyBond').value,
+                insurance_provider: document.getElementById('verifyInsurance').value.trim(),
+                insurance_policy: document.getElementById('verifyPolicy').value.trim(),
+                full_name: document.getElementById('verifyName').value.trim(),
+            };
+            if (!payload.document_type || !payload.document_number) {
+                showToast('License type and number are required', 'error'); return;
+            }
+            setLoading('submitVerifyBtn', 'submitVerifyText', 'submitVerifyLoader', true);
+            try {
+                const data = await api('/api/contractor/verify', {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                });
+                showToast(data.message || 'Verification submitted for review', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard-contractor.html';
+                }, 800);
+            } catch (err) {
+                if (err.message && err.message.includes('404')) {
+                    showToast('Backend verification endpoint not yet deployed. Info saved locally.', 'error');
+                    localStorage.setItem('gcsc_pending_verification', JSON.stringify(payload));
+                    setTimeout(() => window.location.href = 'dashboard-contractor.html', 1500);
+                } else {
+                    showToast(err.message || 'Failed to submit verification', 'error');
+                }
+            } finally {
+                setLoading('submitVerifyBtn', 'submitVerifyText', 'submitVerifyLoader', false);
             }
         }
 
