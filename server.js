@@ -1984,6 +1984,154 @@ app.use((err, req, res, _next) => {
 });
 
 // ---------------------------------------------------------------------------
+// SECTION 21.5: CONTRACTOR VERIFICATION ROUTES
+// ---------------------------------------------------------------------------
+// KYC-style license verification for contractors. Submitted during
+// registration (Step 3). Admin review required before bidding.
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/contractor/verify
+ * Submit contractor license, bond, and insurance info.
+ * Requires authentication (must have just registered / logged in).
+ */
+app.post('/api/contractor/verify', requireAuth, async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+  const role = req.user.role;
+
+  if (role !== 'contractor') {
+    return res.status(403).json({ error: 'Only contractors can submit verification' });
+  }
+
+  const {
+    full_name,
+    document_type,
+    document_number,
+    bond_amount,
+    insurance_provider,
+    insurance_policy,
+  } = req.body;
+
+  if (!document_type || !document_number) {
+    return res.status(400).json({ error: 'document_type and document_number are required' });
+  }
+
+  const validTypes = ['general', 'specialty', 'electrical', 'plumbing'];
+  if (!validTypes.includes(document_type)) {
+    return res.status(400).json({ error: 'Invalid document_type' });
+  }
+
+  try {
+    // Delete any previous pending/rejected verification so insert doesn't conflict
+    await db.query(
+      "DELETE FROM contractor_verifications WHERE user_id = $1 AND status IN ('pending','rejected')",
+      [userId]
+    );
+
+    const result = await db.query(
+      `INSERT INTO contractor_verifications
+       (user_id, full_name, document_type, document_number, bond_amount, insurance_provider, insurance_policy, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW())
+       RETURNING *`,
+      [
+        userId,
+        full_name || null,
+        document_type,
+        document_number,
+        bond_amount ? parseInt(bond_amount, 10) : null,
+        insurance_provider || null,
+        insurance_policy || null,
+      ]
+    );
+
+    const verification = result.rows[0];
+
+    return res.status(201).json({
+      message: 'Verification submitted for review',
+      verification_id: verification.id,
+      status: verification.status,
+    });
+  } catch (err) {
+    console.error('[Contractor Verify Error]', err.message);
+    return res.status(500).json({ error: 'Failed to submit verification' });
+  }
+});
+
+/**
+ * GET /api/contractor/verify/status
+ * Returns current user's verification submissions.
+ */
+app.get('/api/contractor/verify/status', requireAuth, async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+
+  try {
+    const result = await db.query(
+      `SELECT id, full_name, document_type, document_number, bond_amount,
+              insurance_provider, insurance_policy, status, verified_at, created_at
+       FROM contractor_verifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    return res.status(200).json({
+      verifications: result.rows,
+      is_verified: result.rows.some(v => v.status === 'verified'),
+    });
+  } catch (err) {
+    console.error('[Contractor Verify Error]', err.message);
+    return res.status(500).json({ error: 'Failed to retrieve verification status' });
+  }
+});
+
+/**
+ * POST /api/contractor/verify/:id/approve
+ * Admin-only: approve a contractor verification.
+ */
+app.post('/api/contractor/verify/:id/approve', requireAuth, requireRole(['admin']), async (req, res) => {
+  const adminId = req.user.userId || req.user.id;
+  const verificationId = parseInt(req.params.id, 10);
+
+  if (Number.isNaN(verificationId)) {
+    return res.status(400).json({ error: 'Invalid verification ID' });
+  }
+
+  try {
+    // Mark this one as verified
+    const result = await db.query(
+      `UPDATE contractor_verifications
+       SET status = 'verified', verified_by = $1, verified_at = NOW(), updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [adminId, verificationId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Verification not found' });
+    }
+
+    const verification = result.rows[0];
+
+    // Mark any other verifications for this user as rejected to keep unique constraint happy
+    await db.query(
+      `UPDATE contractor_verifications
+       SET status = 'rejected', updated_at = NOW()
+       WHERE user_id = $1 AND id != $2 AND status = 'pending'`,
+      [verification.user_id, verificationId]
+    );
+
+    return res.status(200).json({
+      message: 'Contractor verified',
+      verification_id: verification.id,
+      contractor_user_id: verification.user_id,
+    });
+  } catch (err) {
+    console.error('[Contractor Verify Error]', err.message);
+    return res.status(500).json({ error: 'Failed to approve verification' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // SECTION 22: SERVER STARTUP
 // ---------------------------------------------------------------------------
 // Validates all required env vars on startup (already done at top of file).

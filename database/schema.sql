@@ -450,6 +450,38 @@ ALTER TABLE bids ENABLE ROW LEVEL SECURITY;
 ALTER TABLE escrow_contracts ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
+-- 7. CONTRACTOR VERIFICATIONS TABLE
+-- ============================================================================
+-- KYC-style verification for contractors. Stores license, bond, and insurance
+-- info submitted during registration. Admin approval required before bidding.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS contractor_verifications (
+    id                  SERIAL          PRIMARY KEY,
+    user_id             INTEGER         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name           VARCHAR(255),
+    document_type       VARCHAR(50)     CHECK (document_type IN ('general','specialty','electrical','plumbing')),
+    document_number     VARCHAR(50)     NOT NULL,
+    bond_amount         INTEGER         CHECK (bond_amount > 0),
+    insurance_provider  VARCHAR(255),
+    insurance_policy    VARCHAR(100),
+    status              VARCHAR(20)     DEFAULT 'pending'
+                                        CHECK (status IN ('pending', 'verified', 'rejected')),
+    verified_by         INTEGER         REFERENCES users(id),
+    verified_at         TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ     DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ     DEFAULT NOW(),
+
+    -- One pending/verified verification per user
+    CONSTRAINT one_active_verification UNIQUE (user_id, status)
+);
+
+CREATE INDEX IF NOT EXISTS idx_contractor_verifications_user ON contractor_verifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_contractor_verifications_status ON contractor_verifications(status);
+
+COMMENT ON TABLE contractor_verifications IS
+    'Contractor license and insurance verification submissions. Admin approval required.';
+
+-- ============================================================================
 -- SCHEMA VERSION TRACKING
 -- ============================================================================
 -- Simple table to track which schema version is installed.
