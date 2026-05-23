@@ -76,7 +76,7 @@ describe('GCSC Admin Middleware', () => {
     it('should reject missing token', async () => {
       const res = await request(app).get('/api/protected');
       expect(res.status).toBe(401);
-      expect(res.body.error).toBe('Unauthorized');
+      expect(res.body.error).toBe('Authentication required.');
     });
 
     it('should reject invalid token', async () => {
@@ -171,7 +171,7 @@ describe('GCSC Admin Middleware', () => {
         .set('Authorization', token);
 
       expect(res.status).toBe(403);
-      expect(res.body.error).toContain('Required role: admin or mediator');
+      expect(res.body.error).toBe('Access denied.');
     });
   });
 

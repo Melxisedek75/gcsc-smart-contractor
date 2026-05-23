@@ -28,70 +28,9 @@ const express   = require('express');
 const crypto    = require('crypto');
 const validator = require('validator');
 const db        = require('../database/db');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
-
-// ---------------------------------------------------------------------------
-// JWT Authentication Middleware
-// ---------------------------------------------------------------------------
-
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
-
-function requireAuth(req, res, next) {
-    (async () => {
-        try {
-            const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            const token = authHeader.substring(7);
-            const decoded = jwt.verify(token, JWT_SECRET, {
-                algorithms: ['HS256'],
-                clockTolerance: 30,
-            });
-
-            if (!decoded.jti) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            const { rows } = await db.query(
-                'SELECT * FROM sessions WHERE jti = $1 AND is_revoked = false AND expires_at > NOW()',
-                [decoded.jti]
-            );
-
-            if (rows.length === 0) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            req.user = decoded;
-            next();
-        } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('[ProjectsRoute] JWT validation failed:', err.message);
-            return res.status(401).json({ error: 'Authentication required.' });
-        }
-    })();
-}
-
-// ---------------------------------------------------------------------------
-// Role-based Access Control
-// ---------------------------------------------------------------------------
-
-function requireRole(allowedRoles) {
-    return (req, res, next) => {
-        if (!req.user || !req.user.role) {
-            return res.status(401).json({ error: 'Authentication required.' });
-        }
-
-        if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({ error: 'Access denied.' });
-        }
-
-        next();
-    };
-}
 
 // ---------------------------------------------------------------------------
 // Helper Functions

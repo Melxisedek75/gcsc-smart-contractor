@@ -25,6 +25,7 @@
 const express = require('express');
 const crypto  = require('crypto');
 const db      = require('../database/db');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -50,55 +51,6 @@ function getStripe() {
         });
     }
     return stripe;
-}
-
-// ---------------------------------------------------------------------------
-// JWT Authentication Middleware (inline for self-containment)
-// ---------------------------------------------------------------------------
-
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
-
-/**
- * Authenticate requests using JWT Bearer token.
- * Attaches decoded user to req.user.
- */
-function requireAuth(req, res, next) {
-    (async () => {
-        try {
-            const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            const token = authHeader.substring(7);
-            const decoded = jwt.verify(token, JWT_SECRET, {
-                algorithms: ['HS256'],
-                clockTolerance: 30,
-            });
-
-            if (!decoded.jti) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            // Check session is valid and not revoked
-            const { rows } = await db.query(
-                'SELECT * FROM sessions WHERE jti = $1 AND is_revoked = false AND expires_at > NOW()',
-                [decoded.jti]
-            );
-
-            if (rows.length === 0) {
-                return res.status(401).json({ error: 'Authentication required.' });
-            }
-
-            req.user = decoded;
-            next();
-        } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('[StripeRoute] JWT validation failed:', err.message);
-            return res.status(401).json({ error: 'Authentication required.' });
-        }
-    })();
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 const crypto = require('crypto');
 const STRIPE_CONFIG = require('../stripe-config');
 const db = require('../database/db');
+const { extractUser } = require('../middleware/auth');
 
 // Mock Stripe for testing (until sk_test_ key is provided)
 class MockStripe {
@@ -81,34 +82,7 @@ if (STRIPE_CONFIG.secretKey && STRIPE_CONFIG.secretKey.startsWith('sk_test_')) {
 }
 
 // JWT Authentication — FIXED: Using proper JWT verification with signature check
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })();
-
-async function getUser(req) {
-  const auth = req.headers['authorization'] || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token) return null;
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
-      algorithms: ['HS256'],
-      clockTolerance: 30,
-    });
-    
-    if (!decoded.jti) return null;
-    
-    const { rows } = await db.query(
-      'SELECT * FROM sessions WHERE jti = $1 AND is_revoked = false AND expires_at > NOW()',
-      [decoded.jti]
-    );
-    
-    if (rows.length === 0) return null;
-    
-    return decoded;
-  } catch {
-    return null;
-  }
-}
+const getUser = extractUser;
 
 function json(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
