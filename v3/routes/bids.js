@@ -127,6 +127,156 @@ function escapeHtml(text) {
         .replace(/'/g, '&#39;');
 }
 
+const allowedFields = {
+    amount: true,
+    timeline_days: true,
+    description: true,
+    scope_of_work: true,
+};
+
+function normalizeBidUpdateValue(field, value) {
+    if (field === 'description' || field === 'scope_of_work') {
+        return value === null ? null : value.trim();
+    }
+    return value;
+}
+
+const BID_UPDATE_QUERIES = {
+    amount: {
+        sql: 'UPDATE bids SET amount = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        params: (body, bidId) => [normalizeBidUpdateValue('amount', body.amount), bidId],
+    },
+    timeline_days: {
+        sql: 'UPDATE bids SET timeline_days = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        params: (body, bidId) => [normalizeBidUpdateValue('timeline_days', body.timeline_days), bidId],
+    },
+    description: {
+        sql: 'UPDATE bids SET description = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        params: (body, bidId) => [normalizeBidUpdateValue('description', body.description), bidId],
+    },
+    scope_of_work: {
+        sql: 'UPDATE bids SET scope_of_work = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        params: (body, bidId) => [normalizeBidUpdateValue('scope_of_work', body.scope_of_work), bidId],
+    },
+    'amount|timeline_days': {
+        sql: 'UPDATE bids SET amount = $1, timeline_days = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [body.amount, body.timeline_days, bidId],
+    },
+    'amount|description': {
+        sql: 'UPDATE bids SET amount = $1, description = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [body.amount, normalizeBidUpdateValue('description', body.description), bidId],
+    },
+    'amount|scope_of_work': {
+        sql: 'UPDATE bids SET amount = $1, scope_of_work = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [body.amount, normalizeBidUpdateValue('scope_of_work', body.scope_of_work), bidId],
+    },
+    'timeline_days|description': {
+        sql: 'UPDATE bids SET timeline_days = $1, description = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [body.timeline_days, normalizeBidUpdateValue('description', body.description), bidId],
+    },
+    'timeline_days|scope_of_work': {
+        sql: 'UPDATE bids SET timeline_days = $1, scope_of_work = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [body.timeline_days, normalizeBidUpdateValue('scope_of_work', body.scope_of_work), bidId],
+    },
+    'description|scope_of_work': {
+        sql: 'UPDATE bids SET description = $1, scope_of_work = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+        params: (body, bidId) => [
+            normalizeBidUpdateValue('description', body.description),
+            normalizeBidUpdateValue('scope_of_work', body.scope_of_work),
+            bidId,
+        ],
+    },
+    'amount|timeline_days|description': {
+        sql: 'UPDATE bids SET amount = $1, timeline_days = $2, description = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+        params: (body, bidId) => [
+            body.amount,
+            body.timeline_days,
+            normalizeBidUpdateValue('description', body.description),
+            bidId,
+        ],
+    },
+    'amount|timeline_days|scope_of_work': {
+        sql: 'UPDATE bids SET amount = $1, timeline_days = $2, scope_of_work = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+        params: (body, bidId) => [
+            body.amount,
+            body.timeline_days,
+            normalizeBidUpdateValue('scope_of_work', body.scope_of_work),
+            bidId,
+        ],
+    },
+    'amount|description|scope_of_work': {
+        sql: 'UPDATE bids SET amount = $1, description = $2, scope_of_work = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+        params: (body, bidId) => [
+            body.amount,
+            normalizeBidUpdateValue('description', body.description),
+            normalizeBidUpdateValue('scope_of_work', body.scope_of_work),
+            bidId,
+        ],
+    },
+    'timeline_days|description|scope_of_work': {
+        sql: 'UPDATE bids SET timeline_days = $1, description = $2, scope_of_work = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+        params: (body, bidId) => [
+            body.timeline_days,
+            normalizeBidUpdateValue('description', body.description),
+            normalizeBidUpdateValue('scope_of_work', body.scope_of_work),
+            bidId,
+        ],
+    },
+    'amount|timeline_days|description|scope_of_work': {
+        sql: 'UPDATE bids SET amount = $1, timeline_days = $2, description = $3, scope_of_work = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
+        params: (body, bidId) => [
+            body.amount,
+            body.timeline_days,
+            normalizeBidUpdateValue('description', body.description),
+            normalizeBidUpdateValue('scope_of_work', body.scope_of_work),
+            bidId,
+        ],
+    },
+};
+
+function validateBidUpdateBody(body) {
+    const fields = Object.keys(body || {});
+
+    for (const field of fields) {
+        if (!allowedFields[field]) {
+            return { error: `Field '${field}' is not allowed for bid updates.` };
+        }
+    }
+
+    if (fields.length === 0) {
+        return { error: 'No fields provided to update.' };
+    }
+
+    if (body.amount !== undefined) {
+        if (typeof body.amount !== 'number' || !Number.isInteger(body.amount) || body.amount < 1) {
+            return { error: 'amount must be a positive integer.' };
+        }
+        if (body.amount > 100_000_000) {
+            return { error: 'Bid amount exceeds maximum ($1,000,000).' };
+        }
+    }
+
+    if (body.timeline_days !== undefined) {
+        if (typeof body.timeline_days !== 'number' || !Number.isInteger(body.timeline_days) || body.timeline_days < 1 || body.timeline_days > 3650) {
+            return { error: 'timeline_days must be between 1 and 3650.' };
+        }
+    }
+
+    if (body.description !== undefined && body.description !== null) {
+        if (typeof body.description !== 'string' || body.description.length > 5000) {
+            return { error: 'description must be a string (max 5000 chars) or null.' };
+        }
+    }
+
+    if (body.scope_of_work !== undefined && body.scope_of_work !== null) {
+        if (typeof body.scope_of_work !== 'string' || body.scope_of_work.length > 10000) {
+            return { error: 'scope_of_work must be a string (max 10000 chars) or null.' };
+        }
+    }
+
+    return { fields };
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/bids — Place a bid on a project (contractor only)
 // ---------------------------------------------------------------------------
@@ -449,7 +599,10 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
             return res.status(400).json({ error: 'Invalid bid ID.' });
         }
 
-        const { amount, proposed_timeline_days, message } = req.body;
+        const validation = validateBidUpdateBody(req.body);
+        if (validation.error) {
+            return res.status(400).json({ error: validation.error });
+        }
 
         // --- Get contractor ---
         const contractor = await db.selectOne(
@@ -484,47 +637,14 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
         }
 
         // --- Build update — SECURITY FIX: Whitelist allowed fields, no dynamic SQL ---
-        const ALLOWED_FIELDS = {
-            amount: { column: 'amount', validate: (v) => {
-                if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) return 'amount must be a positive integer.';
-                if (v > 100_000_000) return 'Bid amount exceeds maximum ($1,000,000).';
-                return null;
-            }},
-            proposed_timeline_days: { column: 'timeline_days', validate: (v) => {
-                const val = Math.round(v);
-                if (!Number.isInteger(val) || val < 1 || val > 3650) return 'proposed_timeline_days must be between 1 and 3650.';
-                return null;
-            }},
-            message: { column: 'description', validate: (v) => {
-                if (v !== null && (typeof v !== 'string' || v.length > 5000)) return 'message must be a string (max 5000 chars) or null.';
-                return null;
-            }},
-        };
-
-        const updates = [];
-        const params = [];
-        let paramIndex = 1;
-
-        for (const [fieldName, config] of Object.entries(ALLOWED_FIELDS)) {
-            const value = req.body[fieldName];
-            if (value !== undefined) {
-                const error = config.validate(value);
-                if (error) return res.status(400).json({ error });
-                updates.push(config.column + ' = $' + paramIndex);
-                params.push(fieldName === 'message' ? (value ? value.trim() : null) : value);
-                paramIndex++;
-            }
-        }
-
-        if (updates.length === 0) {
-            return res.status(400).json({ error: 'No fields provided to update.' });
-        }
-
-        params.push(bidId);
+        const updateKey = Object.keys(allowedFields)
+            .filter((field) => req.body[field] !== undefined)
+            .join('|');
+        const updatePlan = BID_UPDATE_QUERIES[updateKey];
 
         const result = await db.query(
-            'UPDATE bids SET ' + updates.join(', ') + ' WHERE id = $' + paramIndex + ' RETURNING *',
-            params
+            updatePlan.sql,
+            updatePlan.params(req.body, bidId)
         );
 
         const updatedBid = result.rows[0];
@@ -541,7 +661,7 @@ router.put('/:id', requireAuth, requireRole(['contractor']), async (req, res) =>
                     contractor.id,
                     'pending',
                     'pending',
-                    JSON.stringify({ updated_fields: updates.map(u => u.split(' ')[0]) })
+                    JSON.stringify({ updated_fields: validation.fields })
                 ]
             );
         } catch (auditErr) {
