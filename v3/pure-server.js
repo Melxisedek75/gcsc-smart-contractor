@@ -166,6 +166,78 @@ async function initStorage() {
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email))`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id SERIAL PRIMARY KEY,
+      homeowner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'general',
+      budget_min INTEGER NOT NULL DEFAULT 0,
+      budget_max INTEGER NOT NULL DEFAULT 0,
+      location TEXT NOT NULL DEFAULT '',
+      timeline_days INTEGER NOT NULL DEFAULT 30,
+      status TEXT NOT NULL DEFAULT 'open',
+      escrow_id INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS bids (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      contractor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount INTEGER NOT NULL,
+      proposed_timeline_days INTEGER NOT NULL DEFAULT 30,
+      message TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS escrow_contracts (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      homeowner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      contractor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      total_amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS milestones (
+      id SERIAL PRIMARY KEY,
+      escrow_id INTEGER NOT NULL REFERENCES escrow_contracts(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      amount INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      verified_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS escrow_id INTEGER`);
+  await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`ALTER TABLE escrow_contracts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`ALTER TABLE milestones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_homeowner ON projects (homeowner_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_bids_project ON bids (project_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_bids_contractor ON bids (contractor_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_escrow_homeowner ON escrow_contracts (homeowner_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_escrow_contractor ON escrow_contracts (contractor_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestones_escrow ON milestones (escrow_id)`);
 }
 
 function normalizeStoredUser(row) {
@@ -267,6 +339,289 @@ async function getUserCount() {
     return result.rows[0]?.count || 0;
   }
   return db.users.length;
+}
+
+function normalizeNumber(value, fallback = 0) {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeProject(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    homeowner_id: Number(row.homeowner_id),
+    budget_min: normalizeNumber(row.budget_min),
+    budget_max: normalizeNumber(row.budget_max),
+    timeline_days: normalizeNumber(row.timeline_days, 30),
+    escrow_id: row.escrow_id === null || row.escrow_id === undefined ? null : Number(row.escrow_id),
+  };
+}
+
+function normalizeBid(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    project_id: Number(row.project_id),
+    contractor_id: Number(row.contractor_id),
+    amount: normalizeNumber(row.amount),
+    proposed_timeline_days: normalizeNumber(row.proposed_timeline_days, 30),
+  };
+}
+
+function normalizeEscrow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    project_id: Number(row.project_id),
+    homeowner_id: Number(row.homeowner_id),
+    contractor_id: Number(row.contractor_id),
+    total_amount: normalizeNumber(row.total_amount),
+  };
+}
+
+function normalizeMilestone(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    escrow_id: Number(row.escrow_id),
+    amount: normalizeNumber(row.amount),
+  };
+}
+
+async function getProjectCount() {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT COUNT(*)::int AS count FROM projects');
+    return result.rows[0]?.count || 0;
+  }
+  return db.projects.length;
+}
+
+async function getCompletedEscrowCount() {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres("SELECT COUNT(*)::int AS count FROM escrow_contracts WHERE status = 'completed'");
+    return result.rows[0]?.count || 0;
+  }
+  return db.escrow_contracts.filter(e => e.status === 'completed').length;
+}
+
+async function createStoredProject(homeownerId, body) {
+  const project = {
+    homeowner_id: homeownerId,
+    title: String(body.title || '').trim(),
+    description: String(body.description || '').trim(),
+    category: String(body.category || 'general').trim() || 'general',
+    budget_min: normalizeNumber(body.budget_min),
+    budget_max: normalizeNumber(body.budget_max),
+    location: String(body.location || '').trim(),
+    timeline_days: normalizeNumber(body.timeline_days, 30),
+    status: 'open',
+    created_at: new Date().toISOString(),
+  };
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO projects (homeowner_id, title, description, category, budget_min, budget_max, location, timeline_days)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        project.homeowner_id,
+        project.title,
+        project.description,
+        project.category,
+        project.budget_min,
+        project.budget_max,
+        project.location,
+        project.timeline_days,
+      ]
+    );
+    return normalizeProject(result.rows[0]);
+  }
+
+  const stored = { id: db.nextId('projects'), ...project };
+  db.projects.push(stored);
+  saveDatabase();
+  return stored;
+}
+
+async function listStoredProjects(filters = {}) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `SELECT * FROM projects
+       WHERE ($1::text IS NULL OR status = $1)
+         AND ($2::text IS NULL OR category = $2)
+         AND ($3::text IS NULL OR location ILIKE '%' || $3 || '%')
+       ORDER BY created_at DESC`,
+      [filters.status || null, filters.category || null, filters.location || null]
+    );
+    return result.rows.map(normalizeProject);
+  }
+
+  let projects = db.projects;
+  if (filters.status) projects = projects.filter(p => p.status === filters.status);
+  if (filters.category) projects = projects.filter(p => p.category === filters.category);
+  if (filters.location) projects = projects.filter(p => p.location && p.location.includes(filters.location));
+  return projects.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+async function findStoredProjectById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM projects WHERE id = $1 LIMIT 1', [id]);
+    return normalizeProject(result.rows[0]);
+  }
+  return db.projects.find(p => p.id === Number(id)) || null;
+}
+
+async function listStoredProjectsForUser(user) {
+  if (USE_POSTGRES) {
+    if (user.role === 'homeowner') {
+      const result = await queryPostgres('SELECT * FROM projects WHERE homeowner_id = $1 ORDER BY created_at DESC', [user.userId]);
+      return result.rows.map(normalizeProject);
+    }
+    const result = await queryPostgres(
+      `SELECT DISTINCT p.* FROM projects p
+       JOIN bids b ON b.project_id = p.id
+       WHERE b.contractor_id = $1
+       ORDER BY p.created_at DESC`,
+      [user.userId]
+    );
+    return result.rows.map(normalizeProject);
+  }
+
+  if (user.role === 'homeowner') return db.projects.filter(p => p.homeowner_id === user.userId);
+  const myBidProjectIds = db.bids.filter(b => b.contractor_id === user.userId).map(b => b.project_id);
+  return db.projects.filter(p => myBidProjectIds.includes(p.id));
+}
+
+async function createStoredBid(contractorId, body) {
+  const bid = {
+    project_id: normalizeNumber(body.project_id),
+    contractor_id: contractorId,
+    amount: normalizeNumber(body.amount),
+    proposed_timeline_days: normalizeNumber(body.proposed_timeline_days, 30),
+    message: String(body.message || '').trim(),
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  };
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO bids (project_id, contractor_id, amount, proposed_timeline_days, message)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [bid.project_id, bid.contractor_id, bid.amount, bid.proposed_timeline_days, bid.message]
+    );
+    return normalizeBid(result.rows[0]);
+  }
+
+  const stored = { id: db.nextId('bids'), ...bid };
+  db.bids.push(stored);
+  saveDatabase();
+  return stored;
+}
+
+async function findStoredBidById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM bids WHERE id = $1 LIMIT 1', [id]);
+    return normalizeBid(result.rows[0]);
+  }
+  return db.bids.find(b => b.id === Number(id)) || null;
+}
+
+async function listStoredBidsByProject(projectId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM bids WHERE project_id = $1 ORDER BY created_at DESC', [projectId]);
+    return result.rows.map(normalizeBid);
+  }
+  return db.bids.filter(b => b.project_id === Number(projectId));
+}
+
+async function listStoredBidsForContractor(contractorId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM bids WHERE contractor_id = $1 ORDER BY created_at DESC', [contractorId]);
+    return result.rows.map(normalizeBid);
+  }
+  return db.bids.filter(b => b.contractor_id === contractorId);
+}
+
+async function acceptStoredBid(bid, project, homeownerId) {
+  if (USE_POSTGRES) {
+    const accepted = await queryPostgres(
+      `UPDATE bids SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      ['accepted', bid.id]
+    );
+    await queryPostgres(
+      `UPDATE bids SET status = 'rejected', updated_at = NOW()
+       WHERE project_id = $1 AND id <> $2`,
+      [bid.project_id, bid.id]
+    );
+    const escrow = await queryPostgres(
+      `INSERT INTO escrow_contracts (project_id, homeowner_id, contractor_id, total_amount)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [bid.project_id, homeownerId, bid.contractor_id, bid.amount]
+    );
+    await queryPostgres(
+      `UPDATE projects SET status = $1, escrow_id = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      ['in_progress', escrow.rows[0].id, project.id]
+    );
+    return { bid: normalizeBid(accepted.rows[0]), escrow: normalizeEscrow(escrow.rows[0]) };
+  }
+
+  bid.status = 'accepted';
+  db.bids.filter(b => b.project_id === bid.project_id && b.id !== bid.id).forEach(b => b.status = 'rejected');
+  const escrowId = db.nextId('escrow_contracts');
+  const escrow = {
+    id: escrowId,
+    project_id: bid.project_id,
+    homeowner_id: homeownerId,
+    contractor_id: bid.contractor_id,
+    total_amount: bid.amount,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  };
+  db.escrow_contracts.push(escrow);
+  project.status = 'in_progress';
+  project.escrow_id = escrowId;
+  saveDatabase();
+  return { bid, escrow };
+}
+
+async function findStoredEscrowById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM escrow_contracts WHERE id = $1 LIMIT 1', [id]);
+    return normalizeEscrow(result.rows[0]);
+  }
+  return db.escrow_contracts.find(e => e.id === Number(id)) || null;
+}
+
+async function listStoredEscrowsForUser(userId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `SELECT * FROM escrow_contracts
+       WHERE homeowner_id = $1 OR contractor_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+    return result.rows.map(normalizeEscrow);
+  }
+  return db.escrow_contracts.filter(e => e.homeowner_id === userId || e.contractor_id === userId);
+}
+
+async function listStoredMilestonesByEscrow(escrowId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM milestones WHERE escrow_id = $1 ORDER BY id ASC', [escrowId]);
+    return result.rows.map(normalizeMilestone);
+  }
+  return db.milestones.filter(m => m.escrow_id === escrowId);
 }
 
 function seedDefaultUsers() {
@@ -423,7 +778,7 @@ const routes = {
   
   // Stats
   'GET /api/stats': async (req, res) => {
-    json(res, 200, { users: await getUserCount(), projects: db.projects.length, completed_escrows: db.escrow_contracts.filter(e => e.status === 'completed').length, platform: 'GCSC Smart Contractor v3.0' });
+    json(res, 200, { users: await getUserCount(), projects: await getProjectCount(), completed_escrows: await getCompletedEscrowCount(), platform: 'GCSC Smart Contractor v3.0' });
   },
 
   // Direct auth API used by the production dashboard
@@ -633,29 +988,22 @@ const routes = {
     
     const body = await parseBody(req);
     if (!body.title || !body.description) return json(res, 400, { error: 'Title and description required' });
-    
-    const id = db.nextId('projects');
-    db.projects.push({ id, homeowner_id: user.userId, title: body.title, description: body.description, category: body.category || 'general', budget_min: body.budget_min || 0, budget_max: body.budget_max || 0, location: body.location || '', timeline_days: body.timeline_days || 30, status: 'open', created_at: new Date().toISOString() });
-    saveDatabase();
-    
-    json(res, 201, { message: 'Project created', project: db.projects.find(p => p.id === id) });
+    const project = await createStoredProject(user.userId, body);
+    json(res, 201, { message: 'Project created', project });
   },
 
   // List projects
   'GET /api/projects': async (req, res) => {
     const { status, category, location } = parse(req.url, true).query;
-    let projects = db.projects;
-    if (status) projects = projects.filter(p => p.status === status);
-    if (category) projects = projects.filter(p => p.category === category);
-    if (location) projects = projects.filter(p => p.location && p.location.includes(location));
-    json(res, 200, { projects: projects.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) });
+    const projects = await listStoredProjects({ status, category, location });
+    json(res, 200, { projects });
   },
 
   // Get single project
   'GET /api/projects/:id': async (req, res, params) => {
-    const project = db.projects.find(p => p.id === parseInt(params.id));
+    const project = await findStoredProjectById(parseInt(params.id));
     if (!project) return json(res, 404, { error: 'Project not found' });
-    const bids = db.bids.filter(b => b.project_id === parseInt(params.id));
+    const bids = await listStoredBidsByProject(parseInt(params.id));
     json(res, 200, { project, bids });
   },
 
@@ -663,13 +1011,7 @@ const routes = {
   'GET /api/projects/my/projects': async (req, res) => {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
-    let projects;
-    if (user.role === 'homeowner') {
-      projects = db.projects.filter(p => p.homeowner_id === user.userId);
-    } else {
-      const myBidProjectIds = db.bids.filter(b => b.contractor_id === user.userId).map(b => b.project_id);
-      projects = db.projects.filter(p => myBidProjectIds.includes(p.id));
-    }
+    const projects = await listStoredProjectsForUser(user);
     json(res, 200, { projects });
   },
 
@@ -681,12 +1023,11 @@ const routes = {
     
     const body = await parseBody(req);
     if (!body.project_id || !body.amount) return json(res, 400, { error: 'Project ID and amount required' });
-    
-    const id = db.nextId('bids');
-    db.bids.push({ id, project_id: parseInt(body.project_id), contractor_id: user.userId, amount: parseInt(body.amount), proposed_timeline_days: body.proposed_timeline_days || 30, message: body.message || '', status: 'pending', created_at: new Date().toISOString() });
-    saveDatabase();
-    
-    json(res, 201, { message: 'Bid placed', bid: db.bids.find(b => b.id === id) });
+    const project = await findStoredProjectById(parseInt(body.project_id));
+    if (!project) return json(res, 404, { error: 'Project not found' });
+
+    const bid = await createStoredBid(user.userId, body);
+    json(res, 201, { message: 'Bid placed', bid });
   },
 
   // Accept bid
@@ -694,30 +1035,21 @@ const routes = {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     
-    const bid = db.bids.find(b => b.id === parseInt(params.id));
+    const bid = await findStoredBidById(parseInt(params.id));
     if (!bid) return json(res, 404, { error: 'Bid not found' });
     
-    const project = db.projects.find(p => p.id === bid.project_id);
+    const project = await findStoredProjectById(bid.project_id);
     if (!project || project.homeowner_id !== user.userId) return json(res, 403, { error: 'Not your project' });
-    
-    bid.status = 'accepted';
-    db.bids.filter(b => b.project_id === bid.project_id && b.id !== bid.id).forEach(b => b.status = 'rejected');
-    
-    const escrowId = db.nextId('escrow_contracts');
-    db.escrow_contracts.push({ id: escrowId, project_id: bid.project_id, homeowner_id: user.userId, contractor_id: bid.contractor_id, total_amount: bid.amount, status: 'pending', created_at: new Date().toISOString() });
-    
-    project.status = 'in_progress';
-    project.escrow_id = escrowId;
-    saveDatabase();
-    
-    json(res, 200, { message: 'Bid accepted, escrow created', escrow_id: escrowId });
+
+    const { escrow } = await acceptStoredBid(bid, project, user.userId);
+    json(res, 200, { message: 'Bid accepted, escrow created', escrow_id: escrow.id });
   },
 
   // My bids
   'GET /api/bids/my/bids': async (req, res) => {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
-    const bids = db.bids.filter(b => b.contractor_id === user.userId);
+    const bids = await listStoredBidsForContractor(user.userId);
     json(res, 200, { bids });
   },
 
@@ -726,10 +1058,10 @@ const routes = {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     
-    const escrow = db.escrow_contracts.find(e => e.id === parseInt(params.id) && (e.homeowner_id === user.userId || e.contractor_id === user.userId));
-    if (!escrow) return json(res, 404, { error: 'Escrow not found' });
+    const escrow = await findStoredEscrowById(parseInt(params.id));
+    if (!escrow || (escrow.homeowner_id !== user.userId && escrow.contractor_id !== user.userId)) return json(res, 404, { error: 'Escrow not found' });
     
-    const milestones = db.milestones.filter(m => m.escrow_id === escrow.id);
+    const milestones = await listStoredMilestonesByEscrow(escrow.id);
     json(res, 200, { escrow, milestones });
   },
 
@@ -737,7 +1069,7 @@ const routes = {
   'GET /api/escrow/my/escrows': async (req, res) => {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
-    const escrows = db.escrow_contracts.filter(e => e.homeowner_id === user.userId || e.contractor_id === user.userId);
+    const escrows = await listStoredEscrowsForUser(user.userId);
     json(res, 200, { escrows });
   },
 };
