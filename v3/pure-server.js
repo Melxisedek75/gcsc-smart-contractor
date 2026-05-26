@@ -12,6 +12,8 @@ const { parse } = require('url');
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gcsc-dev-secret-256-bits-minimum-length';
 const DB_FILE = path.join(__dirname, 'gcsc.db');
+const USE_POSTGRES = !!process.env.DATABASE_URL;
+let pgPool = null;
 
 // Lightweight JSON persistence keeps real account/profile data between process restarts.
 // A managed PostgreSQL database should replace this before real-money production.
@@ -114,6 +116,157 @@ function saveDatabase() {
     plain[key] = Array.isArray(db[key]) ? db[key] : [];
   }
   fs.writeFileSync(DB_FILE, JSON.stringify(plain, null, 2));
+}
+
+function getPgPool() {
+  if (!USE_POSTGRES) return null;
+  if (!pgPool) {
+    const { Pool } = require('pg');
+    const config = { connectionString: process.env.DATABASE_URL };
+    if (process.env.PGSSL === 'true') {
+      config.ssl = { rejectUnauthorized: false };
+    }
+    pgPool = new Pool(config);
+  }
+  return pgPool;
+}
+
+async function queryPostgres(text, params = []) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('PostgreSQL is not configured');
+  return pool.query(text, params);
+}
+
+async function initStorage() {
+  if (!USE_POSTGRES) return;
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('homeowner', 'contractor', 'admin')),
+      full_name TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+      wallet JSONB,
+      is_verified BOOLEAN NOT NULL DEFAULT TRUE,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}'::jsonb`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet JSONB`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email))`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)`);
+}
+
+function normalizeStoredUser(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    full_name: row.full_name || row.name || row.email,
+    phone: row.phone || '',
+    profile: typeof row.profile === 'string' ? JSON.parse(row.profile || '{}') : (row.profile || defaultProfile(row.role)),
+    wallet: typeof row.wallet === 'string' ? JSON.parse(row.wallet || 'null') : (row.wallet || null),
+    is_verified: row.is_verified !== undefined ? row.is_verified : row.verified,
+    is_active: row.is_active !== undefined ? row.is_active : true,
+  };
+}
+
+async function findUserByEmail(email) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [email]
+    );
+    return normalizeStoredUser(result.rows[0]);
+  }
+
+  return db.users.find(u => u.email.toLowerCase() === String(email).toLowerCase()) || null;
+}
+
+async function findUserById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+    return normalizeStoredUser(result.rows[0]);
+  }
+
+  return db.users.find(u => u.id === Number(id)) || null;
+}
+
+async function createStoredUser(input) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO users (email, password_hash, role, full_name, phone, profile, wallet, is_verified, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE)
+       RETURNING *`,
+      [
+        input.email,
+        input.password_hash,
+        input.role,
+        input.full_name,
+        input.phone || '',
+        input.profile || defaultProfile(input.role),
+        input.wallet || null,
+      ]
+    );
+    return normalizeStoredUser(result.rows[0]);
+  }
+
+  const user = { id: db.nextId('users'), ...input };
+  db.users.push(user);
+  saveDatabase();
+  return user;
+}
+
+async function updateStoredProfile(user, body) {
+  updateProfileFromBody(user, body);
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE users SET profile = $3, full_name = $1, phone = $2, updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [user.full_name, user.phone || '', user.profile, user.id]
+    );
+    return normalizeStoredUser(result.rows[0]);
+  }
+
+  saveDatabase();
+  return user;
+}
+
+async function updateStoredWallet(user, wallet) {
+  user.wallet = wallet;
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE users SET wallet = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [wallet, user.id]
+    );
+    return normalizeStoredUser(result.rows[0]);
+  }
+
+  saveDatabase();
+  return user;
+}
+
+async function getUserCount() {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT COUNT(*)::int AS count FROM users');
+    return result.rows[0]?.count || 0;
+  }
+  return db.users.length;
 }
 
 function seedDefaultUsers() {
@@ -264,12 +417,13 @@ const routes = {
 
   // Health
   'GET /health': async (req, res) => {
-    json(res, 200, { status: 'ok', version: '3.0.0', database: 'json-file', timestamp: new Date().toISOString(), uptime: process.uptime() });
+    if (USE_POSTGRES) await queryPostgres('SELECT 1 AS ok');
+    json(res, 200, { status: 'ok', version: '3.0.0', database: USE_POSTGRES ? 'postgres' : 'json-file', timestamp: new Date().toISOString(), uptime: process.uptime() });
   },
   
   // Stats
   'GET /api/stats': async (req, res) => {
-    json(res, 200, { users: db.users.length, projects: db.projects.length, completed_escrows: db.escrow_contracts.filter(e => e.status === 'completed').length, platform: 'GCSC Smart Contractor v3.0' });
+    json(res, 200, { users: await getUserCount(), projects: db.projects.length, completed_escrows: db.escrow_contracts.filter(e => e.status === 'completed').length, platform: 'GCSC Smart Contractor v3.0' });
   },
 
   // Direct auth API used by the production dashboard
@@ -282,10 +436,9 @@ const routes = {
     if (!email || !email.includes('@')) return json(res, 400, { error: 'Valid email required' });
     if (password.length < 8) return json(res, 400, { error: 'Password must be at least 8 characters' });
     if (!role) return json(res, 400, { error: 'Role must be homeowner/owner or contractor/builder' });
-    if (db.users.find(u => u.email.toLowerCase() === email)) return json(res, 409, { error: 'Email already registered' });
+    if (await findUserByEmail(email)) return json(res, 409, { error: 'Email already registered' });
 
-    const user = {
-      id: db.nextId('users'),
+    const user = await createStoredUser({
       email,
       password_hash: hashPassword(password),
       role,
@@ -296,10 +449,7 @@ const routes = {
       profile: defaultProfile(role),
       wallet: null,
       created_at: new Date().toISOString(),
-    };
-
-    db.users.push(user);
-    saveDatabase();
+    });
 
     json(res, 201, { message: 'Registration successful', token: createTokenForUser(user), user: publicUser(user) });
   },
@@ -310,14 +460,14 @@ const routes = {
     const password = String(body.password || '');
     if (!email || !password) return json(res, 400, { error: 'Email and password required' });
 
-    const user = db.users.find(u => u.email.toLowerCase() === email && u.is_active);
+    const user = await findUserByEmail(email);
     if (!user || !verifyPassword(password, user.password_hash)) {
       return json(res, 401, { error: 'Invalid email or password' });
     }
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
 
     if (!user.profile) user.profile = defaultProfile(user.role);
     if (user.wallet === undefined) user.wallet = null;
-    saveDatabase();
 
     json(res, 200, { message: 'Login successful', token: createTokenForUser(user), user: publicUser(user) });
   },
@@ -325,32 +475,35 @@ const routes = {
   'GET /api/auth/profile': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
-    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    const user = await findUserById(auth.userId);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
     json(res, 200, { user: publicUser(user) });
   },
 
   'PUT /api/auth/profile': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
-    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    const user = await findUserById(auth.userId);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
 
+    let updatedUser;
     try {
-      updateProfileFromBody(user, await parseBody(req));
+      updatedUser = await updateStoredProfile(user, await parseBody(req));
     } catch (err) {
       return json(res, err.status || 400, { error: err.message || 'Invalid profile data' });
     }
 
-    saveDatabase();
-    json(res, 200, { message: 'Profile updated', user: publicUser(user) });
+    json(res, 200, { message: 'Profile updated', user: publicUser(updatedUser) });
   },
 
   'POST /api/wallet/connect': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
-    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    const user = await findUserById(auth.userId);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
 
     const body = await parseBody(req);
     const accountName = cleanString(body.accountName || body.account || body.actor, 12).toLowerCase();
@@ -358,23 +511,24 @@ const routes = {
     if (!/^[a-z1-5.]{1,12}$/.test(accountName)) return json(res, 400, { error: 'Valid XPR account name required' });
     if (!/^[a-z1-5]{1,12}$/.test(permission)) return json(res, 400, { error: 'Valid XPR permission required' });
 
-    user.wallet = {
+    const wallet = {
       accountName,
       permission,
       publicKey: cleanString(body.publicKey || '', 80),
       walletType: cleanString(body.walletType || 'webauth', 40),
       connectedAt: new Date().toISOString(),
     };
-    saveDatabase();
+    const updatedUser = await updateStoredWallet(user, wallet);
 
-    json(res, 200, { message: 'Wallet connected', wallet: user.wallet, user: publicUser(user) });
+    json(res, 200, { message: 'Wallet connected', wallet: updatedUser.wallet, user: publicUser(updatedUser) });
   },
 
   'GET /api/wallet/me': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
-    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    const user = await findUserById(auth.userId);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
     json(res, 200, { wallet: user.wallet || null });
   },
 
@@ -384,7 +538,7 @@ const routes = {
     if (!body.email || !body.email.includes('@')) return json(res, 400, { error: 'Valid email required' });
     if (!['homeowner', 'contractor'].includes(body.role)) return json(res, 400, { error: 'Role must be homeowner or contractor' });
     
-    if (db.users.find(u => u.email === body.email)) return json(res, 409, { error: 'Email already registered' });
+    if (await findUserByEmail(body.email)) return json(res, 409, { error: 'Email already registered' });
     
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -404,18 +558,25 @@ const routes = {
     if (!otpRecord) return json(res, 400, { error: 'Invalid or expired OTP' });
     
     const password = body.password || Math.random().toString(36).slice(-12);
-    const userId = db.nextId('users');
-    db.users.push({
-      id: userId, email: body.email, password_hash: hashPassword(password),
-      role: body.role, full_name: body.full_name || body.email.split('@')[0], phone: body.phone || '',
-      is_verified: 1, is_active: 1, profile: defaultProfile(body.role), wallet: null, created_at: new Date().toISOString()
+    const role = normalizeRole(body.role) || 'homeowner';
+    const createdUser = await createStoredUser({
+      email: body.email,
+      password_hash: hashPassword(password),
+      role,
+      full_name: body.full_name || body.email.split('@')[0],
+      phone: body.phone || '',
+      is_verified: 1,
+      is_active: 1,
+      profile: defaultProfile(role),
+      wallet: null,
+      created_at: new Date().toISOString()
     });
     
     db.otp_verifications = db.otp_verifications.filter(o => o.id !== otpRecord.id);
     saveDatabase();
     
-    const token = jwtSign({ userId, email: body.email, role: body.role });
-    json(res, 200, { message: 'Registration successful', token, user: { id: userId, email: body.email, role: body.role, full_name: body.full_name || body.email.split('@')[0] } });
+    const token = createTokenForUser(createdUser);
+    json(res, 200, { message: 'Registration successful', token, user: publicUser(createdUser) });
   },
 
   // Login Step 1
@@ -423,8 +584,9 @@ const routes = {
     const body = await parseBody(req);
     if (!body.email || !body.email.includes('@')) return json(res, 400, { error: 'Valid email required' });
     
-    const user = db.users.find(u => u.email === body.email && u.is_active);
+    const user = await findUserByEmail(body.email);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
     
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -443,8 +605,9 @@ const routes = {
     const otpRecord = db.otp_verifications.find(o => o.email === body.email && o.otp === body.otp && o.purpose === 'login' && new Date(o.expires_at) > new Date());
     if (!otpRecord) return json(res, 400, { error: 'Invalid or expired OTP' });
     
-    const user = db.users.find(u => u.email === body.email);
+    const user = await findUserByEmail(body.email);
     if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
     
     db.otp_verifications = db.otp_verifications.filter(o => o.id !== otpRecord.id);
     saveDatabase();
@@ -457,7 +620,7 @@ const routes = {
   'GET /api/me': async (req, res) => {
     const user = getUser(req);
     if (!user) return json(res, 401, { error: 'Unauthorized' });
-    const u = db.users.find(x => x.id === user.userId);
+    const u = await findUserById(user.userId);
     if (!u) return json(res, 404, { error: 'User not found' });
     json(res, 200, { user: publicUser(u) });
   },
@@ -633,14 +796,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`╔══════════════════════════════════════════╗`);
-  console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
-  console.log(`║   Port: ${PORT}                            ║`);
-  console.log(`║   Health: http://0.0.0.0:${PORT}/health      ║`);
-  console.log(`║   JWT: custom (zero deps)                ║`);
-  console.log(`║   DB: in-memory (auto-seeded)            ║`);
-  console.log(`╚══════════════════════════════════════════╝`);
+initStorage().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`╔══════════════════════════════════════════╗`);
+    console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
+    console.log(`║   Port: ${PORT}                            ║`);
+    console.log(`║   Health: http://0.0.0.0:${PORT}/health      ║`);
+    console.log(`║   JWT: custom (zero deps)                ║`);
+    console.log(`║   DB: ${USE_POSTGRES ? 'postgres' : 'json-file'}                         ║`);
+    console.log(`╚══════════════════════════════════════════╝`);
+  });
+}).catch((err) => {
+  console.error('[STARTUP] Storage initialization failed:', err.message);
+  process.exit(1);
 });
 
 module.exports = server;

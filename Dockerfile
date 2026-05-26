@@ -2,6 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+COPY v3/package.json v3/package-lock.json ./v3/
+WORKDIR /app/v3
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+WORKDIR /app
 COPY v3/pure-server.js ./v3/pure-server.js
 
 EXPOSE 10000
