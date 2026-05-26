@@ -13,30 +13,11 @@ const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gcsc-dev-secret-256-bits-minimum-length';
 const DB_FILE = path.join(__dirname, 'gcsc.db');
 
-// In-memory database (SQLite requires npm install)
-const db = {
-  users: [],
-  sessions: [],
-  otp_verifications: [],
-  projects: [],
-  bids: [],
-  escrow_contracts: [],
-  milestones: [],
-  reviews: [],
-  nextId: (table) => (db[table].length > 0 ? Math.max(...db[table].map(r => r.id)) + 1 : 1),
-};
-
-// Seed sample data
-db.users.push({
-  id: 1, email: 'demo@gcsc.store', password_hash: hashPassword('demo123'),
-  role: 'homeowner', full_name: 'Demo Homeowner', phone: '',
-  is_verified: 1, is_active: 1, created_at: new Date().toISOString()
-});
-db.users.push({
-  id: 2, email: 'contractor@gcsc.store', password_hash: hashPassword('demo123'),
-  role: 'contractor', full_name: 'Demo Contractor', phone: '',
-  is_verified: 1, is_active: 1, created_at: new Date().toISOString()
-});
+// Lightweight JSON persistence keeps real account/profile data between process restarts.
+// A managed PostgreSQL database should replace this before real-money production.
+const db = loadDatabase();
+attachDbHelpers(db);
+seedDefaultUsers();
 
 // ===== UTILS =====
 function hashPassword(pw) {
@@ -92,6 +73,164 @@ function sendEmail(to, subject, html) {
   return Promise.resolve(true);
 }
 
+function createEmptyDatabase() {
+  return {
+    users: [],
+    sessions: [],
+    otp_verifications: [],
+    projects: [],
+    bids: [],
+    escrow_contracts: [],
+    milestones: [],
+    reviews: [],
+  };
+}
+
+function attachDbHelpers(database) {
+  database.nextId = (table) => {
+    const rows = Array.isArray(database[table]) ? database[table] : [];
+    return rows.length > 0 ? Math.max(...rows.map(r => Number(r.id) || 0)) + 1 : 1;
+  };
+}
+
+function loadDatabase() {
+  const database = createEmptyDatabase();
+  if (!fs.existsSync(DB_FILE)) return database;
+
+  try {
+    const saved = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    for (const key of Object.keys(database)) {
+      if (Array.isArray(saved[key])) database[key] = saved[key];
+    }
+  } catch (err) {
+    console.error('[DB] Failed to load database, starting clean:', err.message);
+  }
+  return database;
+}
+
+function saveDatabase() {
+  const plain = {};
+  for (const key of Object.keys(createEmptyDatabase())) {
+    plain[key] = Array.isArray(db[key]) ? db[key] : [];
+  }
+  fs.writeFileSync(DB_FILE, JSON.stringify(plain, null, 2));
+}
+
+function seedDefaultUsers() {
+  let changed = false;
+
+  for (const user of db.users) {
+    if (!user.profile) {
+      user.profile = defaultProfile(user.role);
+      changed = true;
+    }
+    if (!user.wallet) {
+      user.wallet = null;
+      changed = true;
+    }
+  }
+
+  if (changed) saveDatabase();
+}
+
+function normalizeRole(role) {
+  const value = String(role || '').toLowerCase().trim();
+  if (value === 'builder' || value === 'contractor') return 'contractor';
+  if (value === 'owner' || value === 'homeowner') return 'homeowner';
+  return '';
+}
+
+function defaultProfile(role) {
+  const normalizedRole = normalizeRole(role) || 'homeowner';
+  return {
+    accountType: normalizedRole,
+    companyName: '',
+    businessName: '',
+    ein: '',
+    licenseNumber: '',
+    serviceArea: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    specialties: [],
+    yearsInBusiness: '',
+    website: '',
+    bio: '',
+    logoDataUrl: '',
+    projectNeeds: '',
+    propertyAddress: '',
+    propertyType: '',
+    budgetRange: '',
+  };
+}
+
+function cleanString(value, maxLength = 240) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function cleanArray(value, maxItems = 12, maxLength = 48) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(/,|\n/);
+  return raw.map(item => cleanString(item, maxLength)).filter(Boolean).slice(0, maxItems);
+}
+
+function isValidLogoDataUrl(value) {
+  if (!value) return true;
+  if (String(value).length > 750000) return false;
+  return /^data:image\/(png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i.test(String(value));
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    full_name: user.full_name,
+    fullName: user.full_name,
+    phone: user.phone || '',
+    is_verified: !!user.is_verified,
+    profile: user.profile || defaultProfile(user.role),
+    wallet: user.wallet || null,
+    created_at: user.created_at,
+  };
+}
+
+function createTokenForUser(user) {
+  return jwtSign({ userId: user.id, email: user.email, role: user.role });
+}
+
+function updateProfileFromBody(user, body) {
+  const profile = { ...defaultProfile(user.role), ...(user.profile || {}) };
+  const allowedTextFields = [
+    'companyName', 'businessName', 'ein', 'licenseNumber', 'serviceArea', 'address',
+    'city', 'state', 'zip', 'yearsInBusiness', 'website', 'bio', 'projectNeeds',
+    'propertyAddress', 'propertyType', 'budgetRange'
+  ];
+
+  if (body.fullName !== undefined || body.full_name !== undefined) {
+    user.full_name = cleanString(body.fullName || body.full_name, 120);
+  }
+  if (body.phone !== undefined) user.phone = cleanString(body.phone, 40);
+
+  for (const field of allowedTextFields) {
+    if (body[field] !== undefined) profile[field] = cleanString(body[field], field === 'bio' ? 700 : 240);
+  }
+
+  if (body.specialties !== undefined) profile.specialties = cleanArray(body.specialties);
+  if (body.logoDataUrl !== undefined) {
+    if (!isValidLogoDataUrl(body.logoDataUrl)) {
+      const err = new Error('Logo must be a PNG, JPG, WEBP, or GIF data URL under 750KB');
+      err.status = 400;
+      throw err;
+    }
+    profile.logoDataUrl = body.logoDataUrl || '';
+  }
+
+  profile.accountType = user.role;
+  user.profile = profile;
+  user.updated_at = new Date().toISOString();
+}
+
 // ===== CORS & AUTH HELPERS =====
 function setCORS(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -125,12 +264,118 @@ const routes = {
 
   // Health
   'GET /health': async (req, res) => {
-    json(res, 200, { status: 'ok', version: '3.0.0', database: 'memory', timestamp: new Date().toISOString(), uptime: process.uptime() });
+    json(res, 200, { status: 'ok', version: '3.0.0', database: 'json-file', timestamp: new Date().toISOString(), uptime: process.uptime() });
   },
   
   // Stats
   'GET /api/stats': async (req, res) => {
     json(res, 200, { users: db.users.length, projects: db.projects.length, completed_escrows: db.escrow_contracts.filter(e => e.status === 'completed').length, platform: 'GCSC Smart Contractor v3.0' });
+  },
+
+  // Direct auth API used by the production dashboard
+  'POST /api/auth/register': async (req, res) => {
+    const body = await parseBody(req);
+    const email = cleanString(body.email, 160).toLowerCase();
+    const password = String(body.password || '');
+    const role = normalizeRole(body.role);
+
+    if (!email || !email.includes('@')) return json(res, 400, { error: 'Valid email required' });
+    if (password.length < 8) return json(res, 400, { error: 'Password must be at least 8 characters' });
+    if (!role) return json(res, 400, { error: 'Role must be homeowner/owner or contractor/builder' });
+    if (db.users.find(u => u.email.toLowerCase() === email)) return json(res, 409, { error: 'Email already registered' });
+
+    const user = {
+      id: db.nextId('users'),
+      email,
+      password_hash: hashPassword(password),
+      role,
+      full_name: cleanString(body.fullName || body.full_name || email.split('@')[0], 120),
+      phone: cleanString(body.phone, 40),
+      is_verified: 1,
+      is_active: 1,
+      profile: defaultProfile(role),
+      wallet: null,
+      created_at: new Date().toISOString(),
+    };
+
+    db.users.push(user);
+    saveDatabase();
+
+    json(res, 201, { message: 'Registration successful', token: createTokenForUser(user), user: publicUser(user) });
+  },
+
+  'POST /api/auth/login': async (req, res) => {
+    const body = await parseBody(req);
+    const email = cleanString(body.email, 160).toLowerCase();
+    const password = String(body.password || '');
+    if (!email || !password) return json(res, 400, { error: 'Email and password required' });
+
+    const user = db.users.find(u => u.email.toLowerCase() === email && u.is_active);
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return json(res, 401, { error: 'Invalid email or password' });
+    }
+
+    if (!user.profile) user.profile = defaultProfile(user.role);
+    if (user.wallet === undefined) user.wallet = null;
+    saveDatabase();
+
+    json(res, 200, { message: 'Login successful', token: createTokenForUser(user), user: publicUser(user) });
+  },
+
+  'GET /api/auth/profile': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    json(res, 200, { user: publicUser(user) });
+  },
+
+  'PUT /api/auth/profile': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    if (!user) return json(res, 404, { error: 'User not found' });
+
+    try {
+      updateProfileFromBody(user, await parseBody(req));
+    } catch (err) {
+      return json(res, err.status || 400, { error: err.message || 'Invalid profile data' });
+    }
+
+    saveDatabase();
+    json(res, 200, { message: 'Profile updated', user: publicUser(user) });
+  },
+
+  'POST /api/wallet/connect': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    if (!user) return json(res, 404, { error: 'User not found' });
+
+    const body = await parseBody(req);
+    const accountName = cleanString(body.accountName || body.account || body.actor, 12).toLowerCase();
+    const permission = cleanString(body.permission || 'active', 12).toLowerCase();
+    if (!/^[a-z1-5.]{1,12}$/.test(accountName)) return json(res, 400, { error: 'Valid XPR account name required' });
+    if (!/^[a-z1-5]{1,12}$/.test(permission)) return json(res, 400, { error: 'Valid XPR permission required' });
+
+    user.wallet = {
+      accountName,
+      permission,
+      publicKey: cleanString(body.publicKey || '', 80),
+      walletType: cleanString(body.walletType || 'webauth', 40),
+      connectedAt: new Date().toISOString(),
+    };
+    saveDatabase();
+
+    json(res, 200, { message: 'Wallet connected', wallet: user.wallet, user: publicUser(user) });
+  },
+
+  'GET /api/wallet/me': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = db.users.find(u => u.id === auth.userId && u.is_active);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    json(res, 200, { wallet: user.wallet || null });
   },
 
   // Register Step 1
@@ -144,6 +389,7 @@ const routes = {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     db.otp_verifications.push({ id: db.nextId('otp_verifications'), email: body.email, otp, purpose: 'registration', expires_at: expiresAt.toISOString(), created_at: new Date().toISOString() });
+    saveDatabase();
     
     await sendEmail(body.email, 'GCSC Registration OTP', `Your code: ${otp}`);
     json(res, 200, { message: 'OTP sent', email: body.email });
@@ -162,10 +408,11 @@ const routes = {
     db.users.push({
       id: userId, email: body.email, password_hash: hashPassword(password),
       role: body.role, full_name: body.full_name || body.email.split('@')[0], phone: body.phone || '',
-      is_verified: 1, is_active: 1, created_at: new Date().toISOString()
+      is_verified: 1, is_active: 1, profile: defaultProfile(body.role), wallet: null, created_at: new Date().toISOString()
     });
     
     db.otp_verifications = db.otp_verifications.filter(o => o.id !== otpRecord.id);
+    saveDatabase();
     
     const token = jwtSign({ userId, email: body.email, role: body.role });
     json(res, 200, { message: 'Registration successful', token, user: { id: userId, email: body.email, role: body.role, full_name: body.full_name || body.email.split('@')[0] } });
@@ -182,6 +429,7 @@ const routes = {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     db.otp_verifications.push({ id: db.nextId('otp_verifications'), email: body.email, otp, purpose: 'login', expires_at: expiresAt.toISOString() });
+    saveDatabase();
     
     await sendEmail(body.email, 'GCSC Login OTP', `Your code: ${otp}`);
     json(res, 200, { message: 'OTP sent', email: body.email });
@@ -199,6 +447,7 @@ const routes = {
     if (!user) return json(res, 404, { error: 'User not found' });
     
     db.otp_verifications = db.otp_verifications.filter(o => o.id !== otpRecord.id);
+    saveDatabase();
     
     const token = jwtSign({ userId: user.id, email: user.email, role: user.role });
     json(res, 200, { message: 'Login successful', token, user: { id: user.id, email: user.email, role: user.role, full_name: user.full_name } });
@@ -210,7 +459,7 @@ const routes = {
     if (!user) return json(res, 401, { error: 'Unauthorized' });
     const u = db.users.find(x => x.id === user.userId);
     if (!u) return json(res, 404, { error: 'User not found' });
-    json(res, 200, { user: { id: u.id, email: u.email, role: u.role, full_name: u.full_name, phone: u.phone, location: u.location, bio: u.bio } });
+    json(res, 200, { user: publicUser(u) });
   },
 
   // Create project
@@ -224,6 +473,7 @@ const routes = {
     
     const id = db.nextId('projects');
     db.projects.push({ id, homeowner_id: user.userId, title: body.title, description: body.description, category: body.category || 'general', budget_min: body.budget_min || 0, budget_max: body.budget_max || 0, location: body.location || '', timeline_days: body.timeline_days || 30, status: 'open', created_at: new Date().toISOString() });
+    saveDatabase();
     
     json(res, 201, { message: 'Project created', project: db.projects.find(p => p.id === id) });
   },
@@ -271,6 +521,7 @@ const routes = {
     
     const id = db.nextId('bids');
     db.bids.push({ id, project_id: parseInt(body.project_id), contractor_id: user.userId, amount: parseInt(body.amount), proposed_timeline_days: body.proposed_timeline_days || 30, message: body.message || '', status: 'pending', created_at: new Date().toISOString() });
+    saveDatabase();
     
     json(res, 201, { message: 'Bid placed', bid: db.bids.find(b => b.id === id) });
   },
@@ -294,6 +545,7 @@ const routes = {
     
     project.status = 'in_progress';
     project.escrow_id = escrowId;
+    saveDatabase();
     
     json(res, 200, { message: 'Bid accepted, escrow created', escrow_id: escrowId });
   },
