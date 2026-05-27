@@ -84,6 +84,7 @@ function createEmptyDatabase() {
     bids: [],
     escrow_contracts: [],
     milestones: [],
+    milestone_chain_txs: [],
     reviews: [],
   };
 }
@@ -226,11 +227,28 @@ async function initStorage() {
     )
   `);
 
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS milestone_chain_txs (
+      id SERIAL PRIMARY KEY,
+      milestone_id INTEGER NOT NULL REFERENCES milestones(id) ON DELETE CASCADE,
+      escrow_id INTEGER NOT NULL REFERENCES escrow_contracts(id) ON DELETE CASCADE,
+      action TEXT NOT NULL CHECK (action IN ('submitmilestone', 'approvemilestone', 'releasemilestone', 'disputemilestone')),
+      tx_id TEXT UNIQUE NOT NULL,
+      chain_id TEXT NOT NULL DEFAULT '',
+      contract_account TEXT NOT NULL DEFAULT 'gcscrow1111',
+      actor TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'broadcast',
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS escrow_id INTEGER`);
   await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE escrow_contracts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE milestones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'broadcast'`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_homeowner ON projects (homeowner_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_bids_project ON bids (project_id)`);
@@ -238,6 +256,8 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_escrow_homeowner ON escrow_contracts (homeowner_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_escrow_contractor ON escrow_contracts (contractor_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestones_escrow ON milestones (escrow_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_milestone ON milestone_chain_txs (milestone_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_escrow ON milestone_chain_txs (escrow_id)`);
 }
 
 function normalizeStoredUser(row) {
@@ -390,6 +410,18 @@ function normalizeMilestone(row) {
     id: Number(row.id),
     escrow_id: Number(row.escrow_id),
     amount: normalizeNumber(row.amount),
+    chain_txs: Array.isArray(row.chain_txs) ? row.chain_txs.map(normalizeChainTx) : [],
+  };
+}
+
+function normalizeChainTx(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    milestone_id: Number(row.milestone_id),
+    escrow_id: Number(row.escrow_id),
+    created_by: row.created_by === null || row.created_by === undefined ? null : Number(row.created_by),
   };
 }
 
@@ -619,9 +651,125 @@ async function listStoredEscrowsForUser(userId) {
 async function listStoredMilestonesByEscrow(escrowId) {
   if (USE_POSTGRES) {
     const result = await queryPostgres('SELECT * FROM milestones WHERE escrow_id = $1 ORDER BY id ASC', [escrowId]);
-    return result.rows.map(normalizeMilestone);
+    return attachChainTxsToMilestones(result.rows.map(normalizeMilestone));
   }
-  return db.milestones.filter(m => m.escrow_id === escrowId);
+  return attachChainTxsToMilestones(db.milestones.filter(m => m.escrow_id === escrowId).map(normalizeMilestone));
+}
+
+async function listStoredChainTxsByMilestoneIds(milestoneIds) {
+  const ids = milestoneIds.map(Number).filter(Boolean);
+  if (ids.length === 0) return [];
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      'SELECT * FROM milestone_chain_txs WHERE milestone_id = ANY($1::int[]) ORDER BY created_at DESC, id DESC',
+      [ids]
+    );
+    return result.rows.map(normalizeChainTx);
+  }
+
+  return db.milestone_chain_txs
+    .filter(tx => ids.includes(Number(tx.milestone_id)))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || Number(b.id) - Number(a.id))
+    .map(normalizeChainTx);
+}
+
+async function attachChainTxsToMilestones(milestones) {
+  const normalized = milestones.map(normalizeMilestone).filter(Boolean);
+  const txs = await listStoredChainTxsByMilestoneIds(normalized.map(m => m.id));
+  const byMilestone = new Map();
+  for (const tx of txs) {
+    const list = byMilestone.get(tx.milestone_id) || [];
+    list.push(tx);
+    byMilestone.set(tx.milestone_id, list);
+  }
+  return normalized.map(milestone => ({
+    ...milestone,
+    chain_txs: byMilestone.get(milestone.id) || [],
+  }));
+}
+
+const CHAIN_TX_ACTIONS = new Set(['submitmilestone', 'approvemilestone', 'releasemilestone', 'disputemilestone']);
+
+function canUserRecordChainTx(action, escrow, userId) {
+  if (action === 'submitmilestone') return escrow.contractor_id === userId;
+  if (action === 'approvemilestone') return escrow.homeowner_id === userId;
+  if (action === 'releasemilestone') return escrow.homeowner_id === userId;
+  if (action === 'disputemilestone') return escrow.homeowner_id === userId || escrow.contractor_id === userId;
+  return false;
+}
+
+async function createStoredMilestoneChainTx(milestone, escrow, userId, body) {
+  const action = String(body.action || '').trim();
+  const txId = String(body.tx_id || body.txId || '').trim();
+  const chainId = String(body.chain_id || body.chainId || '').trim();
+  const contractAccount = String(body.contract_account || body.contractAccount || 'gcscrow1111').trim();
+  const actor = String(body.actor || '').trim();
+  const status = String(body.status || 'broadcast').trim();
+
+  if (!CHAIN_TX_ACTIONS.has(action)) {
+    throw Object.assign(new Error('Invalid chain action'), { status: 400 });
+  }
+  if (!txId || txId.length < 16 || txId.length > 128) {
+    throw Object.assign(new Error('Valid transaction id required'), { status: 400 });
+  }
+  if (contractAccount !== 'gcscrow1111') {
+    throw Object.assign(new Error('Invalid escrow contract account'), { status: 400 });
+  }
+  if (!canUserRecordChainTx(action, escrow, userId)) {
+    throw Object.assign(new Error('Escrow role cannot record this chain action'), { status: 403 });
+  }
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO milestone_chain_txs
+        (milestone_id, escrow_id, action, tx_id, chain_id, contract_account, actor, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (tx_id) DO UPDATE SET
+        milestone_id = EXCLUDED.milestone_id,
+        escrow_id = EXCLUDED.escrow_id,
+        action = EXCLUDED.action,
+        chain_id = EXCLUDED.chain_id,
+        contract_account = EXCLUDED.contract_account,
+        actor = EXCLUDED.actor,
+        status = EXCLUDED.status,
+        created_by = EXCLUDED.created_by
+       RETURNING *`,
+      [milestone.id, escrow.id, action, txId, chainId, contractAccount, actor, status, userId]
+    );
+    return normalizeChainTx(result.rows[0]);
+  }
+
+  let chainTx = db.milestone_chain_txs.find(tx => tx.tx_id === txId);
+  if (chainTx) {
+    Object.assign(chainTx, {
+      milestone_id: milestone.id,
+      escrow_id: escrow.id,
+      action,
+      chain_id: chainId,
+      contract_account: contractAccount,
+      actor,
+      status,
+      created_by: userId,
+    });
+  } else {
+    chainTx = {
+      id: db.nextId('milestone_chain_txs'),
+      milestone_id: milestone.id,
+      escrow_id: escrow.id,
+      action,
+      tx_id: txId,
+      chain_id: chainId,
+      contract_account: contractAccount,
+      actor,
+      status,
+      created_by: userId,
+      created_at: new Date().toISOString(),
+    };
+    db.milestone_chain_txs.push(chainTx);
+  }
+  saveDatabase();
+  return normalizeChainTx(chainTx);
 }
 
 async function getMilestoneAmountTotal(escrowId) {
@@ -1256,6 +1404,26 @@ const routes = {
     const updated = await updateStoredMilestoneStatus(milestone, 'disputed', `user:${user.userId}`);
     const updatedEscrow = await updateStoredEscrowStatus(escrow, 'disputed');
     json(res, 200, { message: 'Milestone disputed', milestone: updated, escrow: updatedEscrow });
+  },
+
+  // Store XPR testnet transaction evidence for a milestone action
+  'POST /api/milestones/:id/chain-txs': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || (escrow.homeowner_id !== user.userId && escrow.contractor_id !== user.userId)) {
+      return json(res, 403, { error: 'Escrow participant only' });
+    }
+
+    try {
+      const chainTx = await createStoredMilestoneChainTx(milestone, escrow, user.userId, await parseBody(req));
+      json(res, 201, { message: 'Chain transaction recorded', chain_tx: chainTx });
+    } catch (err) {
+      json(res, err.status || 400, { error: err.message || 'Could not record chain transaction' });
+    }
   },
 
   // My escrows

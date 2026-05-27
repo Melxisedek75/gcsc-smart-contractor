@@ -21,12 +21,14 @@ fs.writeFileSync(statePath, JSON.stringify({
     bids: 1,
     escrow_contracts: 1,
     milestones: 1,
+    milestone_chain_txs: 1,
   },
   users: [],
   projects: [],
   bids: [],
   escrow_contracts: [],
   milestones: [],
+  milestone_chain_txs: [],
 }, null, 2));
 
 fs.writeFileSync(fakePgPath, `
@@ -301,6 +303,14 @@ class Pool {
       return { rows, rowCount: rows.length };
     }
 
+    if (sql.startsWith('select * from milestone_chain_txs where milestone_id = any')) {
+      const ids = (params[0] || []).map(Number);
+      const rows = state.milestone_chain_txs
+        .filter((row) => ids.includes(row.milestone_id))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || b.id - a.id);
+      return { rows, rowCount: rows.length };
+    }
+
     if (sql.startsWith('insert into milestones')) {
       const [escrowId, title, description, amount, status] = params;
       const milestone = {
@@ -317,6 +327,42 @@ class Pool {
       state.milestones.push(milestone);
       save(state);
       return { rows: [milestone], rowCount: 1 };
+    }
+
+    if (sql.startsWith('insert into milestone_chain_txs')) {
+      const [milestoneId, escrowId, action, txId, chainId, contractAccount, actor, status, createdBy] = params;
+      let tx = state.milestone_chain_txs.find((row) => row.tx_id === txId);
+      if (tx) {
+        tx = {
+          ...tx,
+          milestone_id: Number(milestoneId),
+          escrow_id: Number(escrowId),
+          action,
+          chain_id: chainId,
+          contract_account: contractAccount,
+          actor,
+          status,
+          created_by: Number(createdBy),
+        };
+        state.milestone_chain_txs = state.milestone_chain_txs.map((row) => row.tx_id === txId ? tx : row);
+      } else {
+        tx = {
+          id: nextId(state, 'milestone_chain_txs'),
+          milestone_id: Number(milestoneId),
+          escrow_id: Number(escrowId),
+          action,
+          tx_id: txId,
+          chain_id: chainId,
+          contract_account: contractAccount,
+          actor,
+          status,
+          created_by: Number(createdBy),
+          created_at: new Date().toISOString(),
+        };
+        state.milestone_chain_txs.push(tx);
+      }
+      save(state);
+      return { rows: [tx], rowCount: 1 };
     }
 
     if (sql.startsWith('select * from milestones where id')) {
@@ -535,6 +581,29 @@ async function waitForServer(child) {
     assert.strictEqual(released.status, 200);
     assert.strictEqual(released.data.milestone.status, 'released');
 
+    const releaseTxId = 'a'.repeat(64);
+    const releaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
+      action: 'releasemilestone',
+      tx_id: releaseTxId,
+      chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
+      contract_account: 'gcscrow1111',
+      actor: 'owner.test',
+      status: 'broadcast',
+    }, login.data.token);
+    assert.strictEqual(releaseTx.status, 201);
+    assert.strictEqual(releaseTx.data.chain_tx.tx_id, releaseTxId);
+    assert.strictEqual(releaseTx.data.chain_tx.action, 'releasemilestone');
+
+    const unauthorizedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
+      action: 'releasemilestone',
+      tx_id: 'b'.repeat(64),
+      chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
+      contract_account: 'gcscrow1111',
+      actor: 'contractor.test',
+      status: 'broadcast',
+    }, contractorLogin.data.token);
+    assert.strictEqual(unauthorizedReleaseTx.status, 403);
+
     const disputedMilestone = await request('POST', `/api/escrow/${accepted.data.escrow_id}/milestones`, {
       title: 'Finish materials',
       description: 'Materials inspection before installation',
@@ -550,6 +619,10 @@ async function waitForServer(child) {
     const escrowAfterMilestones = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
     assert.strictEqual(escrowAfterMilestones.status, 200);
     assert.strictEqual(escrowAfterMilestones.data.milestones.length, 2);
+    const milestoneWithTx = escrowAfterMilestones.data.milestones.find((item) => item.id === milestone.data.milestone.id);
+    assert.strictEqual(milestoneWithTx.chain_txs.length, 1);
+    assert.strictEqual(milestoneWithTx.chain_txs[0].tx_id, releaseTxId);
+    assert.strictEqual(milestoneWithTx.chain_txs[0].contract_account, 'gcscrow1111');
 
     console.log('postgres workflow persistence smoke test passed');
   } finally {
