@@ -806,6 +806,47 @@ function publicContractorProfile(user) {
   };
 }
 
+function publicDocumentOwner(user) {
+  const profile = { ...defaultProfile(user.role), ...(user.profile || {}) };
+  return {
+    id: Number(user.id),
+    email: user.email || '',
+    role: user.role || '',
+    full_name: user.full_name || '',
+    companyName: profile.companyName || profile.businessName || '',
+    businessName: profile.businessName || profile.companyName || '',
+    serviceArea: profile.serviceArea || '',
+    accountType: profile.accountType || user.role || '',
+    logoDataUrl: profile.logoDataUrl || '',
+  };
+}
+
+async function enrichDocumentWithUser(document) {
+  const normalized = normalizeDocument(document);
+  if (!normalized) return normalized;
+
+  const user = await findUserById(normalized.user_id);
+  return {
+    ...normalized,
+    user: user ? publicDocumentOwner(user) : null,
+  };
+}
+
+async function enrichDocumentsWithUsers(documents) {
+  return Promise.all((documents || []).map(enrichDocumentWithUser));
+}
+
+async function verificationForContractorId(contractorId) {
+  const contractor = await findUserById(contractorId);
+  if (!contractor) return { contractor: null, verification: null };
+
+  const documents = await listStoredUserDocuments(contractor.id);
+  return {
+    contractor,
+    verification: complianceForUser(contractor, documents),
+  };
+}
+
 async function enrichBidWithContractor(bid) {
   const normalized = normalizeBid(bid);
   if (!normalized) return normalized;
@@ -1718,7 +1759,8 @@ const routes = {
     const parsed = parse(req.url, true);
     const status = cleanString(parsed.query.status || '', 40);
     const documents = await listStoredDocumentsForReview(status);
-    json(res, 200, { documents });
+    const enrichedDocuments = await enrichDocumentsWithUsers(documents);
+    json(res, 200, { documents: enrichedDocuments });
   },
 
   'PUT /api/admin/documents/:id/review': async (req, res, params) => {
@@ -1741,7 +1783,8 @@ const routes = {
       cleanString(body.reviewNote || body.review_note, 300),
       auth.userId || null
     );
-    json(res, 200, { message: 'Document review saved', document: reviewed });
+    const enrichedDocument = await enrichDocumentWithUser(reviewed);
+    json(res, 200, { message: 'Document review saved', document: enrichedDocument });
   },
 
   // Register Step 1
@@ -1897,6 +1940,14 @@ const routes = {
     
     const project = await findStoredProjectById(bid.project_id);
     if (!project || project.homeowner_id !== user.userId) return json(res, 403, { error: 'Not your project' });
+
+    const { verification } = await verificationForContractorId(bid.contractor_id);
+    if (!verification?.ready_for_bids) {
+      return json(res, 400, {
+        error: 'Contractor must be verified before bid acceptance',
+        contractor_verification: verification,
+      });
+    }
 
     const { escrow } = await acceptStoredBid(bid, project, user.userId);
     json(res, 200, { message: 'Bid accepted, escrow created', escrow_id: escrow.id });

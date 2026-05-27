@@ -125,6 +125,16 @@ class Pool {
       return { rows, rowCount: rows.length };
     }
 
+    if (sql.includes('select * from user_documents where status')) {
+      const status = String(params[0] || '');
+      const rows = userDocuments.filter((row) => row.status === status);
+      return { rows, rowCount: rows.length };
+    }
+
+    if (sql.includes('select * from user_documents order by')) {
+      return { rows: userDocuments, rowCount: userDocuments.length };
+    }
+
     if (sql.includes('select * from user_documents where id')) {
       const id = Number(params[0]);
       const document = userDocuments.find((row) => row.id === id);
@@ -308,6 +318,21 @@ async function waitForServer(child) {
     assert.strictEqual(documents.status, 200);
     assert.strictEqual(documents.data.documents.length, 3);
 
+    const adminToken = (() => {
+      const crypto = require('crypto');
+      const base64Url = (value) => Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const body = base64Url(JSON.stringify({ userId: 999, email: 'admin@gcsc.store', role: 'admin', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 }));
+      const sig = crypto.createHmac('sha256', 'test-secret-minimum-length-for-hs256').update(header + '.' + body).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return header + '.' + body + '.' + sig;
+    })();
+
+    const adminDocuments = await request('GET', '/api/admin/documents?status=submitted', null, adminToken);
+    assert.strictEqual(adminDocuments.status, 200);
+    assert.strictEqual(adminDocuments.data.documents.length, 3);
+    assert.strictEqual(adminDocuments.data.documents[0].user.full_name, 'Postgres Smoke Builder');
+    assert.strictEqual(adminDocuments.data.documents[0].user.companyName, 'Postgres Builder LLC');
+
     const pendingCompliance = await request('GET', '/api/auth/compliance', null, token);
     assert.strictEqual(pendingCompliance.status, 200);
     assert.strictEqual(pendingCompliance.data.documents_submitted, true);
@@ -321,15 +346,6 @@ async function waitForServer(child) {
     }, token);
     assert.strictEqual(wallet.status, 200);
     assert.strictEqual(wallet.data.wallet.accountName, 'gcscacct111');
-
-    const adminToken = (() => {
-      const crypto = require('crypto');
-      const base64Url = (value) => Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-      const body = base64Url(JSON.stringify({ userId: 999, email: 'admin@gcsc.store', role: 'admin', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 }));
-      const sig = crypto.createHmac('sha256', 'test-secret-minimum-length-for-hs256').update(header + '.' + body).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      return header + '.' + body + '.' + sig;
-    })();
 
     for (const doc of documents.data.documents) {
       const reviewed = await request('PUT', `/api/admin/documents/${doc.id}/review`, {

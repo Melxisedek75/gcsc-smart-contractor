@@ -602,6 +602,57 @@ async function waitForServer(child) {
     }, contractor.data.token);
     assert.strictEqual(bid.status, 201);
 
+    const projectDetailsBeforeVerification = await request('GET', `/api/projects/${project.data.project.id}`, null, owner.data.token);
+    assert.strictEqual(projectDetailsBeforeVerification.status, 200);
+    assert.strictEqual(projectDetailsBeforeVerification.data.bids[0].contractor_verification.overall_status, 'profile_incomplete');
+    assert.strictEqual(projectDetailsBeforeVerification.data.bids[0].contractor_verification.ready_for_bids, false);
+
+    const riskyAccept = await request('POST', `/api/bids/${bid.data.bid.id}/accept`, null, owner.data.token);
+    assert.strictEqual(riskyAccept.status, 400);
+    assert.match(riskyAccept.data.error, /verified/i);
+
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    const storedContractor = state.users.find((row) => row.id === contractor.data.user.id);
+    assert.ok(storedContractor);
+    storedContractor.phone = '555-0100';
+    storedContractor.profile = {
+      accountType: 'contractor',
+      companyName: 'Workflow Builder LLC',
+      ein: '12-3456789',
+      licenseNumber: 'WA-GCSC-123',
+      serviceArea: 'Seattle',
+      specialties: ['Kitchen', 'Roofing'],
+      yearsInBusiness: '5',
+      city: 'Seattle',
+      state: 'WA',
+    };
+    storedContractor.wallet = {
+      accountName: 'builder11111',
+      permission: 'active',
+      walletType: 'webauth',
+      connectedAt: new Date().toISOString(),
+    };
+    for (const documentType of ['contractor_license', 'insurance_certificate', 'business_ein']) {
+      state.user_documents.push({
+        id: state.nextId.user_documents++,
+        user_id: contractor.data.user.id,
+        document_type: documentType,
+        file_name: `${documentType}.pdf`,
+        mime_type: 'application/pdf',
+        file_data_url: 'data:application/pdf;base64,aGVsbG8=',
+        file_size: 1200,
+        file_sha256: documentType.padEnd(64, '0').slice(0, 64),
+        status: 'approved',
+        review_note: 'Approved in workflow smoke test',
+        submitted_at: new Date().toISOString(),
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: 999,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+
     const accepted = await request('POST', `/api/bids/${bid.data.bid.id}/accept`, null, owner.data.token);
     assert.strictEqual(accepted.status, 200);
     assert.ok(accepted.data.escrow_id);
@@ -634,8 +685,8 @@ async function waitForServer(child) {
     assert.strictEqual(projectDetails.data.bids.length, 1);
     assert.strictEqual(projectDetails.data.bids[0].contractor.id, contractor.data.user.id);
     assert.strictEqual(projectDetails.data.bids[0].contractor.full_name, 'Workflow Contractor');
-    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.overall_status, 'profile_incomplete');
-    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.ready_for_bids, false);
+    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.overall_status, 'verified');
+    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.ready_for_bids, true);
 
     const escrow = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
     assert.strictEqual(escrow.status, 200);
