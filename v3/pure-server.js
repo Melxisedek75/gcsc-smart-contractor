@@ -1085,6 +1085,30 @@ function isValidLogoDataUrl(value) {
   return /^data:image\/(png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i.test(String(value));
 }
 
+function hasProfileValue(user, profile, field) {
+  if (field === 'fullName') return !!cleanString(user.full_name, 120);
+  if (field === 'phone') return !!cleanString(user.phone, 40);
+  if (field === 'specialties') return Array.isArray(profile.specialties) && profile.specialties.length > 0;
+  return !!cleanString(profile[field], 240);
+}
+
+function profileCompletionForUser(user) {
+  const profile = { ...defaultProfile(user.role), ...(user.profile || {}) };
+  const required = user.role === 'contractor'
+    ? ['fullName', 'phone', 'companyName', 'ein', 'licenseNumber', 'serviceArea', 'specialties']
+    : ['fullName', 'phone', 'propertyAddress', 'propertyType', 'budgetRange', 'projectNeeds', 'city', 'state'];
+  const missing = required.filter((field) => !hasProfileValue(user, profile, field));
+  const completedCount = required.length - missing.length;
+  const percent = required.length === 0 ? 100 : Math.round((completedCount / required.length) * 100);
+
+  return {
+    percent,
+    completed: missing.length === 0,
+    missing,
+    required,
+  };
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -1095,6 +1119,7 @@ function publicUser(user) {
     phone: user.phone || '',
     is_verified: !!user.is_verified,
     profile: user.profile || defaultProfile(user.role),
+    profile_completion: profileCompletionForUser(user),
     wallet: user.wallet || null,
     created_at: user.created_at,
   };
@@ -1132,6 +1157,7 @@ function updateProfileFromBody(user, body) {
   }
 
   profile.accountType = user.role;
+  profile.updatedAt = new Date().toISOString();
   user.profile = profile;
   user.updated_at = new Date().toISOString();
 }

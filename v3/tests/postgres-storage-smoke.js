@@ -187,16 +187,30 @@ async function waitForServer(child) {
     assert.strictEqual(register.status, 201);
     assert.strictEqual(register.data.user.role, 'contractor');
     assert.ok(register.data.token);
+    assert.ok(register.data.user.profile_completion);
+    assert.ok(register.data.user.profile_completion.percent < 100);
+    assert.ok(register.data.user.profile_completion.missing.includes('companyName'));
 
     const token = register.data.token;
     const updated = await request('PUT', '/api/auth/profile', {
       companyName: 'Postgres Builder LLC',
       ein: '12-3456789',
       licenseNumber: 'PG-123',
+      serviceArea: 'Seattle, WA',
       specialties: ['Kitchen', 'Roofing'],
+      logoDataUrl: 'data:image/png;base64,aGVsbG8=',
     }, token);
     assert.strictEqual(updated.status, 200);
     assert.strictEqual(updated.data.user.profile.companyName, 'Postgres Builder LLC');
+    assert.strictEqual(updated.data.user.profile.logoDataUrl, 'data:image/png;base64,aGVsbG8=');
+    assert.strictEqual(updated.data.user.profile_completion.percent, 100);
+    assert.strictEqual(updated.data.user.profile_completion.completed, true);
+    assert.deepStrictEqual(updated.data.user.profile_completion.missing, []);
+
+    const invalidLogo = await request('PUT', '/api/auth/profile', {
+      logoDataUrl: 'data:text/plain;base64,aGVsbG8=',
+    }, token);
+    assert.strictEqual(invalidLogo.status, 400);
 
     const wallet = await request('POST', '/api/wallet/connect', {
       accountName: 'gcscacct111',
