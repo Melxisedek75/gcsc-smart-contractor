@@ -172,7 +172,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
 };
 `);
 
-function request(method, pathname, body, token) {
+function request(method, pathname, body, token, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : '';
     const req = http.request({
@@ -184,13 +184,14 @@ function request(method, pathname, body, token) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...extraHeaders,
       },
     }, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
         try {
-          resolve({ status: res.statusCode, data: data ? JSON.parse(data) : {} });
+          resolve({ status: res.statusCode, headers: res.headers, data: data ? JSON.parse(data) : {} });
         } catch (err) {
           reject(err);
         }
@@ -226,6 +227,9 @@ async function waitForServer(child) {
       PORT: String(port),
       DATABASE_URL: 'postgres://gcsc:test@localhost:5432/gcsc',
       JWT_SECRET: 'test-secret-minimum-length-for-hs256',
+      CORS_ALLOWED_ORIGINS: 'https://gcsc.store,http://localhost:5173',
+      AUTH_RATE_LIMIT_MAX: '2',
+      AUTH_RATE_LIMIT_WINDOW_MS: '60000',
       NODE_OPTIONS: `--require ${registerPath}`,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -237,6 +241,38 @@ async function waitForServer(child) {
   try {
     const health = await waitForServer(child);
     assert.strictEqual(health.database, 'postgres');
+
+    const allowedPreflight = await request('OPTIONS', '/api/auth/login', null, null, {
+      Origin: 'https://gcsc.store',
+      'Access-Control-Request-Method': 'POST',
+    });
+    assert.strictEqual(allowedPreflight.status, 204);
+    assert.strictEqual(allowedPreflight.headers['access-control-allow-origin'], 'https://gcsc.store');
+    assert.notStrictEqual(allowedPreflight.headers['access-control-allow-origin'], '*');
+
+    const blockedPreflight = await request('OPTIONS', '/api/auth/login', null, null, {
+      Origin: 'https://not-gcsc.example',
+      'Access-Control-Request-Method': 'POST',
+    });
+    assert.strictEqual(blockedPreflight.status, 403);
+    assert.notStrictEqual(blockedPreflight.headers['access-control-allow-origin'], '*');
+
+    const firstBadLogin = await request('POST', '/api/auth/login', {
+      email: 'missing@gcsc.store',
+      password: 'WrongPass123',
+    });
+    const secondBadLogin = await request('POST', '/api/auth/login', {
+      email: 'missing@gcsc.store',
+      password: 'WrongPass123',
+    });
+    const rateLimitedLogin = await request('POST', '/api/auth/login', {
+      email: 'missing@gcsc.store',
+      password: 'WrongPass123',
+    });
+    assert.strictEqual(firstBadLogin.status, 401);
+    assert.strictEqual(secondBadLogin.status, 401);
+    assert.strictEqual(rateLimitedLogin.status, 429);
+    assert.match(rateLimitedLogin.data.error, /too many/i);
 
     const register = await request('POST', '/api/auth/register', {
       email: `pg-smoke-${Date.now()}@gcsc.store`,

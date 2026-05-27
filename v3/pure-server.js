@@ -21,6 +21,21 @@ const DEFAULT_XPR_TESTNET_HYPERION_URLS = [
   'https://testnet-api.xprdata.org',
   'https://testnet-api.xprcore.com',
 ];
+const DEFAULT_CORS_ALLOWED_ORIGINS = [
+  'https://gcsc.store',
+  'https://www.gcsc.store',
+  'https://gcsc-store-production.up.railway.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+const CORS_ALLOWED_ORIGINS = new Set([
+  ...DEFAULT_CORS_ALLOWED_ORIGINS,
+  ...String(process.env.FRONTEND_URL || '').split(','),
+  ...String(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
+].map((origin) => origin.trim()).filter(Boolean));
+const rateLimitStore = new Map();
 let pgPool = null;
 
 // Lightweight JSON persistence keeps real account/profile data between process restarts.
@@ -1566,16 +1581,100 @@ function updateProfileFromBody(user, body) {
 }
 
 // ===== CORS & AUTH HELPERS =====
-function setCORS(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+function setCORS(req, res) {
+  const origin = req.headers.origin;
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '600');
+
+  if (!origin) return true;
+  if (!CORS_ALLOWED_ORIGINS.has(origin)) return false;
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  return true;
 }
 function getUser(req) {
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   try { return jwtVerify(token); } catch { return null; }
+}
+
+function envInt(name, fallback) {
+  const value = parseInt(process.env[name] || '', 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function rateLimitConfigForRoute(pattern) {
+  const windowMs = envInt('RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000);
+  const configs = {
+    auth: {
+      max: envInt('AUTH_RATE_LIMIT_MAX', 20),
+      windowMs: envInt('AUTH_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
+    profile: {
+      max: envInt('PROFILE_RATE_LIMIT_MAX', 120),
+      windowMs: envInt('PROFILE_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
+    documents: {
+      max: envInt('DOCUMENT_RATE_LIMIT_MAX', 45),
+      windowMs: envInt('DOCUMENT_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
+    wallet: {
+      max: envInt('WALLET_RATE_LIMIT_MAX', 45),
+      windowMs: envInt('WALLET_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
+    bid_accept: {
+      max: envInt('BID_ACCEPT_RATE_LIMIT_MAX', 30),
+      windowMs: envInt('BID_ACCEPT_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
+  };
+
+  if (pattern === 'POST /api/auth/register' || pattern === 'POST /api/auth/login') return { name: 'auth', ...configs.auth };
+  if (pattern === 'GET /api/auth/profile' || pattern === 'PUT /api/auth/profile') return { name: 'profile', ...configs.profile };
+  if (pattern === 'GET /api/auth/documents' || pattern === 'POST /api/auth/documents') return { name: 'documents', ...configs.documents };
+  if (pattern === 'POST /api/wallet/connect') return { name: 'wallet', ...configs.wallet };
+  if (pattern === 'POST /api/bids/:id/accept') return { name: 'bid_accept', ...configs.bid_accept };
+  return null;
+}
+
+function clientIdentity(req) {
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const ip = forwardedFor || req.socket?.remoteAddress || 'unknown';
+  const auth = String(req.headers.authorization || '');
+  const tokenHash = auth.startsWith('Bearer ')
+    ? crypto.createHash('sha256').update(auth.slice(7)).digest('hex').slice(0, 16)
+    : '';
+  return tokenHash ? `${ip}:${tokenHash}` : ip;
+}
+
+function checkRateLimit(req, pattern) {
+  if (process.env.RATE_LIMITS_DISABLED === 'true') return null;
+  const config = rateLimitConfigForRoute(pattern);
+  if (!config) return null;
+
+  const now = Date.now();
+  if (rateLimitStore.size > envInt('RATE_LIMIT_STORE_MAX_KEYS', 5000)) {
+    for (const [storedKey, storedValue] of rateLimitStore.entries()) {
+      if (storedValue.resetAt <= now) rateLimitStore.delete(storedKey);
+    }
+  }
+
+  const key = `${config.name}:${pattern}:${clientIdentity(req)}`;
+  const current = rateLimitStore.get(key);
+  if (!current || current.resetAt <= now) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + config.windowMs });
+    return null;
+  }
+
+  current.count += 1;
+  if (current.count > config.max) {
+    return {
+      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+    };
+  }
+  return null;
 }
 
 // ===== RESPONSE HELPERS =====
@@ -2134,7 +2233,12 @@ const routes = {
 
 // ===== SERVER =====
 const server = http.createServer(async (req, res) => {
-  setCORS(res);
+  const corsAllowed = setCORS(req, res);
+  if (!corsAllowed) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Origin not allowed' }));
+    return;
+  }
   
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -2171,6 +2275,16 @@ const server = http.createServer(async (req, res) => {
     
     if (match) {
       try {
+        const rateLimit = checkRateLimit(req, pattern);
+        if (rateLimit) {
+          res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds));
+          json(res, 429, {
+            error: 'Too many requests. Please try again later.',
+            retry_after_seconds: rateLimit.retryAfterSeconds,
+          });
+          matched = true;
+          break;
+        }
         await handler(req, res, params);
       } catch (err) {
         console.error('[ERROR]', err);
