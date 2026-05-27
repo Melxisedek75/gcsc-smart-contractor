@@ -24,6 +24,7 @@ fs.writeFileSync(statePath, JSON.stringify({
     escrow_contracts: 1,
     milestones: 1,
     milestone_chain_txs: 1,
+    user_documents: 1,
   },
   users: [],
   projects: [],
@@ -31,6 +32,7 @@ fs.writeFileSync(statePath, JSON.stringify({
   escrow_contracts: [],
   milestones: [],
   milestone_chain_txs: [],
+  user_documents: [],
 }, null, 2));
 
 fs.writeFileSync(fakePgPath, `
@@ -97,6 +99,12 @@ class Pool {
       const id = Number(params[0]);
       const user = state.users.find((row) => row.id === id);
       return { rows: user ? [user] : [], rowCount: user ? 1 : 0 };
+    }
+
+    if (sql.includes('select * from user_documents where user_id')) {
+      const userId = Number(params[0]);
+      const rows = state.user_documents.filter((row) => row.user_id === userId);
+      return { rows, rowCount: rows.length };
     }
 
     if (sql.startsWith('insert into users')) {
@@ -620,6 +628,14 @@ async function waitForServer(child) {
     assert.strictEqual(myProjects.data.projects.length, 1);
     assert.strictEqual(myProjects.data.projects[0].title, 'Kitchen workflow persistence');
     assert.strictEqual(myProjects.data.projects[0].status, 'in_progress');
+
+    const projectDetails = await request('GET', `/api/projects/${project.data.project.id}`, null, login.data.token);
+    assert.strictEqual(projectDetails.status, 200);
+    assert.strictEqual(projectDetails.data.bids.length, 1);
+    assert.strictEqual(projectDetails.data.bids[0].contractor.id, contractor.data.user.id);
+    assert.strictEqual(projectDetails.data.bids[0].contractor.full_name, 'Workflow Contractor');
+    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.overall_status, 'profile_incomplete');
+    assert.strictEqual(projectDetails.data.bids[0].contractor_verification.ready_for_bids, false);
 
     const escrow = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
     assert.strictEqual(escrow.status, 200);

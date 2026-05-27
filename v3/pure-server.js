@@ -792,6 +792,45 @@ async function listStoredBidsForContractor(contractorId) {
   return db.bids.filter(b => b.contractor_id === contractorId);
 }
 
+function publicContractorProfile(user) {
+  const profile = { ...defaultProfile(user.role), ...(user.profile || {}) };
+  return {
+    id: Number(user.id),
+    full_name: user.full_name || '',
+    companyName: profile.companyName || profile.businessName || '',
+    serviceArea: profile.serviceArea || '',
+    specialties: Array.isArray(profile.specialties) ? profile.specialties : [],
+    yearsInBusiness: profile.yearsInBusiness || '',
+    bio: profile.bio || '',
+    logoDataUrl: profile.logoDataUrl || '',
+  };
+}
+
+async function enrichBidWithContractor(bid) {
+  const normalized = normalizeBid(bid);
+  if (!normalized) return normalized;
+
+  const contractor = await findUserById(normalized.contractor_id);
+  if (!contractor) {
+    return {
+      ...normalized,
+      contractor: null,
+      contractor_verification: null,
+    };
+  }
+
+  const documents = await listStoredUserDocuments(contractor.id);
+  return {
+    ...normalized,
+    contractor: publicContractorProfile(contractor),
+    contractor_verification: complianceForUser(contractor, documents),
+  };
+}
+
+async function enrichBidsWithContractors(bids) {
+  return Promise.all((bids || []).map(enrichBidWithContractor));
+}
+
 async function acceptStoredBid(bid, project, homeownerId) {
   if (USE_POSTGRES) {
     const accepted = await queryPostgres(
@@ -1821,7 +1860,7 @@ const routes = {
   'GET /api/projects/:id': async (req, res, params) => {
     const project = await findStoredProjectById(parseInt(params.id));
     if (!project) return json(res, 404, { error: 'Project not found' });
-    const bids = await listStoredBidsByProject(parseInt(params.id));
+    const bids = await enrichBidsWithContractors(await listStoredBidsByProject(parseInt(params.id)));
     json(res, 200, { project, bids });
   },
 
