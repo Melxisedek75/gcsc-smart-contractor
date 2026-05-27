@@ -15,8 +15,10 @@ const registerPath = path.join(tempRoot, 'register-fake-pg.js');
 fs.writeFileSync(fakePgPath, `
 let users = [];
 let userDocuments = [];
+let auditEvents = [];
 let nextId = 1;
 let nextDocumentId = 1;
+let nextAuditEventId = 1;
 
 function normalize(text) {
   return String(text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
@@ -151,6 +153,32 @@ class Pool {
       document.reviewed_at = new Date().toISOString();
       document.updated_at = new Date().toISOString();
       return { rows: [document], rowCount: 1 };
+    }
+
+    if (sql.startsWith('insert into audit_events')) {
+      const [actorId, targetUserId, action, entityType, entityId, metadata, ipAddress, userAgent] = params;
+      const event = {
+        id: nextAuditEventId++,
+        actor_id: actorId === null || actorId === undefined ? null : Number(actorId),
+        target_user_id: targetUserId === null || targetUserId === undefined ? null : Number(targetUserId),
+        action,
+        entity_type: entityType,
+        entity_id: entityId === null || entityId === undefined ? null : Number(entityId),
+        metadata,
+        ip_address: ipAddress || '',
+        user_agent: userAgent || '',
+        created_at: new Date().toISOString(),
+      };
+      auditEvents.push(event);
+      return { rows: [event], rowCount: 1 };
+    }
+
+    if (sql.includes('select * from audit_events')) {
+      let rows = auditEvents;
+      if (sql.includes('where action =')) {
+        rows = rows.filter((row) => row.action === params[0]);
+      }
+      return { rows: rows.slice().reverse(), rowCount: rows.length };
     }
 
     throw new Error('Unhandled SQL in fake pg: ' + text);
@@ -391,6 +419,17 @@ async function waitForServer(child) {
       assert.strictEqual(reviewed.status, 200);
       assert.strictEqual(reviewed.data.document.status, 'approved');
     }
+
+    const auditEvents = await request('GET', '/api/admin/audit-events', null, adminToken);
+    assert.strictEqual(auditEvents.status, 200);
+    const auditActions = auditEvents.data.events.map((event) => event.action);
+    assert.ok(auditActions.includes('profile.updated'));
+    assert.ok(auditActions.includes('document.submitted'));
+    assert.ok(auditActions.includes('document.reviewed'));
+    assert.ok(auditActions.includes('wallet.connected'));
+    const reviewedEvent = auditEvents.data.events.find((event) => event.action === 'document.reviewed');
+    assert.strictEqual(reviewedEvent.target_user_id, register.data.user.id);
+    assert.strictEqual(reviewedEvent.metadata.status, 'approved');
 
     const verifiedCompliance = await request('GET', '/api/auth/compliance', null, token);
     assert.strictEqual(verifiedCompliance.status, 200);

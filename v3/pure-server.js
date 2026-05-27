@@ -109,6 +109,7 @@ function createEmptyDatabase() {
     milestones: [],
     milestone_chain_txs: [],
     user_documents: [],
+    audit_events: [],
     reviews: [],
   };
 }
@@ -318,6 +319,25 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_milestone ON milestone_chain_txs (milestone_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_escrow ON milestone_chain_txs (escrow_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_status ON milestone_chain_txs (status)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id SERIAL PRIMARY KEY,
+      actor_id INTEGER,
+      target_user_id INTEGER,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL DEFAULT '',
+      entity_id INTEGER,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      ip_address TEXT NOT NULL DEFAULT '',
+      user_agent TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events (action)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events (actor_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_target ON audit_events (target_user_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events (created_at DESC)`);
 }
 
 function normalizeStoredUser(row) {
@@ -565,6 +585,106 @@ async function reviewStoredUserDocument(document, status, reviewNote, reviewedBy
   stored.updated_at = new Date().toISOString();
   saveDatabase();
   return normalizeDocument(stored);
+}
+
+function normalizeAuditEvent(row) {
+  if (!row) return null;
+  return {
+    id: Number(row.id),
+    actor_id: row.actor_id === null || row.actor_id === undefined ? null : Number(row.actor_id),
+    target_user_id: row.target_user_id === null || row.target_user_id === undefined ? null : Number(row.target_user_id),
+    action: row.action || '',
+    entity_type: row.entity_type || '',
+    entity_id: row.entity_id === null || row.entity_id === undefined ? null : Number(row.entity_id),
+    metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata || '{}') : (row.metadata || {}),
+    ip_address: row.ip_address || '',
+    user_agent: row.user_agent || '',
+    created_at: row.created_at,
+  };
+}
+
+function requestIp(req) {
+  return String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+}
+
+async function recordAuditEvent(req, input) {
+  const event = {
+    actor_id: input.actorId === undefined ? null : input.actorId,
+    target_user_id: input.targetUserId === undefined ? null : input.targetUserId,
+    action: cleanString(input.action, 80),
+    entity_type: cleanString(input.entityType || '', 60),
+    entity_id: input.entityId === undefined ? null : input.entityId,
+    metadata: input.metadata || {},
+    ip_address: cleanString(requestIp(req), 80),
+    user_agent: cleanString(req.headers['user-agent'] || '', 240),
+  };
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO audit_events
+        (actor_id, target_user_id, action, entity_type, entity_id, metadata, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        event.actor_id,
+        event.target_user_id,
+        event.action,
+        event.entity_type,
+        event.entity_id,
+        event.metadata,
+        event.ip_address,
+        event.user_agent,
+      ]
+    );
+    return normalizeAuditEvent(result.rows[0]);
+  }
+
+  const stored = {
+    id: db.nextId('audit_events'),
+    ...event,
+    created_at: new Date().toISOString(),
+  };
+  db.audit_events.push(stored);
+  saveDatabase();
+  return normalizeAuditEvent(stored);
+}
+
+async function listStoredAuditEvents(filters = {}) {
+  const limit = Math.min(Math.max(normalizeNumber(filters.limit, 100), 1), 200);
+
+  if (USE_POSTGRES) {
+    const params = [];
+    const where = [];
+    if (filters.action) {
+      params.push(cleanString(filters.action, 80));
+      where.push(`action = $${params.length}`);
+    }
+    if (filters.actor_id) {
+      params.push(normalizeNumber(filters.actor_id, 0));
+      where.push(`actor_id = $${params.length}`);
+    }
+    if (filters.target_user_id) {
+      params.push(normalizeNumber(filters.target_user_id, 0));
+      where.push(`target_user_id = $${params.length}`);
+    }
+    params.push(limit);
+    const result = await queryPostgres(
+      `SELECT * FROM audit_events
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY created_at DESC, id DESC
+       LIMIT $${params.length}`,
+      params
+    );
+    return result.rows.map(normalizeAuditEvent);
+  }
+
+  return db.audit_events
+    .filter((event) => !filters.action || event.action === filters.action)
+    .filter((event) => !filters.actor_id || Number(event.actor_id) === normalizeNumber(filters.actor_id, 0))
+    .filter((event) => !filters.target_user_id || Number(event.target_user_id) === normalizeNumber(filters.target_user_id, 0))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || Number(b.id) - Number(a.id))
+    .slice(0, limit)
+    .map(normalizeAuditEvent);
 }
 
 async function getUserCount() {
@@ -1769,11 +1889,24 @@ const routes = {
     if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
 
     let updatedUser;
+    let body;
     try {
-      updatedUser = await updateStoredProfile(user, await parseBody(req));
+      body = await parseBody(req);
+      updatedUser = await updateStoredProfile(user, body);
     } catch (err) {
       return json(res, err.status || 400, { error: err.message || 'Invalid profile data' });
     }
+    await recordAuditEvent(req, {
+      actorId: user.id,
+      targetUserId: user.id,
+      action: 'profile.updated',
+      entityType: 'user',
+      entityId: user.id,
+      metadata: {
+        fields: Object.keys(body || {}).filter((key) => key !== 'logoDataUrl'),
+        profile_completion: publicUser(updatedUser).profile_completion,
+      },
+    });
 
     json(res, 200, { message: 'Profile updated', user: publicUser(updatedUser) });
   },
@@ -1801,6 +1934,19 @@ const routes = {
 
     try {
       const document = await upsertStoredUserDocument(user, await parseBody(req));
+      await recordAuditEvent(req, {
+        actorId: user.id,
+        targetUserId: user.id,
+        action: 'document.submitted',
+        entityType: 'user_document',
+        entityId: document.id,
+        metadata: {
+          document_type: document.document_type,
+          file_name: document.file_name,
+          file_sha256: document.file_sha256,
+          status: document.status,
+        },
+      });
       const documents = await listStoredUserDocuments(user.id);
       json(res, 201, {
         message: 'Document submitted for review',
@@ -1847,6 +1993,18 @@ const routes = {
       connectedAt: new Date().toISOString(),
     };
     const updatedUser = await updateStoredWallet(user, wallet);
+    await recordAuditEvent(req, {
+      actorId: user.id,
+      targetUserId: user.id,
+      action: 'wallet.connected',
+      entityType: 'wallet',
+      entityId: user.id,
+      metadata: {
+        accountName: wallet.accountName,
+        permission: wallet.permission,
+        walletType: wallet.walletType,
+      },
+    });
 
     json(res, 200, { message: 'Wallet connected', wallet: updatedUser.wallet, user: publicUser(updatedUser) });
   },
@@ -1872,6 +2030,21 @@ const routes = {
     json(res, 200, { documents: enrichedDocuments });
   },
 
+  'GET /api/admin/audit-events': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    if (auth.role !== 'admin') return json(res, 403, { error: 'Admin only' });
+
+    const parsed = parse(req.url, true);
+    const events = await listStoredAuditEvents({
+      action: cleanString(parsed.query.action || '', 80),
+      actor_id: parsed.query.actor_id,
+      target_user_id: parsed.query.target_user_id,
+      limit: parsed.query.limit,
+    });
+    json(res, 200, { events });
+  },
+
   'PUT /api/admin/documents/:id/review': async (req, res, params) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
@@ -1893,6 +2066,18 @@ const routes = {
       auth.userId || null
     );
     const enrichedDocument = await enrichDocumentWithUser(reviewed);
+    await recordAuditEvent(req, {
+      actorId: auth.userId || null,
+      targetUserId: document.user_id,
+      action: 'document.reviewed',
+      entityType: 'user_document',
+      entityId: document.id,
+      metadata: {
+        document_type: document.document_type,
+        status: reviewed.status,
+        review_note_present: !!reviewed.review_note,
+      },
+    });
     json(res, 200, { message: 'Document review saved', document: enrichedDocument });
   },
 
@@ -2065,6 +2250,19 @@ const routes = {
     }
 
     const { escrow } = await acceptStoredBid(bid, project, user.userId);
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: bid.contractor_id,
+      action: 'bid.accepted',
+      entityType: 'bid',
+      entityId: bid.id,
+      metadata: {
+        project_id: bid.project_id,
+        contractor_id: bid.contractor_id,
+        escrow_id: escrow.id,
+        amount: bid.amount,
+      },
+    });
     json(res, 200, { message: 'Bid accepted, escrow created', escrow_id: escrow.id });
   },
 

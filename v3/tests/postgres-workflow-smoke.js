@@ -25,6 +25,7 @@ fs.writeFileSync(statePath, JSON.stringify({
     milestones: 1,
     milestone_chain_txs: 1,
     user_documents: 1,
+    audit_events: 1,
   },
   users: [],
   projects: [],
@@ -33,6 +34,7 @@ fs.writeFileSync(statePath, JSON.stringify({
   milestones: [],
   milestone_chain_txs: [],
   user_documents: [],
+  audit_events: [],
 }, null, 2));
 
 fs.writeFileSync(fakePgPath, `
@@ -422,6 +424,34 @@ class Pool {
       return { rows: [escrow], rowCount: 1 };
     }
 
+    if (sql.startsWith('insert into audit_events')) {
+      const [actorId, targetUserId, action, entityType, entityId, metadata, ipAddress, userAgent] = params;
+      const event = {
+        id: nextId(state, 'audit_events'),
+        actor_id: actorId === null || actorId === undefined ? null : Number(actorId),
+        target_user_id: targetUserId === null || targetUserId === undefined ? null : Number(targetUserId),
+        action,
+        entity_type: entityType,
+        entity_id: entityId === null || entityId === undefined ? null : Number(entityId),
+        metadata,
+        ip_address: ipAddress || '',
+        user_agent: userAgent || '',
+        created_at: new Date().toISOString(),
+      };
+      state.audit_events.push(event);
+      save(state);
+      return { rows: [event], rowCount: 1 };
+    }
+
+    if (sql.includes('select * from audit_events')) {
+      let rows = state.audit_events;
+      if (sql.includes('where action =')) {
+        rows = rows.filter((row) => row.action === params[0]);
+      }
+      rows = byNewest(rows);
+      return { rows, rowCount: rows.length };
+    }
+
     throw new Error('Unhandled SQL in fake pg workflow test: ' + text);
   }
 
@@ -656,6 +686,22 @@ async function waitForServer(child) {
     const accepted = await request('POST', `/api/bids/${bid.data.bid.id}/accept`, null, owner.data.token);
     assert.strictEqual(accepted.status, 200);
     assert.ok(accepted.data.escrow_id);
+
+    const adminToken = (() => {
+      const crypto = require('crypto');
+      const base64Url = (value) => Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const body = base64Url(JSON.stringify({ userId: 999, email: 'admin@gcsc.store', role: 'admin', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 }));
+      const sig = crypto.createHmac('sha256', 'test-secret-minimum-length-for-hs256').update(header + '.' + body).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return header + '.' + body + '.' + sig;
+    })();
+
+    const bidAudit = await request('GET', '/api/admin/audit-events?action=bid.accepted', null, adminToken);
+    assert.strictEqual(bidAudit.status, 200);
+    assert.strictEqual(bidAudit.data.events.length, 1);
+    assert.strictEqual(bidAudit.data.events[0].action, 'bid.accepted');
+    assert.strictEqual(bidAudit.data.events[0].entity_id, bid.data.bid.id);
+    assert.strictEqual(bidAudit.data.events[0].metadata.escrow_id, accepted.data.escrow_id);
 
     await stopServer(child);
     fs.rmSync(jsonDbPath, { force: true });
