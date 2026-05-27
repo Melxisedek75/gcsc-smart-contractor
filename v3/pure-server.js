@@ -624,6 +624,110 @@ async function listStoredMilestonesByEscrow(escrowId) {
   return db.milestones.filter(m => m.escrow_id === escrowId);
 }
 
+async function getMilestoneAmountTotal(escrowId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT COALESCE(SUM(amount), 0)::int AS total FROM milestones WHERE escrow_id = $1', [escrowId]);
+    return normalizeNumber(result.rows[0]?.total);
+  }
+  return db.milestones
+    .filter(m => m.escrow_id === Number(escrowId))
+    .reduce((sum, milestone) => sum + normalizeNumber(milestone.amount), 0);
+}
+
+async function getReleasedMilestoneAmountTotal(escrowId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      "SELECT COALESCE(SUM(amount), 0)::int AS total FROM milestones WHERE escrow_id = $1 AND status = 'released'",
+      [escrowId]
+    );
+    return normalizeNumber(result.rows[0]?.total);
+  }
+  return db.milestones
+    .filter(m => m.escrow_id === Number(escrowId) && m.status === 'released')
+    .reduce((sum, milestone) => sum + normalizeNumber(milestone.amount), 0);
+}
+
+async function createStoredMilestone(escrow, body) {
+  const amount = normalizeNumber(body.amount);
+  const title = String(body.title || '').trim();
+  const description = String(body.description || '').trim();
+  const currentTotal = await getMilestoneAmountTotal(escrow.id);
+
+  if (!title) throw Object.assign(new Error('Milestone title required'), { status: 400 });
+  if (amount <= 0) throw Object.assign(new Error('Milestone amount must be greater than 0'), { status: 400 });
+  if (currentTotal + amount > escrow.total_amount) {
+    throw Object.assign(new Error('Milestone total cannot exceed escrow amount'), { status: 400 });
+  }
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO milestones (escrow_id, title, description, amount, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [escrow.id, title, description, amount, 'pending']
+    );
+    return normalizeMilestone(result.rows[0]);
+  }
+
+  const milestone = {
+    id: db.nextId('milestones'),
+    escrow_id: escrow.id,
+    title,
+    description,
+    amount,
+    status: 'pending',
+    verified_by: '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  db.milestones.push(milestone);
+  saveDatabase();
+  return milestone;
+}
+
+async function findStoredMilestoneById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM milestones WHERE id = $1 LIMIT 1', [id]);
+    return normalizeMilestone(result.rows[0]);
+  }
+  return db.milestones.find(m => m.id === Number(id)) || null;
+}
+
+async function updateStoredMilestoneStatus(milestone, status, verifiedBy = '') {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE milestones SET status = $1, verified_by = $2, updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [status, verifiedBy, milestone.id]
+    );
+    return normalizeMilestone(result.rows[0]);
+  }
+
+  milestone.status = status;
+  milestone.verified_by = verifiedBy;
+  milestone.updated_at = new Date().toISOString();
+  saveDatabase();
+  return milestone;
+}
+
+async function updateStoredEscrowStatus(escrow, status) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE escrow_contracts SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [status, escrow.id]
+    );
+    return normalizeEscrow(result.rows[0]);
+  }
+
+  escrow.status = status;
+  escrow.updated_at = new Date().toISOString();
+  saveDatabase();
+  return escrow;
+}
+
 function seedDefaultUsers() {
   let changed = false;
 
@@ -1063,6 +1167,95 @@ const routes = {
     
     const milestones = await listStoredMilestonesByEscrow(escrow.id);
     json(res, 200, { escrow, milestones });
+  },
+
+  // Create escrow milestone
+  'POST /api/escrow/:id/milestones': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const escrow = await findStoredEscrowById(parseInt(params.id));
+    if (!escrow) return json(res, 404, { error: 'Escrow not found' });
+    if (escrow.homeowner_id !== user.userId) return json(res, 403, { error: 'Homeowner only' });
+    if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
+    if (escrow.status === 'completed') return json(res, 400, { error: 'Escrow is completed' });
+
+    try {
+      const milestone = await createStoredMilestone(escrow, await parseBody(req));
+      json(res, 201, { message: 'Milestone created', milestone });
+    } catch (err) {
+      json(res, err.status || 400, { error: err.message || 'Could not create milestone' });
+    }
+  },
+
+  // Contractor submits milestone work
+  'POST /api/milestones/:id/submit': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || escrow.contractor_id !== user.userId) return json(res, 403, { error: 'Contractor only' });
+    if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
+    if (milestone.status !== 'pending') return json(res, 400, { error: 'Milestone must be pending' });
+
+    const updated = await updateStoredMilestoneStatus(milestone, 'submitted', `contractor:${user.userId}`);
+    json(res, 200, { message: 'Milestone submitted', milestone: updated });
+  },
+
+  // Homeowner approves submitted milestone
+  'POST /api/milestones/:id/approve': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || escrow.homeowner_id !== user.userId) return json(res, 403, { error: 'Homeowner only' });
+    if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
+    if (milestone.status !== 'submitted') return json(res, 400, { error: 'Milestone must be submitted' });
+
+    const updated = await updateStoredMilestoneStatus(milestone, 'approved', `homeowner:${user.userId}`);
+    json(res, 200, { message: 'Milestone approved', milestone: updated });
+  },
+
+  // Homeowner marks approved milestone as released without moving on-chain funds yet
+  'POST /api/milestones/:id/release': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || escrow.homeowner_id !== user.userId) return json(res, 403, { error: 'Homeowner only' });
+    if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
+    if (milestone.status !== 'approved') return json(res, 400, { error: 'Milestone must be approved before release' });
+
+    const updated = await updateStoredMilestoneStatus(milestone, 'released', `homeowner:${user.userId}`);
+    const releasedTotal = await getReleasedMilestoneAmountTotal(escrow.id);
+    const updatedEscrow = releasedTotal >= escrow.total_amount
+      ? await updateStoredEscrowStatus(escrow, 'completed')
+      : escrow;
+    json(res, 200, { message: 'Milestone released', milestone: updated, escrow: updatedEscrow });
+  },
+
+  // Homeowner or contractor disputes a milestone
+  'POST /api/milestones/:id/dispute': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || (escrow.homeowner_id !== user.userId && escrow.contractor_id !== user.userId)) {
+      return json(res, 403, { error: 'Escrow participant only' });
+    }
+    if (milestone.status === 'released') return json(res, 400, { error: 'Released milestone cannot be disputed' });
+
+    const updated = await updateStoredMilestoneStatus(milestone, 'disputed', `user:${user.userId}`);
+    const updatedEscrow = await updateStoredEscrowStatus(escrow, 'disputed');
+    json(res, 200, { message: 'Milestone disputed', milestone: updated, escrow: updatedEscrow });
   },
 
   // My escrows

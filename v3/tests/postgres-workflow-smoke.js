@@ -282,9 +282,67 @@ class Pool {
       return { rows, rowCount: rows.length };
     }
 
+    if (sql.startsWith('select coalesce(sum(amount), 0)::int as total from milestones where escrow_id') && sql.includes("status = 'released'")) {
+      const total = state.milestones
+        .filter((row) => row.escrow_id === Number(params[0]) && row.status === 'released')
+        .reduce((sum, row) => sum + Number(row.amount), 0);
+      return { rows: [{ total }], rowCount: 1 };
+    }
+
+    if (sql.startsWith('select coalesce(sum(amount), 0)::int as total from milestones where escrow_id')) {
+      const total = state.milestones
+        .filter((row) => row.escrow_id === Number(params[0]))
+        .reduce((sum, row) => sum + Number(row.amount), 0);
+      return { rows: [{ total }], rowCount: 1 };
+    }
+
     if (sql.startsWith('select * from milestones where escrow_id')) {
       const rows = state.milestones.filter((row) => row.escrow_id === Number(params[0]));
       return { rows, rowCount: rows.length };
+    }
+
+    if (sql.startsWith('insert into milestones')) {
+      const [escrowId, title, description, amount, status] = params;
+      const milestone = {
+        id: nextId(state, 'milestones'),
+        escrow_id: Number(escrowId),
+        title,
+        description,
+        amount: Number(amount),
+        status,
+        verified_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      state.milestones.push(milestone);
+      save(state);
+      return { rows: [milestone], rowCount: 1 };
+    }
+
+    if (sql.startsWith('select * from milestones where id')) {
+      const milestone = state.milestones.find((row) => row.id === Number(params[0]));
+      return { rows: milestone ? [milestone] : [], rowCount: milestone ? 1 : 0 };
+    }
+
+    if (sql.startsWith('update milestones set status')) {
+      const [status, verifiedBy, id] = params;
+      const milestone = state.milestones.find((row) => row.id === Number(id));
+      if (!milestone) return { rows: [], rowCount: 0 };
+      milestone.status = status;
+      milestone.verified_by = verifiedBy;
+      milestone.updated_at = new Date().toISOString();
+      save(state);
+      return { rows: [milestone], rowCount: 1 };
+    }
+
+    if (sql.startsWith('update escrow_contracts set status')) {
+      const [status, id] = params;
+      const escrow = state.escrow_contracts.find((row) => row.id === Number(id));
+      if (!escrow) return { rows: [], rowCount: 0 };
+      escrow.status = status;
+      escrow.updated_at = new Date().toISOString();
+      save(state);
+      return { rows: [escrow], rowCount: 1 };
     }
 
     throw new Error('Unhandled SQL in fake pg workflow test: ' + text);
@@ -437,6 +495,12 @@ async function waitForServer(child) {
     });
     assert.strictEqual(login.status, 200);
 
+    const contractorLogin = await request('POST', '/api/auth/login', {
+      email: contractorEmail,
+      password,
+    });
+    assert.strictEqual(contractorLogin.status, 200);
+
     const myProjects = await request('GET', '/api/projects/my/projects', null, login.data.token);
     assert.strictEqual(myProjects.status, 200);
     assert.strictEqual(myProjects.data.projects.length, 1);
@@ -447,6 +511,45 @@ async function waitForServer(child) {
     assert.strictEqual(escrow.status, 200);
     assert.strictEqual(escrow.data.escrow.total_amount, 2500);
     assert.strictEqual(escrow.data.milestones.length, 0);
+
+    const milestone = await request('POST', `/api/escrow/${accepted.data.escrow_id}/milestones`, {
+      title: 'Demolition complete',
+      description: 'Remove old cabinets and prepare rough-in',
+      amount: 1000,
+    }, login.data.token);
+    assert.strictEqual(milestone.status, 201);
+    assert.strictEqual(milestone.data.milestone.status, 'pending');
+
+    const submitted = await request('POST', `/api/milestones/${milestone.data.milestone.id}/submit`, null, contractorLogin.data.token);
+    assert.strictEqual(submitted.status, 200);
+    assert.strictEqual(submitted.data.milestone.status, 'submitted');
+
+    const earlyRelease = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
+    assert.strictEqual(earlyRelease.status, 400);
+
+    const approved = await request('POST', `/api/milestones/${milestone.data.milestone.id}/approve`, null, login.data.token);
+    assert.strictEqual(approved.status, 200);
+    assert.strictEqual(approved.data.milestone.status, 'approved');
+
+    const released = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
+    assert.strictEqual(released.status, 200);
+    assert.strictEqual(released.data.milestone.status, 'released');
+
+    const disputedMilestone = await request('POST', `/api/escrow/${accepted.data.escrow_id}/milestones`, {
+      title: 'Finish materials',
+      description: 'Materials inspection before installation',
+      amount: 1500,
+    }, login.data.token);
+    assert.strictEqual(disputedMilestone.status, 201);
+
+    const disputed = await request('POST', `/api/milestones/${disputedMilestone.data.milestone.id}/dispute`, null, contractorLogin.data.token);
+    assert.strictEqual(disputed.status, 200);
+    assert.strictEqual(disputed.data.milestone.status, 'disputed');
+    assert.strictEqual(disputed.data.escrow.status, 'disputed');
+
+    const escrowAfterMilestones = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
+    assert.strictEqual(escrowAfterMilestones.status, 200);
+    assert.strictEqual(escrowAfterMilestones.data.milestones.length, 2);
 
     console.log('postgres workflow persistence smoke test passed');
   } finally {
