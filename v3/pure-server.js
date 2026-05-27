@@ -847,6 +847,16 @@ async function verificationForContractorId(contractorId) {
   };
 }
 
+async function publicContractorDetails(contractorId) {
+  const { contractor, verification } = await verificationForContractorId(contractorId);
+  if (!contractor || contractor.role !== 'contractor') return null;
+
+  return {
+    contractor: publicContractorProfile(contractor),
+    verification,
+  };
+}
+
 async function enrichBidWithContractor(bid) {
   const normalized = normalizeBid(bid);
   if (!normalized) return normalized;
@@ -1905,6 +1915,12 @@ const routes = {
     if (!project) return json(res, 404, { error: 'Project not found' });
     const bids = await enrichBidsWithContractors(await listStoredBidsByProject(parseInt(params.id)));
     json(res, 200, { project, bids });
+  },
+
+  'GET /api/contractors/:id/public': async (req, res, params) => {
+    const details = await publicContractorDetails(parseInt(params.id));
+    if (!details) return json(res, 404, { error: 'Contractor profile not found' });
+    json(res, 200, details);
   },
 
   // My projects

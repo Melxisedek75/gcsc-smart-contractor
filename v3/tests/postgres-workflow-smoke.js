@@ -688,6 +688,15 @@ async function waitForServer(child) {
     assert.strictEqual(projectDetails.data.bids[0].contractor_verification.overall_status, 'verified');
     assert.strictEqual(projectDetails.data.bids[0].contractor_verification.ready_for_bids, true);
 
+    const publicContractor = await request('GET', `/api/contractors/${contractor.data.user.id}/public`);
+    assert.strictEqual(publicContractor.status, 200);
+    assert.strictEqual(publicContractor.data.contractor.companyName, 'Workflow Builder LLC');
+    assert.strictEqual(publicContractor.data.verification.overall_status, 'verified');
+    assert.strictEqual(publicContractor.data.verification.ready_for_bids, true);
+
+    const ownerAsContractor = await request('GET', `/api/contractors/${owner.data.user.id}/public`);
+    assert.strictEqual(ownerAsContractor.status, 404);
+
     const escrow = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
     assert.strictEqual(escrow.status, 200);
     assert.strictEqual(escrow.data.escrow.total_amount, 2500);
