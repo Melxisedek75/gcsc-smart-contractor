@@ -13,6 +13,14 @@ const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gcsc-dev-secret-256-bits-minimum-length';
 const DB_FILE = path.join(__dirname, 'gcsc.db');
 const USE_POSTGRES = !!process.env.DATABASE_URL;
+const XPR_TESTNET_CHAIN_ID = '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd';
+const XPR_TX_VERIFIER_ENABLED = process.env.XPR_TX_VERIFIER_ENABLED !== 'false';
+const XPR_TX_VERIFIER_INTERVAL_MS = parseInt(process.env.XPR_TX_VERIFIER_INTERVAL_MS || '300000', 10);
+const DEFAULT_XPR_TESTNET_HYPERION_URLS = [
+  'https://api-xprnetwork-test.saltant.io',
+  'https://testnet-api.xprdata.org',
+  'https://testnet-api.xprcore.com',
+];
 let pgPool = null;
 
 // Lightweight JSON persistence keeps real account/profile data between process restarts.
@@ -239,7 +247,9 @@ async function initStorage() {
       actor TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'broadcast',
       created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      verified_at TIMESTAMPTZ,
+      verification_error TEXT
     )
   `);
 
@@ -249,6 +259,8 @@ async function initStorage() {
   await queryPostgres(`ALTER TABLE escrow_contracts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE milestones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'broadcast'`);
+  await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`);
+  await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS verification_error TEXT`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_homeowner ON projects (homeowner_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_bids_project ON bids (project_id)`);
@@ -258,6 +270,7 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestones_escrow ON milestones (escrow_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_milestone ON milestone_chain_txs (milestone_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_escrow ON milestone_chain_txs (escrow_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_status ON milestone_chain_txs (status)`);
 }
 
 function normalizeStoredUser(row) {
@@ -423,6 +436,19 @@ function normalizeChainTx(row) {
     escrow_id: Number(row.escrow_id),
     created_by: row.created_by === null || row.created_by === undefined ? null : Number(row.created_by),
   };
+}
+
+function getXprHyperionUrls() {
+  const configured = process.env.XPR_TESTNET_HYPERION_URLS || '';
+  const urls = configured
+    .split(',')
+    .map(url => url.trim())
+    .filter(Boolean);
+  return urls.length ? urls : DEFAULT_XPR_TESTNET_HYPERION_URLS;
+}
+
+function normalizeEndpoint(url) {
+  return String(url || '').replace(/\/+$/, '');
 }
 
 async function getProjectCount() {
@@ -674,6 +700,49 @@ async function listStoredChainTxsByMilestoneIds(milestoneIds) {
     .map(normalizeChainTx);
 }
 
+async function findStoredChainTxByTxId(txId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM milestone_chain_txs WHERE tx_id = $1 LIMIT 1', [txId]);
+    return normalizeChainTx(result.rows[0]);
+  }
+  return normalizeChainTx(db.milestone_chain_txs.find(tx => tx.tx_id === txId));
+}
+
+async function listStoredBroadcastChainTxs(limit = 10) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      "SELECT * FROM milestone_chain_txs WHERE status = 'broadcast' ORDER BY created_at ASC LIMIT $1",
+      [limit]
+    );
+    return result.rows.map(normalizeChainTx);
+  }
+  return db.milestone_chain_txs
+    .filter(tx => tx.status === 'broadcast')
+    .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+    .slice(0, limit)
+    .map(normalizeChainTx);
+}
+
+async function updateStoredChainTxVerification(txId, status, verificationError = '') {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE milestone_chain_txs SET status = $1, verification_error = $2, verified_at = NOW()
+       WHERE tx_id = $3
+       RETURNING *`,
+      [status, verificationError || null, txId]
+    );
+    return normalizeChainTx(result.rows[0]);
+  }
+
+  const tx = db.milestone_chain_txs.find(item => item.tx_id === txId);
+  if (!tx) return null;
+  tx.status = status;
+  tx.verification_error = verificationError || null;
+  tx.verified_at = new Date().toISOString();
+  saveDatabase();
+  return normalizeChainTx(tx);
+}
+
 async function attachChainTxsToMilestones(milestones) {
   const normalized = milestones.map(normalizeMilestone).filter(Boolean);
   const txs = await listStoredChainTxsByMilestoneIds(normalized.map(m => m.id));
@@ -770,6 +839,82 @@ async function createStoredMilestoneChainTx(milestone, escrow, userId, body) {
   }
   saveDatabase();
   return normalizeChainTx(chainTx);
+}
+
+function getActionAct(action) {
+  return action?.act || action?.action_trace?.act || action?.trace?.act || action;
+}
+
+function hyperionTransactionHasExpectedAction(payload, chainTx) {
+  const actions = Array.isArray(payload?.actions) ? payload.actions : [];
+  return actions.some(action => {
+    const act = getActionAct(action);
+    return act?.account === chainTx.contract_account && act?.name === chainTx.action;
+  });
+}
+
+async function fetchHyperionTransaction(endpoint, txId) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const url = `${normalizeEndpoint(endpoint)}/v2/history/get_transaction?id=${encodeURIComponent(txId)}`;
+    const response = await fetch(url, { signal: controller.signal });
+    if (response.status === 404) return { found: false, error: 'transaction not found' };
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { found: false, error: payload?.message || payload?.error || `hyperion ${response.status}` };
+    }
+    return { found: true, payload };
+  } catch (err) {
+    return { found: false, error: err.name === 'AbortError' ? 'hyperion timeout' : (err.message || 'hyperion request failed') };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function verifyStoredChainTx(chainTx) {
+  let lastError = '';
+  for (const endpoint of getXprHyperionUrls()) {
+    const result = await fetchHyperionTransaction(endpoint, chainTx.tx_id);
+    if (!result.found) {
+      lastError = result.error || 'transaction not found';
+      continue;
+    }
+
+    if (hyperionTransactionHasExpectedAction(result.payload, chainTx)) {
+      return updateStoredChainTxVerification(chainTx.tx_id, 'confirmed', '');
+    }
+
+    return updateStoredChainTxVerification(
+      chainTx.tx_id,
+      'failed',
+      `transaction does not include ${chainTx.contract_account}::${chainTx.action}`
+    );
+  }
+
+  return updateStoredChainTxVerification(chainTx.tx_id, 'failed', lastError || 'transaction not found on XPR testnet');
+}
+
+async function verifyBroadcastChainTxs() {
+  const txs = await listStoredBroadcastChainTxs(10);
+  for (const tx of txs) {
+    try {
+      await verifyStoredChainTx(tx);
+    } catch (err) {
+      console.error('[CHAIN_TX_VERIFY]', err.message || err);
+    }
+  }
+}
+
+function startChainTxVerifier() {
+  if (!XPR_TX_VERIFIER_ENABLED) return;
+  if (!Number.isFinite(XPR_TX_VERIFIER_INTERVAL_MS) || XPR_TX_VERIFIER_INTERVAL_MS < 30000) return;
+
+  const timer = setInterval(() => {
+    verifyBroadcastChainTxs().catch(err => console.error('[CHAIN_TX_VERIFY]', err.message || err));
+  }, XPR_TX_VERIFIER_INTERVAL_MS);
+
+  if (typeof timer.unref === 'function') timer.unref();
 }
 
 async function getMilestoneAmountTotal(escrowId) {
@@ -1426,6 +1571,31 @@ const routes = {
     }
   },
 
+  // Verify stored XPR testnet transaction evidence through Hyperion
+  'POST /api/milestones/:id/chain-txs/:txId/verify': async (req, res, params) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+
+    const milestone = await findStoredMilestoneById(parseInt(params.id));
+    if (!milestone) return json(res, 404, { error: 'Milestone not found' });
+    const escrow = await findStoredEscrowById(milestone.escrow_id);
+    if (!escrow || (escrow.homeowner_id !== user.userId && escrow.contractor_id !== user.userId)) {
+      return json(res, 403, { error: 'Escrow participant only' });
+    }
+
+    const chainTx = await findStoredChainTxByTxId(params.txId);
+    if (!chainTx || chainTx.milestone_id !== milestone.id) {
+      return json(res, 404, { error: 'Chain transaction not found' });
+    }
+
+    try {
+      const verified = await verifyStoredChainTx(chainTx);
+      json(res, 200, { message: 'Chain transaction verified', chain_tx: verified });
+    } catch (err) {
+      json(res, 502, { error: err.message || 'Could not verify chain transaction' });
+    }
+  },
+
   // My escrows
   'GET /api/escrow/my/escrows': async (req, res) => {
     const user = getUser(req);
@@ -1491,6 +1661,7 @@ const server = http.createServer(async (req, res) => {
 
 initStorage().then(() => {
   server.listen(PORT, '0.0.0.0', () => {
+    startChainTxVerifier();
     console.log(`╔══════════════════════════════════════════╗`);
     console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
     console.log(`║   Port: ${PORT}                            ║`);

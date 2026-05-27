@@ -8,6 +8,8 @@ const { spawn } = require('child_process');
 const v3Root = path.resolve(__dirname, '..');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gcsc-fake-pg-workflow-'));
 const port = 13000 + Math.floor(Math.random() * 1000);
+const hyperionPort = 15000 + Math.floor(Math.random() * 1000);
+const verifiedReleaseTxId = 'a'.repeat(64);
 const jsonDbPath = path.join(v3Root, 'gcsc.db');
 
 const statePath = path.join(tempRoot, 'pg-state.json');
@@ -311,6 +313,11 @@ class Pool {
       return { rows, rowCount: rows.length };
     }
 
+    if (sql.startsWith('select * from milestone_chain_txs where tx_id')) {
+      const tx = state.milestone_chain_txs.find((row) => row.tx_id === params[0]);
+      return { rows: tx ? [tx] : [], rowCount: tx ? 1 : 0 };
+    }
+
     if (sql.startsWith('insert into milestones')) {
       const [escrowId, title, description, amount, status] = params;
       const milestone = {
@@ -343,6 +350,8 @@ class Pool {
           actor,
           status,
           created_by: Number(createdBy),
+          verified_at: null,
+          verification_error: null,
         };
         state.milestone_chain_txs = state.milestone_chain_txs.map((row) => row.tx_id === txId ? tx : row);
       } else {
@@ -358,9 +367,22 @@ class Pool {
           status,
           created_by: Number(createdBy),
           created_at: new Date().toISOString(),
+          verified_at: null,
+          verification_error: null,
         };
         state.milestone_chain_txs.push(tx);
       }
+      save(state);
+      return { rows: [tx], rowCount: 1 };
+    }
+
+    if (sql.startsWith('update milestone_chain_txs set status')) {
+      const [status, verificationError, txId] = params;
+      const tx = state.milestone_chain_txs.find((row) => row.tx_id === txId);
+      if (!tx) return { rows: [], rowCount: 0 };
+      tx.status = status;
+      tx.verification_error = verificationError || null;
+      tx.verified_at = new Date().toISOString();
       save(state);
       return { rows: [tx], rowCount: 1 };
     }
@@ -447,6 +469,8 @@ function startServer() {
       PORT: String(port),
       DATABASE_URL: 'postgres://gcsc:test@localhost:5432/gcsc',
       JWT_SECRET: 'test-secret-minimum-length-for-hs256',
+      XPR_TESTNET_HYPERION_URLS: `http://127.0.0.1:${hyperionPort}`,
+      XPR_TX_VERIFIER_ENABLED: 'false',
       NODE_OPTIONS: `--require ${registerPath}`,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -456,10 +480,52 @@ function startServer() {
   return child;
 }
 
+function startFakeHyperion() {
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, `http://127.0.0.1:${hyperionPort}`);
+    if (url.pathname !== '/v2/history/get_transaction') {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'not found' }));
+      return;
+    }
+
+    const txId = url.searchParams.get('id');
+    if (txId !== verifiedReleaseTxId) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'transaction not found' }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      id: txId,
+      transaction_id: txId,
+      actions: [
+        {
+          act: {
+            account: 'gcscrow1111',
+            name: 'releasemilestone',
+            data: { escrow_id: 1, milestone_id: 1 },
+          },
+        },
+      ],
+    }));
+  });
+
+  return new Promise((resolve) => {
+    server.listen(hyperionPort, '127.0.0.1', () => resolve(server));
+  });
+}
+
 async function stopServer(child) {
   if (!child || child.killed) return;
   child.kill('SIGTERM');
   await new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+async function stopHttpServer(server) {
+  if (!server) return;
+  await new Promise((resolve) => server.close(resolve));
 }
 
 async function waitForServer(child) {
@@ -481,6 +547,7 @@ async function waitForServer(child) {
 
 (async () => {
   fs.rmSync(jsonDbPath, { force: true });
+  const hyperion = await startFakeHyperion();
   let child = startServer();
   try {
     const health = await waitForServer(child);
@@ -581,7 +648,7 @@ async function waitForServer(child) {
     assert.strictEqual(released.status, 200);
     assert.strictEqual(released.data.milestone.status, 'released');
 
-    const releaseTxId = 'a'.repeat(64);
+    const releaseTxId = verifiedReleaseTxId;
     const releaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
       action: 'releasemilestone',
       tx_id: releaseTxId,
@@ -593,6 +660,11 @@ async function waitForServer(child) {
     assert.strictEqual(releaseTx.status, 201);
     assert.strictEqual(releaseTx.data.chain_tx.tx_id, releaseTxId);
     assert.strictEqual(releaseTx.data.chain_tx.action, 'releasemilestone');
+
+    const verifiedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs/${releaseTxId}/verify`, null, login.data.token);
+    assert.strictEqual(verifiedReleaseTx.status, 200);
+    assert.strictEqual(verifiedReleaseTx.data.chain_tx.status, 'confirmed');
+    assert.ok(verifiedReleaseTx.data.chain_tx.verified_at);
 
     const unauthorizedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
       action: 'releasemilestone',
@@ -623,10 +695,12 @@ async function waitForServer(child) {
     assert.strictEqual(milestoneWithTx.chain_txs.length, 1);
     assert.strictEqual(milestoneWithTx.chain_txs[0].tx_id, releaseTxId);
     assert.strictEqual(milestoneWithTx.chain_txs[0].contract_account, 'gcscrow1111');
+    assert.strictEqual(milestoneWithTx.chain_txs[0].status, 'confirmed');
 
     console.log('postgres workflow persistence smoke test passed');
   } finally {
     await stopServer(child);
+    await stopHttpServer(hyperion);
     fs.rmSync(jsonDbPath, { force: true });
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
