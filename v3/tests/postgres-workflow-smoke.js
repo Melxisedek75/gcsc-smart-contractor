@@ -67,7 +67,8 @@ class Pool {
     if (
       sql.startsWith('create table') ||
       sql.startsWith('alter table') ||
-      sql.startsWith('create index')
+      sql.startsWith('create index') ||
+      sql.startsWith('create unique index')
     ) {
       return { rows: [], rowCount: 0 };
     }

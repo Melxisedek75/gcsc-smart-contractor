@@ -14,7 +14,9 @@ const registerPath = path.join(tempRoot, 'register-fake-pg.js');
 
 fs.writeFileSync(fakePgPath, `
 let users = [];
+let userDocuments = [];
 let nextId = 1;
+let nextDocumentId = 1;
 
 function normalize(text) {
   return String(text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
@@ -27,7 +29,8 @@ class Pool {
     if (
       sql.startsWith('create table') ||
       sql.startsWith('alter table') ||
-      sql.startsWith('create index')
+      sql.startsWith('create index') ||
+      sql.startsWith('create unique index')
     ) {
       return { rows: [], rowCount: 0 };
     }
@@ -90,6 +93,54 @@ class Pool {
       user.wallet = wallet;
       user.updated_at = new Date().toISOString();
       return { rows: [user], rowCount: 1 };
+    }
+
+    if (sql.startsWith('insert into user_documents')) {
+      const [userId, documentType, fileName, mimeType, fileDataUrl, fileSize, fileSha256, status, reviewNote] = params;
+      const document = {
+        id: nextDocumentId++,
+        user_id: Number(userId),
+        document_type: documentType,
+        file_name: fileName,
+        mime_type: mimeType,
+        file_data_url: fileDataUrl,
+        file_size: fileSize,
+        file_sha256: fileSha256,
+        status,
+        review_note: reviewNote || '',
+        submitted_at: new Date().toISOString(),
+        reviewed_at: null,
+        reviewed_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      userDocuments = userDocuments.filter((item) => !(item.user_id === document.user_id && item.document_type === document.document_type));
+      userDocuments.push(document);
+      return { rows: [document], rowCount: 1 };
+    }
+
+    if (sql.includes('select * from user_documents where user_id')) {
+      const userId = Number(params[0]);
+      const rows = userDocuments.filter((row) => row.user_id === userId);
+      return { rows, rowCount: rows.length };
+    }
+
+    if (sql.includes('select * from user_documents where id')) {
+      const id = Number(params[0]);
+      const document = userDocuments.find((row) => row.id === id);
+      return { rows: document ? [document] : [], rowCount: document ? 1 : 0 };
+    }
+
+    if (sql.startsWith('update user_documents set status')) {
+      const [status, reviewNote, reviewedBy, id] = params;
+      const document = userDocuments.find((row) => row.id === Number(id));
+      if (!document) return { rows: [], rowCount: 0 };
+      document.status = status;
+      document.review_note = reviewNote || '';
+      document.reviewed_by = reviewedBy;
+      document.reviewed_at = new Date().toISOString();
+      document.updated_at = new Date().toISOString();
+      return { rows: [document], rowCount: 1 };
     }
 
     throw new Error('Unhandled SQL in fake pg: ' + text);
@@ -212,6 +263,57 @@ async function waitForServer(child) {
     }, token);
     assert.strictEqual(invalidLogo.status, 400);
 
+    const compliance = await request('GET', '/api/auth/compliance', null, token);
+    assert.strictEqual(compliance.status, 200);
+    assert.strictEqual(compliance.data.profile_completion.percent, 100);
+    assert.strictEqual(compliance.data.overall_status, 'documents_missing');
+    assert.strictEqual(compliance.data.documents_submitted, false);
+    assert.strictEqual(compliance.data.required_documents.length, 3);
+    assert.strictEqual(compliance.data.required_documents[0].status, 'missing');
+
+    const license = await request('POST', '/api/auth/documents', {
+      documentType: 'contractor_license',
+      fileName: 'license.pdf',
+      mimeType: 'application/pdf',
+      fileDataUrl: 'data:application/pdf;base64,aGVsbG8=',
+      reviewNote: 'Washington contractor license',
+    }, token);
+    assert.strictEqual(license.status, 201);
+    assert.strictEqual(license.data.document.status, 'submitted');
+    assert.strictEqual(license.data.document.document_type, 'contractor_license');
+    assert.ok(license.data.document.file_sha256);
+
+    const invalidDocument = await request('POST', '/api/auth/documents', {
+      documentType: 'random_document',
+      fileName: 'bad.pdf',
+      mimeType: 'application/pdf',
+      fileDataUrl: 'data:application/pdf;base64,aGVsbG8=',
+    }, token);
+    assert.strictEqual(invalidDocument.status, 400);
+
+    await request('POST', '/api/auth/documents', {
+      documentType: 'insurance_certificate',
+      fileName: 'insurance.pdf',
+      mimeType: 'application/pdf',
+      fileDataUrl: 'data:application/pdf;base64,aGVsbG8=',
+    }, token);
+    await request('POST', '/api/auth/documents', {
+      documentType: 'business_ein',
+      fileName: 'ein.pdf',
+      mimeType: 'application/pdf',
+      fileDataUrl: 'data:application/pdf;base64,aGVsbG8=',
+    }, token);
+
+    const documents = await request('GET', '/api/auth/documents', null, token);
+    assert.strictEqual(documents.status, 200);
+    assert.strictEqual(documents.data.documents.length, 3);
+
+    const pendingCompliance = await request('GET', '/api/auth/compliance', null, token);
+    assert.strictEqual(pendingCompliance.status, 200);
+    assert.strictEqual(pendingCompliance.data.documents_submitted, true);
+    assert.strictEqual(pendingCompliance.data.documents_approved, false);
+    assert.strictEqual(pendingCompliance.data.overall_status, 'pending_review');
+
     const wallet = await request('POST', '/api/wallet/connect', {
       accountName: 'gcscacct111',
       permission: 'active',
@@ -219,6 +321,30 @@ async function waitForServer(child) {
     }, token);
     assert.strictEqual(wallet.status, 200);
     assert.strictEqual(wallet.data.wallet.accountName, 'gcscacct111');
+
+    const adminToken = (() => {
+      const crypto = require('crypto');
+      const base64Url = (value) => Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const body = base64Url(JSON.stringify({ userId: 999, email: 'admin@gcsc.store', role: 'admin', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 }));
+      const sig = crypto.createHmac('sha256', 'test-secret-minimum-length-for-hs256').update(header + '.' + body).digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return header + '.' + body + '.' + sig;
+    })();
+
+    for (const doc of documents.data.documents) {
+      const reviewed = await request('PUT', `/api/admin/documents/${doc.id}/review`, {
+        status: 'approved',
+        reviewNote: 'Approved in smoke test',
+      }, adminToken);
+      assert.strictEqual(reviewed.status, 200);
+      assert.strictEqual(reviewed.data.document.status, 'approved');
+    }
+
+    const verifiedCompliance = await request('GET', '/api/auth/compliance', null, token);
+    assert.strictEqual(verifiedCompliance.status, 200);
+    assert.strictEqual(verifiedCompliance.data.documents_approved, true);
+    assert.strictEqual(verifiedCompliance.data.wallet_connected, true);
+    assert.strictEqual(verifiedCompliance.data.overall_status, 'verified');
 
     console.log('postgres storage smoke test passed');
   } finally {

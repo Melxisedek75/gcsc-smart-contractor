@@ -93,6 +93,7 @@ function createEmptyDatabase() {
     escrow_contracts: [],
     milestones: [],
     milestone_chain_txs: [],
+    user_documents: [],
     reviews: [],
   };
 }
@@ -175,6 +176,37 @@ async function initStorage() {
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email))`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS user_documents (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      document_type TEXT NOT NULL,
+      file_name TEXT NOT NULL DEFAULT '',
+      mime_type TEXT NOT NULL DEFAULT '',
+      file_data_url TEXT NOT NULL DEFAULT '',
+      file_size INTEGER NOT NULL DEFAULT 0,
+      file_sha256 TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('submitted', 'approved', 'rejected')),
+      review_note TEXT NOT NULL DEFAULT '',
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS file_data_url TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS file_size INTEGER NOT NULL DEFAULT 0`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS file_sha256 TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS review_note TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS reviewed_by INTEGER`);
+  await queryPostgres(`ALTER TABLE user_documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_documents_user_type ON user_documents (user_id, document_type)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_user_documents_status ON user_documents (status)`);
 
   await queryPostgres(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -364,6 +396,160 @@ async function updateStoredWallet(user, wallet) {
 
   saveDatabase();
   return user;
+}
+
+function normalizeDocument(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    document_type: row.document_type,
+    file_name: row.file_name || '',
+    mime_type: row.mime_type || '',
+    file_size: Number(row.file_size) || 0,
+    file_sha256: row.file_sha256 || '',
+    status: row.status || 'submitted',
+    review_note: row.review_note || '',
+    submitted_at: row.submitted_at,
+    reviewed_at: row.reviewed_at || null,
+    reviewed_by: row.reviewed_by || null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function listStoredUserDocuments(userId) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `SELECT * FROM user_documents
+       WHERE user_id = $1
+       ORDER BY submitted_at DESC, id DESC`,
+      [userId]
+    );
+    return result.rows.map(normalizeDocument);
+  }
+
+  return db.user_documents
+    .filter((doc) => doc.user_id === Number(userId))
+    .sort((a, b) => Number(b.id) - Number(a.id))
+    .map(normalizeDocument);
+}
+
+async function findStoredUserDocumentById(id) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM user_documents WHERE id = $1 LIMIT 1', [id]);
+    return normalizeDocument(result.rows[0]);
+  }
+
+  return normalizeDocument(db.user_documents.find((doc) => doc.id === Number(id)));
+}
+
+async function listStoredDocumentsForReview(status = '') {
+  if (USE_POSTGRES) {
+    const params = [];
+    let where = '';
+    if (status) {
+      params.push(status);
+      where = 'WHERE status = $1';
+    }
+    const result = await queryPostgres(
+      `SELECT * FROM user_documents ${where} ORDER BY submitted_at DESC, id DESC`,
+      params
+    );
+    return result.rows.map(normalizeDocument);
+  }
+
+  return db.user_documents
+    .filter((doc) => !status || doc.status === status)
+    .sort((a, b) => Number(b.id) - Number(a.id))
+    .map(normalizeDocument);
+}
+
+async function upsertStoredUserDocument(user, body) {
+  const document = buildDocumentPayload(user, body);
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO user_documents
+        (user_id, document_type, file_name, mime_type, file_data_url, file_size, file_sha256, status, review_note)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (user_id, document_type)
+       DO UPDATE SET
+        file_name = EXCLUDED.file_name,
+        mime_type = EXCLUDED.mime_type,
+        file_data_url = EXCLUDED.file_data_url,
+        file_size = EXCLUDED.file_size,
+        file_sha256 = EXCLUDED.file_sha256,
+        status = EXCLUDED.status,
+        review_note = EXCLUDED.review_note,
+        submitted_at = NOW(),
+        reviewed_at = NULL,
+        reviewed_by = NULL,
+        updated_at = NOW()
+       RETURNING *`,
+      [
+        document.user_id,
+        document.document_type,
+        document.file_name,
+        document.mime_type,
+        document.file_data_url,
+        document.file_size,
+        document.file_sha256,
+        document.status,
+        document.review_note,
+      ]
+    );
+    return normalizeDocument(result.rows[0]);
+  }
+
+  const existing = db.user_documents.find((doc) => doc.user_id === user.id && doc.document_type === document.document_type);
+  if (existing) {
+    Object.assign(existing, {
+      ...document,
+      id: existing.id,
+      submitted_at: new Date().toISOString(),
+      reviewed_at: null,
+      reviewed_by: null,
+      updated_at: new Date().toISOString(),
+    });
+    saveDatabase();
+    return normalizeDocument(existing);
+  }
+
+  const stored = {
+    id: db.nextId('user_documents'),
+    ...document,
+    submitted_at: new Date().toISOString(),
+    reviewed_at: null,
+    reviewed_by: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  db.user_documents.push(stored);
+  saveDatabase();
+  return normalizeDocument(stored);
+}
+
+async function reviewStoredUserDocument(document, status, reviewNote, reviewedBy) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE user_documents SET status = $1, review_note = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [status, reviewNote, reviewedBy, document.id]
+    );
+    return normalizeDocument(result.rows[0]);
+  }
+
+  const stored = db.user_documents.find((doc) => doc.id === Number(document.id));
+  if (!stored) return null;
+  stored.status = status;
+  stored.review_note = reviewNote;
+  stored.reviewed_by = reviewedBy;
+  stored.reviewed_at = new Date().toISOString();
+  stored.updated_at = new Date().toISOString();
+  saveDatabase();
+  return normalizeDocument(stored);
 }
 
 async function getUserCount() {
@@ -1070,6 +1256,15 @@ function defaultProfile(role) {
   };
 }
 
+const DOCUMENT_TYPES = {
+  contractor_license: 'Contractor license',
+  insurance_certificate: 'Insurance certificate',
+  business_ein: 'Business / EIN document',
+};
+
+const REQUIRED_CONTRACTOR_DOCUMENTS = ['contractor_license', 'insurance_certificate', 'business_ein'];
+const ALLOWED_DOCUMENT_MIME_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
 function cleanString(value, maxLength = 240) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
 }
@@ -1083,6 +1278,124 @@ function isValidLogoDataUrl(value) {
   if (!value) return true;
   if (String(value).length > 750000) return false;
   return /^data:image\/(png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i.test(String(value));
+}
+
+function getDocumentType(value) {
+  const documentType = cleanString(value, 80);
+  return DOCUMENT_TYPES[documentType] ? documentType : '';
+}
+
+function getRequiredDocumentTypes(role) {
+  return role === 'contractor' ? REQUIRED_CONTRACTOR_DOCUMENTS : [];
+}
+
+function parseDataUrl(value) {
+  const input = String(value || '');
+  const match = input.match(/^data:([a-z0-9.+/-]+);base64,([a-z0-9+/=]+)$/i);
+  if (!match) return null;
+  return {
+    mimeType: match[1].toLowerCase(),
+    payload: match[2],
+    buffer: Buffer.from(match[2], 'base64'),
+  };
+}
+
+function buildDocumentPayload(user, body) {
+  if (user.role !== 'contractor') {
+    const err = new Error('Contractor account required for verification documents');
+    err.status = 403;
+    throw err;
+  }
+
+  const documentType = getDocumentType(body.documentType || body.document_type);
+  if (!documentType) {
+    const err = new Error('Invalid document type');
+    err.status = 400;
+    throw err;
+  }
+
+  const fileName = cleanString(body.fileName || body.file_name, 180);
+  const fileDataUrl = String(body.fileDataUrl || body.file_data_url || '');
+  const parsed = parseDataUrl(fileDataUrl);
+  const requestedMimeType = cleanString(body.mimeType || body.mime_type, 80).toLowerCase();
+  const mimeType = parsed?.mimeType || requestedMimeType;
+
+  if (!fileName) {
+    const err = new Error('File name required');
+    err.status = 400;
+    throw err;
+  }
+  if (!parsed || !ALLOWED_DOCUMENT_MIME_TYPES.includes(mimeType)) {
+    const err = new Error('Document must be a PDF, PNG, JPG, or WEBP data URL');
+    err.status = 400;
+    throw err;
+  }
+  if (parsed.buffer.length > 1500000) {
+    const err = new Error('Document file is too large. Use a file under 1.5MB');
+    err.status = 400;
+    throw err;
+  }
+
+  return {
+    user_id: user.id,
+    document_type: documentType,
+    file_name: fileName,
+    mime_type: mimeType,
+    file_data_url: fileDataUrl,
+    file_size: parsed.buffer.length,
+    file_sha256: crypto.createHash('sha256').update(parsed.buffer).digest('hex'),
+    status: 'submitted',
+    review_note: cleanString(body.reviewNote || body.review_note, 300),
+  };
+}
+
+function requiredDocumentsWithStatus(role, documents) {
+  const byType = new Map(documents.map((doc) => [doc.document_type, doc]));
+  return getRequiredDocumentTypes(role).map((documentType) => {
+    const document = byType.get(documentType);
+    return {
+      document_type: documentType,
+      label: DOCUMENT_TYPES[documentType],
+      status: document?.status || 'missing',
+      document: document || null,
+    };
+  });
+}
+
+function complianceForUser(user, documents) {
+  const profile_completion = profileCompletionForUser(user);
+  const required_documents = requiredDocumentsWithStatus(user.role, documents);
+  const hasRejected = required_documents.some((item) => item.status === 'rejected');
+  const documents_submitted = required_documents.length === 0 || required_documents.every((item) => item.status !== 'missing');
+  const documents_approved = required_documents.length === 0 || required_documents.every((item) => item.status === 'approved');
+  const wallet_connected = !!user.wallet?.accountName;
+  let overall_status = 'verified';
+
+  if (!profile_completion.completed) overall_status = 'profile_incomplete';
+  else if (hasRejected) overall_status = 'rejected';
+  else if (!documents_submitted) overall_status = 'documents_missing';
+  else if (!documents_approved) overall_status = 'pending_review';
+  else if (!wallet_connected) overall_status = 'wallet_missing';
+
+  return {
+    overall_status,
+    profile_completion,
+    required_documents,
+    documents_submitted,
+    documents_approved,
+    wallet_connected,
+    ready_for_bids: overall_status === 'verified',
+    checklist: [
+      { key: 'profile', label: 'Profile 100%', completed: profile_completion.completed },
+      ...required_documents.map((item) => ({
+        key: item.document_type,
+        label: `${item.label} submitted`,
+        completed: item.status === 'submitted' || item.status === 'approved',
+        status: item.status,
+      })),
+      { key: 'wallet', label: 'WebAuth wallet connected', completed: wallet_connected },
+    ],
+  };
 }
 
 function hasProfileValue(user, profile, field) {
@@ -1276,6 +1589,54 @@ const routes = {
     json(res, 200, { message: 'Profile updated', user: publicUser(updatedUser) });
   },
 
+  'GET /api/auth/documents': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    const documents = await listStoredUserDocuments(user.id);
+    json(res, 200, {
+      documents,
+      required_documents: requiredDocumentsWithStatus(user.role, documents),
+    });
+  },
+
+  'POST /api/auth/documents': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    try {
+      const document = await upsertStoredUserDocument(user, await parseBody(req));
+      const documents = await listStoredUserDocuments(user.id);
+      json(res, 201, {
+        message: 'Document submitted for review',
+        document,
+        compliance: complianceForUser(user, documents),
+      });
+    } catch (err) {
+      json(res, err.status || 400, { error: err.message || 'Could not submit document' });
+    }
+  },
+
+  'GET /api/auth/compliance': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    const documents = await listStoredUserDocuments(user.id);
+    json(res, 200, {
+      ...complianceForUser(user, documents),
+      documents,
+    });
+  },
+
   'POST /api/wallet/connect': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
@@ -1308,6 +1669,40 @@ const routes = {
     if (!user) return json(res, 404, { error: 'User not found' });
     if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
     json(res, 200, { wallet: user.wallet || null });
+  },
+
+  'GET /api/admin/documents': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    if (auth.role !== 'admin') return json(res, 403, { error: 'Admin only' });
+
+    const parsed = parse(req.url, true);
+    const status = cleanString(parsed.query.status || '', 40);
+    const documents = await listStoredDocumentsForReview(status);
+    json(res, 200, { documents });
+  },
+
+  'PUT /api/admin/documents/:id/review': async (req, res, params) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    if (auth.role !== 'admin') return json(res, 403, { error: 'Admin only' });
+
+    const document = await findStoredUserDocumentById(parseInt(params.id));
+    if (!document) return json(res, 404, { error: 'Document not found' });
+
+    const body = await parseBody(req);
+    const status = cleanString(body.status, 40);
+    if (status !== 'approved' && status !== 'rejected') {
+      return json(res, 400, { error: 'Review status must be approved or rejected' });
+    }
+
+    const reviewed = await reviewStoredUserDocument(
+      document,
+      status,
+      cleanString(body.reviewNote || body.review_note, 300),
+      auth.userId || null
+    );
+    json(res, 200, { message: 'Document review saved', document: reviewed });
   },
 
   // Register Step 1
