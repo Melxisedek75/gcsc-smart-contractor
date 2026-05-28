@@ -4,6 +4,7 @@
  */
 
 const http = require('http');
+const https = require('https');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -98,6 +99,89 @@ function sendEmail(to, subject, html) {
   return Promise.resolve(true);
 }
 
+function twilioVerifyConfigured() {
+  return !!(
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    process.env.TWILIO_VERIFY_SERVICE_SID
+  );
+}
+
+function selectVerificationChannel(role) {
+  return role === 'homeowner' ? 'sms' : 'email';
+}
+
+function twilioVerifyRequest(method, apiPath, body) {
+  return new Promise((resolve, reject) => {
+    const payload = new URLSearchParams(body).toString();
+    const auth = Buffer
+      .from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`)
+      .toString('base64');
+    const req = https.request({
+      hostname: 'verify.twilio.com',
+      path: apiPath,
+      method,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        let parsed = {};
+        try { parsed = JSON.parse(data || '{}'); } catch { parsed = { raw: data }; }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(parsed);
+        } else {
+          reject(new Error(parsed.message || `Twilio Verify error: ${res.statusCode}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function sendSmsVerification(phone) {
+  if (!twilioVerifyConfigured()) throw new Error('Twilio Verify is not configured');
+  const to = cleanString(phone, 40);
+  if (!to || !/^\+?[0-9\s().-]{7,40}$/.test(to)) throw new Error('Valid phone required for SMS verification');
+  return twilioVerifyRequest('POST', `/v2/Services/${process.env.TWILIO_VERIFY_SERVICE_SID}/Verifications`, {
+    To: to,
+    Channel: 'sms',
+  });
+}
+
+async function sendEmailVerification(email) {
+  if (!twilioVerifyConfigured()) throw new Error('Twilio Verify is not configured');
+  return twilioVerifyRequest('POST', `/v2/Services/${process.env.TWILIO_VERIFY_SERVICE_SID}/Verifications`, {
+    To: email,
+    Channel: 'email',
+  });
+}
+
+async function checkTwilioVerification(to, code) {
+  if (!twilioVerifyConfigured()) throw new Error('Twilio Verify is not configured');
+  return twilioVerifyRequest('POST', `/v2/Services/${process.env.TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`, {
+    To: to,
+    Code: code,
+  });
+}
+
+async function startRoleVerification(input) {
+  const role = normalizeRole(input.role);
+  const channel = selectVerificationChannel(role);
+  if (channel === 'sms') {
+    await sendSmsVerification(input.phone);
+  } else {
+    await sendEmailVerification(input.email);
+  }
+  return channel;
+}
+
 function createEmptyDatabase() {
   return {
     users: [],
@@ -178,6 +262,10 @@ async function initStorage() {
       wallet JSONB,
       is_verified BOOLEAN NOT NULL DEFAULT TRUE,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      verification_status TEXT NOT NULL DEFAULT 'legacy_unverified',
+      verification_channel TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -189,6 +277,10 @@ async function initStorage() {
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet JSONB`);
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE`);
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'legacy_unverified'`);
+  await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_channel TEXT NOT NULL DEFAULT ''`);
   await queryPostgres(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email))`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)`);
@@ -352,6 +444,10 @@ function normalizeStoredUser(row) {
     wallet: typeof row.wallet === 'string' ? JSON.parse(row.wallet || 'null') : (row.wallet || null),
     is_verified: row.is_verified !== undefined ? row.is_verified : row.verified,
     is_active: row.is_active !== undefined ? row.is_active : true,
+    email_verified: row.email_verified === true || row.email_verified === 1,
+    phone_verified: row.phone_verified === true || row.phone_verified === 1,
+    verification_status: row.verification_status || (row.is_verified ? 'legacy_verified' : 'legacy_unverified'),
+    verification_channel: row.verification_channel || '',
   };
 }
 
@@ -379,8 +475,9 @@ async function findUserById(id) {
 async function createStoredUser(input) {
   if (USE_POSTGRES) {
     const result = await queryPostgres(
-      `INSERT INTO users (email, password_hash, role, full_name, phone, profile, wallet, is_verified, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE)
+      `INSERT INTO users
+        (email, password_hash, role, full_name, phone, profile, wallet, is_verified, is_active, email_verified, phone_verified, verification_status, verification_channel)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11)
        RETURNING *`,
       [
         input.email,
@@ -390,6 +487,10 @@ async function createStoredUser(input) {
         input.phone || '',
         input.profile || defaultProfile(input.role),
         input.wallet || null,
+        !!input.email_verified,
+        !!input.phone_verified,
+        input.verification_status || 'legacy_unverified',
+        input.verification_channel || '',
       ]
     );
     return normalizeStoredUser(result.rows[0]);
@@ -1541,6 +1642,49 @@ function cleanArray(value, maxItems = 12, maxLength = 48) {
   return raw.map(item => cleanString(item, maxLength)).filter(Boolean).slice(0, maxItems);
 }
 
+function verificationProviderReadyForChannel(channel) {
+  return twilioVerifyConfigured() && (channel === 'sms' || channel === 'email');
+}
+
+function storePendingVerification(input) {
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  db.otp_verifications = db.otp_verifications.filter((record) => (
+    String(record.email || '').toLowerCase() !== String(input.email || '').toLowerCase() ||
+    record.purpose !== 'auth_registration'
+  ));
+  const record = {
+    id: db.nextId('otp_verifications'),
+    email: input.email,
+    phone: input.phone || '',
+    role: input.role,
+    full_name: input.full_name,
+    password_hash: input.password_hash,
+    channel: input.channel,
+    purpose: 'auth_registration',
+    provider: 'twilio_verify',
+    expires_at: expiresAt,
+    created_at: new Date().toISOString(),
+  };
+  db.otp_verifications.push(record);
+  saveDatabase();
+  return record;
+}
+
+function findPendingVerification(email, channel) {
+  const normalizedEmail = String(email || '').toLowerCase();
+  return db.otp_verifications.find((record) => (
+    String(record.email || '').toLowerCase() === normalizedEmail &&
+    record.channel === channel &&
+    record.purpose === 'auth_registration' &&
+    new Date(record.expires_at) > new Date()
+  ));
+}
+
+function removePendingVerification(id) {
+  db.otp_verifications = db.otp_verifications.filter((record) => record.id !== id);
+  saveDatabase();
+}
+
 function isValidLogoDataUrl(value) {
   if (!value) return true;
   if (String(value).length > 750000) return false;
@@ -1698,6 +1842,10 @@ function publicUser(user) {
     fullName: user.full_name,
     phone: user.phone || '',
     is_verified: !!user.is_verified,
+    email_verified: !!user.email_verified,
+    phone_verified: !!user.phone_verified,
+    verification_status: user.verification_status || 'legacy_unverified',
+    verification_channel: user.verification_channel || '',
     profile: user.profile || defaultProfile(user.role),
     profile_completion: profileCompletionForUser(user),
     wallet: user.wallet || null,
@@ -1874,11 +2022,47 @@ const routes = {
     const email = cleanString(body.email, 160).toLowerCase();
     const password = String(body.password || '');
     const role = normalizeRole(body.role);
+    const verificationMode = cleanString(body.verificationMode || body.verification_mode, 40);
 
     if (!email || !email.includes('@')) return json(res, 400, { error: 'Valid email required' });
     if (password.length < 8) return json(res, 400, { error: 'Password must be at least 8 characters' });
     if (!role) return json(res, 400, { error: 'Role must be homeowner/owner or contractor/builder' });
     if (await findUserByEmail(email)) return json(res, 409, { error: 'Email already registered' });
+
+    const channel = selectVerificationChannel(role);
+    const providerReady = verificationProviderReadyForChannel(channel);
+    if ((verificationMode === 'required' || verificationMode === 'preferred') && providerReady) {
+      const pending = {
+        email,
+        phone: cleanString(body.phone, 40),
+        role,
+        full_name: cleanString(body.fullName || body.full_name || email.split('@')[0], 120),
+        password_hash: hashPassword(password),
+        channel,
+      };
+      try {
+        await startRoleVerification(pending);
+      } catch (err) {
+        return json(res, 502, { error: err.message || 'Could not start verification' });
+      }
+      storePendingVerification(pending);
+      return json(res, 202, {
+        message: channel === 'sms' ? 'SMS verification code sent' : 'Email verification code sent',
+        verification_required: true,
+        verification_channel: channel,
+        email,
+        phone: pending.phone,
+        expires_in_seconds: 600,
+      });
+    }
+
+    if (verificationMode === 'required' && !providerReady) {
+      return json(res, 503, {
+        error: `${channel === 'sms' ? 'SMS' : 'Email'} verification provider is not configured`,
+        verification_required: true,
+        verification_channel: channel,
+      });
+    }
 
     const user = await createStoredUser({
       email,
@@ -1888,12 +2072,82 @@ const routes = {
       phone: cleanString(body.phone, 40),
       is_verified: 1,
       is_active: 1,
+      email_verified: false,
+      phone_verified: false,
+      verification_status: verificationMode === 'preferred' ? 'verification_provider_pending' : 'legacy_unverified',
+      verification_channel: channel,
       profile: defaultProfile(role),
       wallet: null,
       created_at: new Date().toISOString(),
     });
 
-    json(res, 201, { message: 'Registration successful', token: createTokenForUser(user), user: publicUser(user) });
+    json(res, 201, {
+      message: 'Registration successful',
+      verification_required: false,
+      verification_channel: channel,
+      verification_configured: providerReady,
+      token: createTokenForUser(user),
+      user: publicUser(user),
+    });
+  },
+
+  'POST /api/auth/verification/check': async (req, res) => {
+    const body = await parseBody(req);
+    const email = cleanString(body.email, 160).toLowerCase();
+    const phone = cleanString(body.phone, 40);
+    const code = cleanString(body.code || body.otp, 12);
+    const role = normalizeRole(body.role);
+    const channel = cleanString(body.channel || selectVerificationChannel(role), 20);
+    const to = channel === 'sms' ? phone : email;
+
+    if (!email || !email.includes('@')) return json(res, 400, { error: 'Valid email required' });
+    if (!code) return json(res, 400, { error: 'Verification code required' });
+    if (await findUserByEmail(email)) return json(res, 409, { error: 'Email already registered' });
+    if (!verificationProviderReadyForChannel(channel)) {
+      return json(res, 503, { error: 'Verification provider is not configured' });
+    }
+
+    const pending = findPendingVerification(email, channel);
+    if (!pending) return json(res, 400, { error: 'Verification request expired or not found' });
+
+    let check;
+    try {
+      check = await checkTwilioVerification(to, code);
+    } catch (err) {
+      return json(res, 400, { error: err.message || 'Verification failed' });
+    }
+    if (check.status !== 'approved') return json(res, 400, { error: 'Invalid or expired verification code' });
+
+    const createdUser = await createStoredUser({
+      email: pending.email,
+      password_hash: pending.password_hash,
+      role: pending.role,
+      full_name: pending.full_name,
+      phone: pending.phone,
+      is_verified: 1,
+      is_active: 1,
+      email_verified: channel === 'email',
+      phone_verified: channel === 'sms',
+      verification_status: channel === 'sms' ? 'phone_verified' : 'email_verified',
+      verification_channel: channel,
+      profile: defaultProfile(pending.role),
+      wallet: null,
+      created_at: new Date().toISOString(),
+    });
+    removePendingVerification(pending.id);
+    await recordAuditEvent(req, {
+      actorId: createdUser.id,
+      targetUserId: createdUser.id,
+      action: 'auth.verification.completed',
+      entityType: 'user',
+      entityId: createdUser.id,
+      metadata: { channel, role: createdUser.role },
+    });
+    json(res, 201, {
+      message: 'Registration verified',
+      token: createTokenForUser(createdUser),
+      user: publicUser(createdUser),
+    });
   },
 
   'POST /api/auth/login': async (req, res) => {
