@@ -338,6 +338,8 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events (actor_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_target ON audit_events (target_user_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events (created_at DESC)`);
+
+  await ensureBootstrapAdmin();
 }
 
 function normalizeStoredUser(row) {
@@ -397,6 +399,46 @@ async function createStoredUser(input) {
   db.users.push(user);
   saveDatabase();
   return user;
+}
+
+async function ensureBootstrapAdmin() {
+  if (process.env.ADMIN_BOOTSTRAP_ENABLED !== 'true') return null;
+
+  const email = cleanString(process.env.ADMIN_EMAIL || '', 160).toLowerCase();
+  const password = String(process.env.ADMIN_PASSWORD || '');
+  const fullName = cleanString(process.env.ADMIN_FULL_NAME || 'GCSC Admin', 120);
+
+  if (!email || !email.includes('@')) {
+    console.warn('[ADMIN] ADMIN_BOOTSTRAP_ENABLED=true but ADMIN_EMAIL is invalid');
+    return null;
+  }
+  if (password.length < 12) {
+    console.warn('[ADMIN] ADMIN_BOOTSTRAP_ENABLED=true but ADMIN_PASSWORD must be at least 12 characters');
+    return null;
+  }
+
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    if (existing.role !== 'admin') {
+      console.warn('[ADMIN] Bootstrap email already exists and is not admin; no changes made');
+    }
+    return existing;
+  }
+
+  const admin = await createStoredUser({
+    email,
+    password_hash: hashPassword(password),
+    role: 'admin',
+    full_name: fullName,
+    phone: '',
+    is_verified: 1,
+    is_active: 1,
+    profile: defaultProfile('admin'),
+    wallet: null,
+    created_at: new Date().toISOString(),
+  });
+  console.log(`[ADMIN] Bootstrap admin ensured: ${email}`);
+  return admin;
 }
 
 async function updateStoredProfile(user, body) {

@@ -1,10 +1,47 @@
 # GCSC Smart Contractor Deploy Checklist
 
-Target platform: Render.com  
-Target backend: `v3/server.js`  
-Target database: Render PostgreSQL
+Current platform: Railway  
+Current backend: `v3/pure-server.js`  
+Current database: PostgreSQL through `DATABASE_URL`
 
-This checklist is for the real PostgreSQL backend, not the in-memory `v3/pure-server.js` demo server.
+This checklist reflects the active Railway MVP backend. Older Render notes are kept where useful because they explain the previous 503 failure mode, but Railway is now the live deployment path.
+
+Live backend:
+
+```text
+https://gcsc-backend-production.up.railway.app
+```
+
+Live frontend:
+
+```text
+https://gcsc.store
+```
+
+## 0. Current Railway Setup Order
+
+1. Create or open the Railway project.
+2. Connect repository `Melxisedek75/gcsc-smart-contractor`.
+3. Use branch `main`.
+4. Keep the root directory empty because `railway.json` and `Dockerfile` live at the repository root.
+5. Railway uses `railway.json`:
+
+```json
+{
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "node v3/pure-server.js",
+    "healthcheckPath": "/health"
+  }
+}
+```
+
+6. Add PostgreSQL first, then copy its `DATABASE_URL` into the backend service variables.
+7. Add `JWT_SECRET`, CORS settings, and admin bootstrap variables if an admin account must be created.
+8. Deploy and smoke test `/health`.
 
 ## 1. Render Setup Order
 
@@ -82,13 +119,14 @@ Values marked "secret" must be created in Render Environment and never committed
 | `ENCRYPTION_SECRET` | yes | AES/PBKDF2 secret. Must be 32+ chars and include uppercase, lowercase, digit, symbol. | `openssl rand -base64 48` |
 | `OTP_EXPIRY_MINUTES` | yes | Email OTP lifetime. | `10` |
 | `FRONTEND_URL` | yes | Public frontend origin used by backend links/CORS logic. | `https://gcsc.store` |
-| `CORS_ORIGIN_WHITELIST` | yes | Comma-separated allowed browser origins. | `https://gcsc.store,https://www.gcsc.store,http://localhost:3000` |
+| `CORS_ALLOWED_ORIGINS` | yes | Comma-separated allowed browser origins read by `v3/pure-server.js`. | `https://gcsc.store,https://www.gcsc.store,http://localhost:5173` |
 | `EMAIL_FROM` | yes | Gmail sender address. | `gcscdao@gmail.com` |
 | `GOOGLE_CLIENT_ID` | yes | Google OAuth client ID. | `1234567890-abc.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | yes | Google OAuth client secret. | secret |
 | `GOOGLE_REDIRECT_URI` | yes | OAuth callback URL configured in Google Cloud. | `https://gcsc-backend.onrender.com/dev/oauth/callback` |
 | `GOOGLE_REFRESH_TOKEN` | yes | Refresh token for Gmail/Drive API. | secret |
-| `PGHOST` | yes | Render Postgres internal hostname. | `dpg-xxxxx-a.oregon-postgres.render.com` |
+| `DATABASE_URL` | yes on Railway | PostgreSQL connection string. `v3/pure-server.js` uses it automatically. | `postgresql://...` |
+| `PGHOST` | yes for Render / optional on Railway | Render Postgres internal hostname. | `dpg-xxxxx-a.oregon-postgres.render.com` |
 | `PGPORT` | yes | PostgreSQL port. | `5432` |
 | `PGDATABASE` | yes | Database name. | `gcsc_db` |
 | `PGUSER` | yes | Database user. | `gcsc_admin` |
@@ -97,7 +135,23 @@ Values marked "secret" must be created in Render Environment and never committed
 | `PGSSL_REJECT_UNAUTHORIZED` | recommended | Set false unless you provide a CA cert. | `false` |
 | `PGMAXPOOL` | optional | Max PostgreSQL pool size. | `20` |
 | `PGTIMEOUT` | optional | Query timeout in ms. | `30000` |
-| `DATABASE_URL` | optional for app, useful for scripts | Render connection string. Current app code does not read this unless `v3/database/db.js` is changed. | `postgresql://...` |
+| `ADMIN_BOOTSTRAP_ENABLED` | optional | Set to `true` once to create the first admin account at boot. Disable after the account exists. | `true` |
+| `ADMIN_EMAIL` | required when bootstrap enabled | First admin email. Must be the email you will use to log in. | `admin@gcsc.store` |
+| `ADMIN_PASSWORD` | required when bootstrap enabled | First admin password. Must be 12+ characters. Store only in Railway variables. | secret |
+| `ADMIN_FULL_NAME` | optional | Display name for first admin account. | `GCSC Admin` |
+| `RATE_LIMIT_WINDOW_MS` | recommended | Default rate limit window for protected groups. | `900000` |
+| `AUTH_RATE_LIMIT_MAX` | recommended | Max auth attempts per IP/window. | `20` |
+| `AUTH_RATE_LIMIT_WINDOW_MS` | recommended | Auth-specific window. | `900000` |
+| `PROFILE_RATE_LIMIT_MAX` | recommended | Profile endpoint max requests per user/IP/window. | `120` |
+| `PROFILE_RATE_LIMIT_WINDOW_MS` | recommended | Profile-specific window. | `900000` |
+| `DOCUMENT_RATE_LIMIT_MAX` | recommended | Document upload/review endpoint max requests. | `45` |
+| `DOCUMENT_RATE_LIMIT_WINDOW_MS` | recommended | Document-specific window. | `900000` |
+| `WALLET_RATE_LIMIT_MAX` | recommended | Wallet endpoint max requests. | `45` |
+| `WALLET_RATE_LIMIT_WINDOW_MS` | recommended | Wallet-specific window. | `900000` |
+| `BID_ACCEPT_RATE_LIMIT_MAX` | recommended | Bid acceptance endpoint max requests. | `30` |
+| `BID_ACCEPT_RATE_LIMIT_WINDOW_MS` | recommended | Bid acceptance-specific window. | `900000` |
+| `RATE_LIMIT_STORE_MAX_KEYS` | optional | In-memory limiter cleanup threshold. | `5000` |
+| `RATE_LIMITS_DISABLED` | local/test only | Disable rate limits for smoke tests. Never use in production. | `false` |
 | `STRIPE_PUBLISHABLE_KEY` | yes for payments | Stripe publishable key for frontend/client config. | `pk_test_...` |
 | `STRIPE_SECRET_KEY` | yes for payments | Stripe secret key for PaymentIntent and payouts. | `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | yes for webhooks | Stripe webhook signing secret. | `whsec_...` |
@@ -121,6 +175,55 @@ openssl rand -base64 48
 ```
 
 Use the first output for `JWT_SECRET`. Use the second output for `ENCRYPTION_SECRET`. If the base64 value does not contain uppercase, lowercase, digits, and symbols, generate again because `v3/server.js` checks entropy at startup.
+
+## 4A. First Admin Account
+
+The production Dashboard admin screens require a real user with role `admin`. The backend can create the first admin account safely during startup.
+
+Set these Railway variables:
+
+```text
+ADMIN_BOOTSTRAP_ENABLED=true
+ADMIN_EMAIL=<your-admin-email>
+ADMIN_PASSWORD=<strong-password-12-plus-chars>
+ADMIN_FULL_NAME=GCSC Admin
+```
+
+Deploy once, log in with that email and password, then set:
+
+```text
+ADMIN_BOOTSTRAP_ENABLED=false
+```
+
+Redeploy after disabling bootstrap. This keeps the bootstrap path from running on every future boot.
+
+Important safety behavior:
+
+- If the email already exists and is already admin, the backend leaves it alone.
+- If the email already exists but is not admin, the backend refuses to upgrade it automatically.
+- Passwords are stored as bcrypt hashes, never plain text.
+
+## 4B. Security Defaults For Railway
+
+Use a strict CORS list:
+
+```text
+FRONTEND_URL=https://gcsc.store
+CORS_ALLOWED_ORIGINS=https://gcsc.store,https://www.gcsc.store
+```
+
+Recommended rate limit variables:
+
+```text
+RATE_LIMIT_WINDOW_MS=900000
+AUTH_RATE_LIMIT_MAX=20
+PROFILE_RATE_LIMIT_MAX=120
+DOCUMENT_RATE_LIMIT_MAX=45
+WALLET_RATE_LIMIT_MAX=45
+BID_ACCEPT_RATE_LIMIT_MAX=30
+RATE_LIMIT_STORE_MAX_KEYS=5000
+RATE_LIMITS_DISABLED=false
+```
 
 ## 5. Google OAuth Setup
 
@@ -208,9 +311,9 @@ psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM bids;"
 psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM escrow_contracts;"
 ```
 
-## 9. Why The Backend Currently Returns 503
+## 9. Why The Old Render Backend Returned 503
 
-Symptom:
+Historic symptom:
 
 ```bash
 curl -i https://gcsc-backend.onrender.com/health
@@ -218,7 +321,7 @@ curl -i https://gcsc-backend.onrender.com/health
 
 returns HTTP 503 with database degraded/error.
 
-Exact cause:
+Exact cause on the old Render setup:
 
 `v3/server.js` returns 503 from `/health` only when this PostgreSQL check fails:
 
@@ -277,11 +380,36 @@ Expected:
 }
 ```
 
-Alternative code fix:
+Alternative Render code fix:
 
 Update `v3/database/db.js` to use `connectionString: process.env.DATABASE_URL` when `DATABASE_URL` exists. That would let Render's `fromDatabase` env work directly.
 
 ## 10. Health Check Commands
+
+Current Railway backend:
+
+```bash
+curl -i https://gcsc-backend-production.up.railway.app/health
+curl -s https://gcsc-backend-production.up.railway.app/health
+```
+
+Expected:
+
+```json
+{
+  "status": "ok",
+  "database": "postgres"
+}
+```
+
+Admin audit endpoint after admin login:
+
+```bash
+curl -i "https://gcsc-backend-production.up.railway.app/api/admin/audit-events?limit=20" \
+  -H "Authorization: Bearer $ADMIN_JWT"
+```
+
+Expected: HTTP 200 and an `events` array. Non-admin JWTs must return 403.
 
 Replace `https://gcsc-backend.onrender.com` with the actual Render URL.
 
@@ -346,19 +474,26 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 ## 11. Smoke Test Checklist
 
 - `/health` returns HTTP 200.
-- `/health` JSON shows `services.database=connected`.
+- `/health` JSON shows PostgreSQL mode on Railway, or `services.database=connected` on the older Render backend.
 - Render logs show `Database connection: OK`.
+- Railway logs show the server listening on the injected `PORT`.
 - Registration sends OTP email.
 - OTP verification creates a user and returns a JWT.
 - `GET /api/me` works with the JWT.
+- First admin account can log in after one-time bootstrap.
+- Admin can open Dashboard -> Audit Log and read `/api/admin/audit-events`.
+- Non-admin user cannot read `/api/admin/audit-events`.
+- Admin can approve/reject contractor documents.
 - Homeowner can create a project.
 - Contractor can submit a bid.
+- Homeowner cannot accept a bid from an unverified contractor.
 - Homeowner can accept a bid and create escrow record.
+- Contractor public profile opens from the homeowner review flow.
 - Stripe test PaymentIntent can be created.
 - Stripe webhook receives and validates a signed test event.
 - XPR account lookup does not return 503.
 - Escrow milestone completion and approval endpoints update PostgreSQL.
-- Audit tables receive bid and milestone audit rows.
+- Audit events receive profile, document, wallet, and bid acceptance rows.
 - No logs print secrets, JWTs, private keys, or Stripe secret values.
 
 ## 12. Rollback

@@ -258,6 +258,10 @@ async function waitForServer(child) {
       CORS_ALLOWED_ORIGINS: 'https://gcsc.store,http://localhost:5173',
       AUTH_RATE_LIMIT_MAX: '2',
       AUTH_RATE_LIMIT_WINDOW_MS: '60000',
+      ADMIN_BOOTSTRAP_ENABLED: 'true',
+      ADMIN_EMAIL: 'admin-smoke@gcsc.store',
+      ADMIN_PASSWORD: 'AdminSmokePass123!',
+      ADMIN_FULL_NAME: 'Smoke Admin',
       NODE_OPTIONS: `--require ${registerPath}`,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -269,6 +273,14 @@ async function waitForServer(child) {
   try {
     const health = await waitForServer(child);
     assert.strictEqual(health.database, 'postgres');
+
+    const adminLogin = await request('POST', '/api/auth/login', {
+      email: 'admin-smoke@gcsc.store',
+      password: 'AdminSmokePass123!',
+    }, null, { 'X-Forwarded-For': '203.0.113.10' });
+    assert.strictEqual(adminLogin.status, 200);
+    assert.strictEqual(adminLogin.data.user.role, 'admin');
+    assert.strictEqual(adminLogin.data.user.email, 'admin-smoke@gcsc.store');
 
     const allowedPreflight = await request('OPTIONS', '/api/auth/login', null, null, {
       Origin: 'https://gcsc.store',
