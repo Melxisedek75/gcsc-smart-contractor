@@ -329,19 +329,26 @@ Goal: make production failure visible without manual checking.
 
 ### Task 4.1 — Monitoring Plan
 
-- [ ] Create `MONITORING-RUNBOOK.md`.
-- [ ] Include monitored URLs:
+- [x] Create `MONITORING-RUNBOOK.md`.
+- [x] Include monitored URLs:
   - backend `/health`;
   - `gcsc.store`;
   - Railway frontend;
   - admin endpoint unauthenticated 401 guard.
-- [ ] Include alert policy:
+- [x] Include alert policy:
   - backend health non-200;
   - database not `postgres`;
   - frontend non-200;
   - repeated 5xx;
   - deploy failure.
-- [ ] Include recommended low/no-cost monitoring services but do not sign up or enter credentials autonomously.
+- [x] Include recommended low/no-cost monitoring services but do not sign up or enter credentials autonomously.
+
+Day 4 monitoring notes, 2026-05-29:
+
+- Added `MONITORING-RUNBOOK.md`.
+- Monitoring runbook covers backend health, main site, Railway frontend, and admin audit unauthenticated guard.
+- Alert policy covers backend non-200, database mode regression, frontend non-200, repeated 5xx, deploy failure, and admin auth guard regression.
+- Third-party monitoring services are documented as founder-approved options only; no account setup or credentials were entered.
 
 Verification:
 
@@ -351,9 +358,15 @@ npm --prefix v3 run smoke:production
 
 ### Task 4.2 — CI Smoke Check
 
-- [ ] Add GitHub Actions workflow for backend smoke/static validation if repository CI is enabled.
-- [ ] Avoid secrets.
-- [ ] Run syntax/test commands that do not require production credentials.
+- [x] Add GitHub Actions workflow for backend smoke/static validation if repository CI is enabled.
+- [x] Avoid secrets.
+- [x] Run syntax/test commands that do not require production credentials.
+
+Day 4 CI notes, 2026-05-29:
+
+- Added `.github/workflows/backend-production-checks.yml`.
+- Workflow runs `npm ci --prefix v3`, `node --check v3/pure-server.js`, backend smoke tests, and public production smoke.
+- Workflow uses only public endpoints and no repository secrets.
 
 Verification:
 

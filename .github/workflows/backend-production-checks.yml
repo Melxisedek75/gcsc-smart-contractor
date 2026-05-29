@@ -1,0 +1,57 @@
+name: Backend Production Checks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'v3/**'
+      - '.github/workflows/backend-production-checks.yml'
+      - 'DEPLOY-CHECKLIST.md'
+      - 'ADMIN-OPERATIONS-RUNBOOK.md'
+      - 'PRODUCTION-READINESS.md'
+      - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
+      - 'MONITORING-RUNBOOK.md'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'v3/**'
+      - '.github/workflows/backend-production-checks.yml'
+      - 'DEPLOY-CHECKLIST.md'
+      - 'ADMIN-OPERATIONS-RUNBOOK.md'
+      - 'PRODUCTION-READINESS.md'
+      - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
+      - 'MONITORING-RUNBOOK.md'
+  workflow_dispatch:
+
+jobs:
+  backend-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: v3/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci --prefix v3
+
+      - name: Syntax check
+        run: node --check v3/pure-server.js
+
+      - name: PostgreSQL storage smoke
+        run: npm --prefix v3 run test:pg-storage
+
+      - name: PostgreSQL workflow smoke
+        run: npm --prefix v3 run test:pg-workflow
+
+      - name: Production public smoke
+        run: npm --prefix v3 run smoke:production
