@@ -431,7 +431,7 @@ Repeatable non-secret operations status report:
 npm --prefix v3 run ops:status
 ```
 
-The status report includes backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items.
+The status report includes repository production guardrails, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items.
 
 The GitHub Actions workflow also runs the public smoke/status checks daily at `14:00 UTC` without secrets.
 

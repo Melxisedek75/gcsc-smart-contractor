@@ -134,7 +134,7 @@ Audit trail progress, 2026-05-29:
 - Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
-- Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
+- Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering repository guardrails, backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
@@ -393,6 +393,7 @@ Day 4 monitoring notes, 2026-05-29:
 - Added `v3/scripts/production-status-report.mjs`, `npm --prefix v3 run ops:status`, and `v3/tests/ops-status-report-script.test.js`.
 - The status report writes non-secret JSON to ignored `evidence/` and fails on critical public-service failures while keeping Railway frontend staleness as a warning.
 - The status report now records backend security headers as a critical check.
+- The status report now records repository production guardrails as a critical check.
 - Live run passed on 2026-05-29 with zero critical failures, one known Railway frontend freshness warning, and four founder/external blockers recorded in ignored evidence output.
 
 Verification:
@@ -415,6 +416,7 @@ Day 4 CI notes, 2026-05-29:
 - Added daily `14:00 UTC` scheduled execution for public production smoke and `ops:status`.
 - Added `v3/tests/ci-monitoring-workflow.test.js` and `npm --prefix v3 run test:ci-monitoring-workflow` to prevent accidental removal of the schedule, public smoke, ops status, or no-secrets constraint.
 - Added CI validation for `npm --prefix v3 run test:security-env-check-script` so the secret-safe production env checker cannot be removed silently.
+- Added repository guardrail verification to `npm --prefix v3 run ops:status`; daily status now fails critically if the production env checker, CI smoke workflow, or no-secrets guardrail is removed.
 
 Verification:
 

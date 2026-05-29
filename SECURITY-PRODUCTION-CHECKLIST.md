@@ -122,7 +122,7 @@ Operations snapshot coverage:
 npm --prefix v3 run ops:status
 ```
 
-The operations snapshot records a critical `backend security headers` check in the ignored JSON evidence report.
+The operations snapshot records critical `repository production guardrails` and `backend security headers` checks in the ignored JSON evidence report.
 
 CI coverage:
 

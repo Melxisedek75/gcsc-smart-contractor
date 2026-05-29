@@ -41,6 +41,82 @@ function addCheck(report, check) {
   }
 }
 
+function readTextIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+function checkRepositoryGuardrails(report) {
+  const label = 'repository production guardrails';
+  const packageJsonPath = path.join(repoRoot, 'v3', 'package.json');
+  const securityEnvScriptPath = path.join(repoRoot, 'v3', 'scripts', 'check-security-env.mjs');
+  const workflowPath = path.join(repoRoot, '.github', 'workflows', 'backend-production-checks.yml');
+  const missing = [];
+  const changed = [];
+
+  const packageJsonRaw = readTextIfExists(packageJsonPath);
+  const securityEnvScript = readTextIfExists(securityEnvScriptPath);
+  const workflow = readTextIfExists(workflowPath);
+
+  if (!packageJsonRaw) {
+    missing.push('v3/package.json');
+  }
+  if (!securityEnvScript) {
+    missing.push('v3/scripts/check-security-env.mjs');
+  }
+  if (!workflow) {
+    missing.push('.github/workflows/backend-production-checks.yml');
+  }
+
+  if (packageJsonRaw) {
+    const packageJson = JSON.parse(packageJsonRaw);
+    const scripts = packageJson.scripts || {};
+    if (scripts['security:env:check'] !== 'node scripts/check-security-env.mjs') {
+      changed.push('security:env:check package script');
+    }
+    if (scripts['test:security-env-check-script'] !== 'node tests/security-env-check-script.test.js') {
+      changed.push('test:security-env-check-script package script');
+    }
+  }
+
+  if (securityEnvScript) {
+    for (const required of ['secret-safe', 'JWT_SECRET', 'DATABASE_URL', 'CORS_ALLOWED_ORIGINS']) {
+      if (!securityEnvScript.includes(required)) {
+        changed.push(`check-security-env.mjs missing ${required}`);
+      }
+    }
+  }
+
+  if (workflow) {
+    for (const required of [
+      'test:security-env-check-script',
+      'smoke:production',
+      'security:cors:smoke',
+      'ops:status',
+    ]) {
+      if (!workflow.includes(required)) {
+        changed.push(`backend-production-checks.yml missing ${required}`);
+      }
+    }
+
+    if (workflow.includes('${{ secrets.')) {
+      changed.push('backend-production-checks.yml references repository secrets');
+    }
+  }
+
+  const problems = [...missing.map((item) => `missing ${item}`), ...changed];
+
+  addCheck(report, {
+    label,
+    severity: 'critical',
+    status: problems.length === 0 ? 'pass' : 'fail',
+    expected: 'CI validates production smoke, CORS smoke, ops status, and secret-safe env checker without repository secrets',
+    observed: problems.length === 0 ? 'all repository production guardrails present' : problems.join('; '),
+  });
+}
+
 async function fetchText(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -208,6 +284,7 @@ const report = {
   },
 };
 
+checkRepositoryGuardrails(report);
 await checkBackendHealth(report);
 await checkAdminGuard(report);
 await checkFrontend(report, 'main site frontend freshness', mainSiteUrl, 'critical');
