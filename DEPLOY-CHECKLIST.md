@@ -413,6 +413,7 @@ Repeatable production smoke command from the repository root:
 
 ```bash
 npm --prefix v3 run smoke:production
+npm --prefix v3 run security:cors:smoke
 ```
 
 Repeatable non-secret operations status report:
@@ -519,6 +520,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 
 - `/health` returns HTTP 200.
 - `/health` JSON shows PostgreSQL mode on Railway, or `services.database=connected` on the older Render backend.
+- `npm --prefix v3 run security:cors:smoke` passes: `https://gcsc.store` is allowed, an external origin is rejected, and admin audit guard remains HTTP 401 without JWT.
 - Render logs show `Database connection: OK`.
 - Railway logs show the server listening on the injected `PORT`.
 - Registration sends OTP email.

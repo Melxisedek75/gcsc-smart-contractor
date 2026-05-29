@@ -39,6 +39,14 @@ npm --prefix v3 run ops:status
 
 This writes a JSON report under `evidence/`, which is ignored by git. The report includes backend health, admin audit 401 guard, `gcsc.store` bundle freshness, Railway frontend freshness, and the current blocked founder/external items.
 
+For a public CORS/security smoke check, run:
+
+```powershell
+npm --prefix v3 run security:cors:smoke
+```
+
+This verifies `https://gcsc.store` is allowed by CORS, an external origin is rejected, and the admin audit endpoint still returns HTTP 401 without JWT.
+
 Expected output:
 
 ```text
@@ -90,6 +98,7 @@ It performs:
 
 - backend syntax and smoke tests;
 - public production smoke against backend, `gcsc.store`, Railway frontend, and admin audit 401 guard;
+- public CORS smoke for allowed `gcsc.store`, denied external origin, and admin audit 401 guard;
 - non-secret `ops:status` report generation;
 - no repository secrets, no admin JWT, no database URL, and no Stripe/XPR private values.
 
@@ -101,6 +110,7 @@ If this scheduled workflow fails, treat it as a production monitoring signal and
 
 ```powershell
 npm --prefix v3 run smoke:production
+npm --prefix v3 run security:cors:smoke
 ```
 
 2. If backend fails, open Railway `gcsc-backend` logs.

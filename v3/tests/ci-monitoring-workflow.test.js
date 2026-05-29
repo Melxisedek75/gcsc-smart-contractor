@@ -23,10 +23,15 @@ for (const required of [
   'workflow_dispatch:',
   'Production public smoke',
   'npm --prefix v3 run smoke:production',
+  'Security CORS smoke script validation',
+  'npm --prefix v3 run test:security-cors-smoke-script',
+  'Security CORS public smoke',
+  'npm --prefix v3 run security:cors:smoke',
   'Production status report',
   'npm --prefix v3 run ops:status',
   'Operations status report script validation',
   'npm --prefix v3 run test:ops-status-report-script',
+  'SECURITY-PRODUCTION-CHECKLIST.md',
 ]) {
   assert.ok(workflow.includes(required), `workflow must include ${required}`);
 }

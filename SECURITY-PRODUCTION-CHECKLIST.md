@@ -76,11 +76,20 @@ npm --prefix v3 run test:pg-storage
 
 The storage smoke test now checks unauthenticated and non-admin access for admin document, audit, financing precheck, and document review endpoints.
 
+Additional production smoke:
+
+```powershell
+npm --prefix v3 run security:cors:smoke
+```
+
+This verifies `https://gcsc.store` receives `Access-Control-Allow-Origin`, an external origin is rejected with HTTP 403, and `/api/admin/audit-events` still returns HTTP 401 without JWT.
+
 ## Current Controls
 
 - JWT signatures are verified before protected endpoints accept requests.
 - Admin endpoints require `role === "admin"`.
 - CORS is allowlist-based through `CORS_ALLOWED_ORIGINS`.
+- Public CORS smoke verifies allowed/denied origins and the admin audit unauthenticated guard.
 - Rate limits are active for auth, profile, documents, wallet, and bid acceptance endpoints.
 - Stripe payment endpoints are test-mode only; live payments are disabled.
 - Stripe webhooks require signature verification.

@@ -58,6 +58,7 @@ Go/no-go package:
 - `npm --prefix v3 run ops:status` prepares non-secret daily operations snapshots under ignored `evidence/`.
 - `npm --prefix v3 run admin:bootstrap:check` validates first-admin env presence without printing password, JWT secret, or database URL.
 - `npm --prefix v3 run db:migrations:check` validates production SQL migration file presence/order without using database credentials.
+- `npm --prefix v3 run security:cors:smoke` verifies public production CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 

@@ -14,6 +14,7 @@ on:
       - 'PRODUCTION-READINESS.md'
       - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
       - 'MONITORING-RUNBOOK.md'
+      - 'SECURITY-PRODUCTION-CHECKLIST.md'
   pull_request:
     branches:
       - main
@@ -25,6 +26,7 @@ on:
       - 'PRODUCTION-READINESS.md'
       - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
       - 'MONITORING-RUNBOOK.md'
+      - 'SECURITY-PRODUCTION-CHECKLIST.md'
   workflow_dispatch:
 
 jobs:
@@ -76,8 +78,14 @@ jobs:
       - name: Migration readiness check
         run: npm --prefix v3 run db:migrations:check
 
+      - name: Security CORS smoke script validation
+        run: npm --prefix v3 run test:security-cors-smoke-script
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production
+
+      - name: Security CORS public smoke
+        run: npm --prefix v3 run security:cors:smoke
 
       - name: Production status report
         run: npm --prefix v3 run ops:status

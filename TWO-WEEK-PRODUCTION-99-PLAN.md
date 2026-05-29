@@ -138,6 +138,7 @@ Audit trail progress, 2026-05-29:
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
+- Added `npm --prefix v3 run security:cors:smoke` to verify public CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -784,6 +785,8 @@ Day 10 authorization notes, 2026-05-29:
   - `PUT /api/admin/documents/:id/review`
 - Added regression checks in `v3/tests/postgres-storage-smoke.js` for unauthenticated `401` and non-admin `403` access paths.
 - Verification passed: `npm --prefix v3 run test:pg-storage`.
+- Added `v3/scripts/security-cors-smoke.mjs`, `npm --prefix v3 run security:cors:smoke`, and `v3/tests/security-cors-smoke-script.test.js`.
+- Production CORS smoke verifies `https://gcsc.store` is allowed, an external origin is rejected with HTTP 403, and `/api/admin/audit-events` remains HTTP 401 without JWT.
 
 Verification:
 
