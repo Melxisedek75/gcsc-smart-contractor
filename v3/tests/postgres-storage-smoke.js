@@ -435,6 +435,24 @@ async function waitForServer(child) {
       return header + '.' + body + '.' + sig;
     })();
 
+    const unauthAdminDocuments = await request('GET', '/api/admin/documents?status=submitted');
+    assert.strictEqual(unauthAdminDocuments.status, 401);
+
+    const nonAdminDocuments = await request('GET', '/api/admin/documents?status=submitted', null, token);
+    assert.strictEqual(nonAdminDocuments.status, 403);
+
+    const nonAdminAuditEvents = await request('GET', '/api/admin/audit-events', null, token);
+    assert.strictEqual(nonAdminAuditEvents.status, 403);
+
+    const nonAdminPrechecks = await request('GET', '/api/admin/financing-prechecks?status=demo_precheck', null, token);
+    assert.strictEqual(nonAdminPrechecks.status, 403);
+
+    const nonAdminReview = await request('PUT', `/api/admin/documents/${documents.data.documents[0].id}/review`, {
+      status: 'approved',
+      reviewNote: 'Non-admin attempt must be blocked',
+    }, token);
+    assert.strictEqual(nonAdminReview.status, 403);
+
     const adminDocuments = await request('GET', '/api/admin/documents?status=submitted', null, adminToken);
     assert.strictEqual(adminDocuments.status, 200);
     assert.strictEqual(adminDocuments.data.documents.length, 3);

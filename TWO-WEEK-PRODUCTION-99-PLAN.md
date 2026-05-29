@@ -709,21 +709,39 @@ Goal: produce a concrete security checklist and fix high-risk local issues.
 
 ### Task 10.1 — Dependency And Secret Scan
 
-- [ ] Run dependency audit where practical.
-- [ ] Search for accidental secrets:
+- [x] Run dependency audit where practical.
+- [x] Search for accidental secrets:
 
 ```powershell
 rg -n "ghp_|RAILWAY_TOKEN|sk_live|sk_test_[A-Za-z0-9]|whsec_[A-Za-z0-9]|PRIVATE_KEY|PASSWORD=.*[A-Za-z0-9]" .
 ```
 
-- [ ] Document findings in `SECURITY-PRODUCTION-CHECKLIST.md`.
+- [x] Document findings in `SECURITY-PRODUCTION-CHECKLIST.md`.
+
+Day 10 dependency/secret notes, 2026-05-29:
+
+- Ran `npm --prefix v3 audit --omit=dev --audit-level=high`.
+- Audit found no high or critical vulnerabilities; remaining findings are low/moderate dependency-chain issues mainly through Proton/WebAuth, Google/uuid, zod, elliptic, and node-cron.
+- Did not run `npm audit fix --force` because it would force a breaking `@proton/web-sdk` upgrade path.
+- Secret scan found documentation placeholders and scan patterns only, not real tokens/keys.
+- Added `SECURITY-PRODUCTION-CHECKLIST.md`.
 
 ### Task 10.2 — Endpoint Authorization Review
 
-- [ ] Review all admin endpoints.
-- [ ] Confirm protected endpoints require JWT.
-- [ ] Confirm non-admin access returns 403.
-- [ ] Add tests for any missing guard.
+- [x] Review all admin endpoints.
+- [x] Confirm protected endpoints require JWT.
+- [x] Confirm non-admin access returns 403.
+- [x] Add tests for any missing guard.
+
+Day 10 authorization notes, 2026-05-29:
+
+- Reviewed production `v3/pure-server.js` admin endpoints:
+  - `GET /api/admin/documents`
+  - `GET /api/admin/audit-events`
+  - `GET /api/admin/financing-prechecks`
+  - `PUT /api/admin/documents/:id/review`
+- Added regression checks in `v3/tests/postgres-storage-smoke.js` for unauthenticated `401` and non-admin `403` access paths.
+- Verification passed: `npm --prefix v3 run test:pg-storage`.
 
 Verification:
 
