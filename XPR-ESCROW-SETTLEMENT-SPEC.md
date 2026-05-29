@@ -205,10 +205,10 @@ Signing sequence:
 Supported on-chain milestone actions:
 
 ```text
-submitmilestone
-approvemilestone
-releasemilestone
-disputemilestone
+submitms
+approvems
+releasems
+disputems
 ```
 
 Action payloads:
@@ -220,7 +220,7 @@ Action payloads:
 }
 ```
 
-For `submitmilestone` only:
+For `submitms` only:
 
 ```json
 {
@@ -234,7 +234,7 @@ Recorded backend evidence payload:
 
 ```json
 {
-  "action": "approvemilestone",
+  "action": "approvems",
   "tx_id": "xpr-testnet-transaction-id",
   "chain_id": "71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd",
   "contract_account": "gcscrow1111",
@@ -262,7 +262,7 @@ Required hardening before pilot settlement:
 - Confirm the action authorization actor matches the backend user role.
 - Confirm action data contains the expected `escrow_id`.
 - Confirm action data contains the expected `milestone_id`.
-- Confirm `submitmilestone` evidence hash matches the recorded submission.
+- Confirm `submitms` evidence hash matches the recorded submission.
 - Confirm release action is not accepted unless backend milestone is approved.
 - Confirm dispute action is not accepted after release.
 - Record audit event when a transaction is recorded.
@@ -298,7 +298,7 @@ Required metadata fields:
   "escrow_id": 123,
   "milestone_id": 456,
   "project_id": 42,
-  "action": "releasemilestone",
+  "action": "releasems",
   "tx_id": "xpr-testnet-transaction-id",
   "chain_id": "71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd",
   "contract_account": "gcscrow1111",

@@ -381,7 +381,7 @@ async function initStorage() {
       id SERIAL PRIMARY KEY,
       milestone_id INTEGER NOT NULL REFERENCES milestones(id) ON DELETE CASCADE,
       escrow_id INTEGER NOT NULL REFERENCES escrow_contracts(id) ON DELETE CASCADE,
-      action TEXT NOT NULL CHECK (action IN ('submitmilestone', 'approvemilestone', 'releasemilestone', 'disputemilestone')),
+      action TEXT NOT NULL CHECK (action IN ('submitms', 'approvems', 'releasems', 'disputems')),
       tx_id TEXT UNIQUE NOT NULL,
       chain_id TEXT NOT NULL DEFAULT '',
       contract_account TEXT NOT NULL DEFAULT 'gcscrow1111',
@@ -402,6 +402,23 @@ async function initStorage() {
   await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'broadcast'`);
   await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`);
   await queryPostgres(`ALTER TABLE milestone_chain_txs ADD COLUMN IF NOT EXISTS verification_error TEXT`);
+  await queryPostgres(`
+    UPDATE milestone_chain_txs
+    SET action = CASE action
+      WHEN 'submitmilestone' THEN 'submitms'
+      WHEN 'approvemilestone' THEN 'approvems'
+      WHEN 'releasemilestone' THEN 'releasems'
+      WHEN 'disputemilestone' THEN 'disputems'
+      ELSE action
+    END
+    WHERE action IN ('submitmilestone', 'approvemilestone', 'releasemilestone', 'disputemilestone')
+  `);
+  await queryPostgres(`ALTER TABLE milestone_chain_txs DROP CONSTRAINT IF EXISTS milestone_chain_txs_action_check`);
+  await queryPostgres(`
+    ALTER TABLE milestone_chain_txs
+    ADD CONSTRAINT milestone_chain_txs_action_check
+    CHECK (action IN ('submitms', 'approvems', 'releasems', 'disputems'))
+  `);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_homeowner ON projects (homeowner_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_bids_project ON bids (project_id)`);
@@ -1450,13 +1467,13 @@ async function attachChainTxsToMilestones(milestones) {
   }));
 }
 
-const CHAIN_TX_ACTIONS = new Set(['submitmilestone', 'approvemilestone', 'releasemilestone', 'disputemilestone']);
+const CHAIN_TX_ACTIONS = new Set(['submitms', 'approvems', 'releasems', 'disputems']);
 
 function canUserRecordChainTx(action, escrow, userId) {
-  if (action === 'submitmilestone') return escrow.contractor_id === userId;
-  if (action === 'approvemilestone') return escrow.homeowner_id === userId;
-  if (action === 'releasemilestone') return escrow.homeowner_id === userId;
-  if (action === 'disputemilestone') return escrow.homeowner_id === userId || escrow.contractor_id === userId;
+  if (action === 'submitms') return escrow.contractor_id === userId;
+  if (action === 'approvems') return escrow.homeowner_id === userId;
+  if (action === 'releasems') return escrow.homeowner_id === userId;
+  if (action === 'disputems') return escrow.homeowner_id === userId || escrow.contractor_id === userId;
   return false;
 }
 

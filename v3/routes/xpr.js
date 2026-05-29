@@ -494,7 +494,7 @@ router.post('/escrow/release', requireAuth, async (req, res) => {
         // --- Build release action for client-side signing ---
         const action = {
             account: XPR_ESCROW_CONTRACT || 'escrow.gcsc',
-            name: 'releasemilestone',
+            name: 'releasems',
             authorization: [{ actor: user.xpr_account, permission: 'active' }],
             data: {
                 escrow_id: `escrow_${escrow.project_id}_${escrow.bid_id}`,

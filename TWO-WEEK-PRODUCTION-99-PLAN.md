@@ -602,6 +602,14 @@ Day 8 build/test notes, 2026-05-29:
 - Build/test emitted dependency deprecation warnings; recorded in contract readiness doc.
 - Important blocker found: current `gcscrow1111` contract action names are `submitms`, `approvems`, `releasems`, `disputems`, while backend/frontend XPR evidence currently uses `submitmilestone`, `approvemilestone`, `releasemilestone`, `disputemilestone`. This must be aligned before end-to-end WebAuth escrow settlement can pass.
 
+Day 8 action-name alignment notes, 2026-05-29:
+
+- Backend chain tx allowlist and role mapping were aligned to actual `gcscrow1111` actions: `submitms`, `approvems`, `releasems`, `disputems`.
+- Backend PostgreSQL migration now converts existing long action names to short contract action names and refreshes the `milestone_chain_txs_action_check` constraint.
+- Legacy `v3/routes/xpr.js` release action was aligned to `releasems`.
+- Frontend `xprSettlement.ts`, Dashboard signing buttons, and XPR settlement validator were aligned to real contract action names.
+- `XPR-ESCROW-SETTLEMENT-SPEC.md` was updated to match the deployed contract action naming.
+
 ### Task 8.3 — Deployment Readiness Doc
 
 - [x] Create or update `contracts/gcsc-core/DEPLOYMENT-READINESS.md`.

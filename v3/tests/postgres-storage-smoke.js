@@ -39,6 +39,10 @@ class Pool {
       return { rows: [], rowCount: 0 };
     }
 
+    if (sql.startsWith('update milestone_chain_txs set action = case')) {
+      return { rows: [], rowCount: 0 };
+    }
+
     if (sql.includes('select 1')) {
       return { rows: [{ ok: 1 }], rowCount: 1 };
     }

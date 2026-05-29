@@ -77,6 +77,20 @@ class Pool {
       return { rows: [], rowCount: 0 };
     }
 
+    if (sql.startsWith('update milestone_chain_txs set action = case')) {
+      state.milestone_chain_txs = state.milestone_chain_txs.map((row) => ({
+        ...row,
+        action: {
+          submitmilestone: 'submitms',
+          approvemilestone: 'approvems',
+          releasemilestone: 'releasems',
+          disputemilestone: 'disputems',
+        }[row.action] || row.action,
+      }));
+      save(state);
+      return { rows: [], rowCount: 0 };
+    }
+
     if (sql.includes('select 1')) return { rows: [{ ok: 1 }], rowCount: 1 };
 
     if (sql.includes('select count(*)::int as count from users')) {
@@ -543,7 +557,7 @@ function startFakeHyperion() {
         {
           act: {
             account: 'gcscrow1111',
-            name: 'releasemilestone',
+            name: 'releasems',
             data: { escrow_id: 1, milestone_id: 1 },
           },
         },
@@ -773,7 +787,7 @@ async function waitForServer(child) {
 
     const releaseTxId = verifiedReleaseTxId;
     const releaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
-      action: 'releasemilestone',
+      action: 'releasems',
       tx_id: releaseTxId,
       chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
       contract_account: 'gcscrow1111',
@@ -782,11 +796,11 @@ async function waitForServer(child) {
     }, login.data.token);
     assert.strictEqual(releaseTx.status, 201);
     assert.strictEqual(releaseTx.data.chain_tx.tx_id, releaseTxId);
-    assert.strictEqual(releaseTx.data.chain_tx.action, 'releasemilestone');
+    assert.strictEqual(releaseTx.data.chain_tx.action, 'releasems');
     assert.strictEqual(releaseTx.data.chain_tx.status, 'broadcast');
 
     const duplicateReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
-      action: 'approvemilestone',
+      action: 'approvems',
       tx_id: releaseTxId,
       chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
       contract_account: 'gcscrow1111',
@@ -806,11 +820,11 @@ async function waitForServer(child) {
     assert.strictEqual(confirmedChainAudit.data.events.length, 1);
     assert.strictEqual(confirmedChainAudit.data.events[0].entity_type, 'milestone_chain_tx');
     assert.strictEqual(confirmedChainAudit.data.events[0].metadata.tx_id, releaseTxId);
-    assert.strictEqual(confirmedChainAudit.data.events[0].metadata.action, 'releasemilestone');
+    assert.strictEqual(confirmedChainAudit.data.events[0].metadata.action, 'releasems');
 
     const missingTxId = 'c'.repeat(64);
     const missingChainTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
-      action: 'approvemilestone',
+      action: 'approvems',
       tx_id: missingTxId,
       chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
       contract_account: 'gcscrow1111',
@@ -833,7 +847,7 @@ async function waitForServer(child) {
     assert.strictEqual(failedChainAudit.data.events[0].metadata.verification_status, 'failed');
 
     const unauthorizedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
-      action: 'releasemilestone',
+      action: 'releasems',
       tx_id: 'b'.repeat(64),
       chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
       contract_account: 'gcscrow1111',
