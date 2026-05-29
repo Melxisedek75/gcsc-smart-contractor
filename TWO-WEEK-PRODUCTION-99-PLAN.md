@@ -567,18 +567,24 @@ Goal: verify contract code, deployment assumptions, and permissions.
 
 ### Task 8.1 — Locate Contracts Repo
 
-- [ ] Check `C:\gcsc-website`.
-- [ ] If missing, clone `Melxisedek75/gcsc-website`.
-- [ ] Confirm branch and status.
+- [x] Check `C:\gcsc-website`.
+- [x] If missing, clone `Melxisedek75/gcsc-website`.
+- [x] Confirm branch and status.
+
+Day 8 repo notes, 2026-05-29:
+
+- `C:\gcsc-website` was missing and was cloned from `Melxisedek75/gcsc-website`.
+- Branch: `main`.
+- Baseline commit inspected: `f2a96ad feat: add contract backed working capital gate`.
 
 ### Task 8.2 — Contract Build
 
 Before editing contract code:
 
-- [ ] Read all existing contracts in `contracts/gcsc-core`.
-- [ ] Read `contracts/gcsc-core/package.json`.
-- [ ] Read proton-tsc docs/source if contract changes are needed.
-- [ ] Run:
+- [x] Read all existing contracts in `contracts/gcsc-core`.
+- [x] Read `contracts/gcsc-core/package.json`.
+- [x] Read proton-tsc docs/source if contract changes are needed.
+- [x] Run:
 
 ```powershell
 cd contracts\gcsc-core
@@ -587,15 +593,30 @@ npm run build
 npm test
 ```
 
+Day 8 build/test notes, 2026-05-29:
+
+- No contract code was edited, so proton-tsc source reading was not required in this block.
+- `npm install --package-lock=false` completed, but reported 27 dependency vulnerabilities in the contract toolchain dependency tree.
+- `npm run build` passed for 13 contracts.
+- `npm test` passed with 31 passing tests.
+- Build/test emitted dependency deprecation warnings; recorded in contract readiness doc.
+- Important blocker found: current `gcscrow1111` contract action names are `submitms`, `approvems`, `releasems`, `disputems`, while backend/frontend XPR evidence currently uses `submitmilestone`, `approvemilestone`, `releasemilestone`, `disputemilestone`. This must be aligned before end-to-end WebAuth escrow settlement can pass.
+
 ### Task 8.3 — Deployment Readiness Doc
 
-- [ ] Create or update `contracts/gcsc-core/DEPLOYMENT-READINESS.md`.
-- [ ] Record:
+- [x] Create or update `contracts/gcsc-core/DEPLOYMENT-READINESS.md`.
+- [x] Record:
   - contract accounts;
   - testnet/mainnet status;
   - required permissions;
   - transfer notify expectations;
   - manual deployment blockers.
+
+Day 8 deployment readiness notes, 2026-05-29:
+
+- Added `contracts/gcsc-core/DEPLOYMENT-READINESS.md`.
+- Commit pushed to `gcsc-website` main: `c10a635 docs: add smart contract deployment readiness`.
+- Deployment readiness is marked blocked until deployed account status, permissions, dependency audit plan, missing module tests, and action-name alignment are complete.
 
 Commit:
 
