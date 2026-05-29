@@ -36,21 +36,29 @@ ADMIN_PASSWORD=<strong-password-12-plus-chars>
 ADMIN_FULL_NAME=GCSC Admin
 ```
 
-5. Redeploy `gcsc-backend`.
-6. Go to `https://gcsc.store/dashboard`.
-7. Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
-8. Confirm the Dashboard sidebar shows:
+5. Optional local/Railway shell check before redeploy:
+
+```powershell
+npm --prefix v3 run admin:bootstrap:check
+```
+
+This check prints only set/missing status and never prints `ADMIN_PASSWORD`, `JWT_SECRET`, or `DATABASE_URL`.
+
+6. Redeploy `gcsc-backend`.
+7. Go to `https://gcsc.store/dashboard`.
+8. Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+9. Confirm the Dashboard sidebar shows:
    - Admin Review
    - Audit Log
    - Financing Review, if financing prechecks are enabled in the current build.
-9. Return to Railway variables.
-10. Change:
+10. Return to Railway variables.
+11. Change:
 
 ```text
 ADMIN_BOOTSTRAP_ENABLED=false
 ```
 
-11. Redeploy `gcsc-backend`.
+12. Redeploy `gcsc-backend`.
 
 Safety rules:
 

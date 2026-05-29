@@ -67,6 +67,9 @@ jobs:
       - name: CI monitoring workflow validation
         run: npm --prefix v3 run test:ci-monitoring-workflow
 
+      - name: Admin bootstrap env check script validation
+        run: npm --prefix v3 run test:admin-bootstrap-check-script
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production
 

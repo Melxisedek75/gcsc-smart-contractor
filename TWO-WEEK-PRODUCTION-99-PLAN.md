@@ -136,6 +136,7 @@ Audit trail progress, 2026-05-29:
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
+- Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -209,6 +210,7 @@ Preparation completed, 2026-05-29:
 - Added `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`.
 - Added `npm --prefix v3 run audit:export` to export admin audit events into ignored `evidence/`.
 - Added `npm --prefix v3 run test:admin-audit-export-script`.
+- Added `npm --prefix v3 run admin:bootstrap:check` and `npm --prefix v3 run test:admin-bootstrap-check-script` for secret-safe bootstrap env validation.
 
 Blocked, 2026-05-29:
 

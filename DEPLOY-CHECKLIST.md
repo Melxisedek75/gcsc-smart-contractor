@@ -193,6 +193,12 @@ ADMIN_PASSWORD=<strong-password-12-plus-chars>
 ADMIN_FULL_NAME=GCSC Admin
 ```
 
+Before redeploy, a local or Railway shell can validate presence without printing secrets:
+
+```bash
+npm --prefix v3 run admin:bootstrap:check
+```
+
 Deploy once, log in with that email and password, then set:
 
 ```text

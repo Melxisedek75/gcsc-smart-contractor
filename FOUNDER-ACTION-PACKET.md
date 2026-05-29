@@ -31,26 +31,34 @@ ADMIN_PASSWORD=<strong-password-12-plus-chars>
 ADMIN_FULL_NAME=GCSC Admin
 ```
 
-5. Redeploy the backend service.
-6. Open:
+5. Optional safety check before redeploy:
+
+```powershell
+npm --prefix v3 run admin:bootstrap:check
+```
+
+This command reports only set/missing status. It must not print the admin password, JWT secret, or database URL.
+
+6. Redeploy the backend service.
+7. Open:
 
 ```text
 https://gcsc.store/dashboard
 ```
 
-7. Log in with the admin email and password.
-8. Confirm the sidebar shows:
+8. Log in with the admin email and password.
+9. Confirm the sidebar shows:
    - Admin Review
    - Audit Log
    - Financing Review
-9. Return to Railway Variables.
-10. Change:
+10. Return to Railway Variables.
+11. Change:
 
 ```text
 ADMIN_BOOTSTRAP_ENABLED=false
 ```
 
-11. Redeploy the backend service again.
+12. Redeploy the backend service again.
 
 Codex verification after founder confirms admin exists:
 
