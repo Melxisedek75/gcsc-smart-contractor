@@ -306,6 +306,14 @@ async function waitForServer(child) {
     const health = await waitForServer(child);
     assert.strictEqual(health.database, 'postgres');
 
+    const healthHeaders = await request('GET', '/health');
+    assert.strictEqual(healthHeaders.headers['x-content-type-options'], 'nosniff');
+    assert.strictEqual(healthHeaders.headers['x-frame-options'], 'DENY');
+    assert.strictEqual(healthHeaders.headers['referrer-policy'], 'no-referrer');
+    assert.strictEqual(healthHeaders.headers['strict-transport-security'], 'max-age=31536000; includeSubDomains');
+    assert.strictEqual(healthHeaders.headers['content-security-policy'], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    assert.strictEqual(healthHeaders.headers['permissions-policy'], 'geolocation=(), camera=(), microphone=()');
+
     const adminLogin = await request('POST', '/api/auth/login', {
       email: 'admin-smoke@gcsc.store',
       password: 'AdminSmokePass123!',

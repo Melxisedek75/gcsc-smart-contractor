@@ -90,10 +90,19 @@ This verifies `https://gcsc.store` receives `Access-Control-Allow-Origin`, an ex
 - Admin endpoints require `role === "admin"`.
 - CORS is allowlist-based through `CORS_ALLOWED_ORIGINS`.
 - Public CORS smoke verifies allowed/denied origins and the admin audit unauthenticated guard.
+- Backend responses set baseline HTTP security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
 - Rate limits are active for auth, profile, documents, wallet, and bid acceptance endpoints.
 - Stripe payment endpoints are test-mode only; live payments are disabled.
 - Stripe webhooks require signature verification.
 - Audit events cover profile update, document submission/review, wallet connection, bid acceptance, chain tx verification, and test payment intent creation.
+
+Regression coverage:
+
+```powershell
+npm --prefix v3 run test:pg-storage
+```
+
+The PostgreSQL storage smoke test verifies the baseline security headers on `/health`.
 
 ## Remaining Security Blockers
 

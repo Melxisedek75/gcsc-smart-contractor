@@ -521,6 +521,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - `/health` returns HTTP 200.
 - `/health` JSON shows PostgreSQL mode on Railway, or `services.database=connected` on the older Render backend.
 - `npm --prefix v3 run security:cors:smoke` passes: `https://gcsc.store` is allowed, an external origin is rejected, and admin audit guard remains HTTP 401 without JWT.
+- `/health` includes baseline security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
 - Render logs show `Database connection: OK`.
 - Railway logs show the server listening on the injected `PORT`.
 - Registration sends OTP email.

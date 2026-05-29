@@ -78,7 +78,7 @@ Go/no-go package:
 | Audit log | MVP ready | Profile, document, wallet, project, bid, milestone, chain transaction, payment intent, and financing precheck events are recorded and exposed to admins. |
 | Financing prechecks | Demo/MVP only | Users can save future financing interest for admin review; no live lending, token lock, insurance assignment, funds issuance, or repayment routing is active. |
 | Admin operations | MVP documented | `ADMIN-OPERATIONS-RUNBOOK.md` covers first admin bootstrap, document review, audit review, backups, rollback, and real-money gates. |
-| Security hardening | Partial | CORS whitelist and endpoint rate limits are implemented; external review still pending. |
+| Security hardening | Partial | CORS whitelist, endpoint rate limits, public CORS smoke, and baseline HTTP security headers are implemented; external review still pending. |
 
 ## Ready To Demonstrate
 

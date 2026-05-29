@@ -2177,6 +2177,15 @@ function updateProfileFromBody(user, body) {
 }
 
 // ===== CORS & AUTH HELPERS =====
+function setSecurityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+}
+
 function setCORS(req, res) {
   const origin = req.headers.origin;
   res.setHeader('Vary', 'Origin');
@@ -3325,6 +3334,7 @@ const routes = {
 
 // ===== SERVER =====
 const server = http.createServer(async (req, res) => {
+  setSecurityHeaders(res);
   const corsAllowed = setCORS(req, res);
   if (!corsAllowed) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
