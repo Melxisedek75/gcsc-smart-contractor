@@ -16,6 +16,7 @@ Date: 2026-05-28
 | Public contractor profile | MVP ready | Homeowners can inspect contractor profile details before accepting bids. |
 | Wallet | MVP ready | WebAuth wallet metadata can be connected/stored; on-chain signing is still a next milestone. |
 | Audit log | MVP ready | Profile, document, wallet, and bid acceptance events are recorded and exposed to admins. |
+| Financing prechecks | Demo/MVP only | Users can save future financing interest for admin review; no live lending, token lock, insurance assignment, funds issuance, or repayment routing is active. |
 | Security hardening | Partial | CORS whitelist and endpoint rate limits are implemented; external review still pending. |
 
 ## Ready To Demonstrate
@@ -26,6 +27,7 @@ Date: 2026-05-28
 - Contractor compliance document submission.
 - Admin document review.
 - Admin audit log for trust events.
+- Loans/Financing informational dashboard with demo precheck records.
 - Contractor verification guard before bid acceptance.
 - Public contractor profile/details view.
 - Basic WebAuth wallet connection metadata.
@@ -38,6 +40,7 @@ Date: 2026-05-28
 - Database backups, log retention, monitoring alerts, and incident response process are not fully documented.
 - External security review and legal review are still required before holding real customer funds.
 - WebAuth integration currently stores wallet identity; full signed transaction flows are not complete.
+- SmartContractor Financing is not live lending. Escrow advances, token-collateral credit, ClaimBridge, and working-capital flows require state eligibility, legal/provider review, security review, and final approval before any real-money activation.
 
 ## Critical Remaining Tasks Before Real Funds
 
@@ -58,6 +61,7 @@ Date: 2026-05-28
    - Stripe live-mode smoke test.
    - Contractor payout verification.
    - Legal review of escrow/payment copy and token wording.
+   - Legal/provider review of financing prechecks, state eligibility rules, insurance claim language, token collateral language, and user disclosures.
    - External security review before marketing real-money usage.
 
 ## Recommended Next Build Sequence

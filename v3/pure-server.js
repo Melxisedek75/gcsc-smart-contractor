@@ -194,6 +194,7 @@ function createEmptyDatabase() {
     milestone_chain_txs: [],
     user_documents: [],
     audit_events: [],
+    financing_prechecks: [],
     reviews: [],
   };
 }
@@ -430,6 +431,30 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events (actor_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_target ON audit_events (target_user_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events (created_at DESC)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS financing_prechecks (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('homeowner', 'contractor', 'admin')),
+      product_type TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT '',
+      context JSONB NOT NULL DEFAULT '{}'::jsonb,
+      safety_acknowledged BOOLEAN NOT NULL DEFAULT FALSE,
+      status TEXT NOT NULL DEFAULT 'demo_precheck',
+      admin_note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS state TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS context JSONB NOT NULL DEFAULT '{}'::jsonb`);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS safety_acknowledged BOOLEAN NOT NULL DEFAULT FALSE`);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'demo_precheck'`);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS admin_note TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE financing_prechecks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_financing_prechecks_user ON financing_prechecks (user_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_financing_prechecks_status ON financing_prechecks (status)`);
 
   await ensureBootstrapAdmin();
 }
@@ -828,6 +853,119 @@ async function listStoredAuditEvents(filters = {}) {
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || Number(b.id) - Number(a.id))
     .slice(0, limit)
     .map(normalizeAuditEvent);
+}
+
+const FINANCING_PRODUCT_TYPES = new Set([
+  'escrow_advance',
+  'token_credit',
+  'claimbridge',
+  'working_capital',
+]);
+
+function normalizeFinancingPrecheck(row) {
+  if (!row) return null;
+  return {
+    id: Number(row.id),
+    user_id: Number(row.user_id),
+    role: row.role,
+    product_type: row.product_type,
+    state: row.state || '',
+    context: typeof row.context === 'string' ? JSON.parse(row.context || '{}') : (row.context || {}),
+    safety_acknowledged: !!row.safety_acknowledged,
+    status: row.status || 'demo_precheck',
+    admin_note: row.admin_note || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function createFinancingPrecheck(user, input) {
+  const productType = cleanString(input.productType || input.product_type, 80);
+  if (!FINANCING_PRODUCT_TYPES.has(productType)) {
+    const err = new Error('Valid financing product type required');
+    err.status = 400;
+    throw err;
+  }
+  if (input.safetyAcknowledged !== true && input.safety_acknowledged !== true) {
+    const err = new Error('Safety acknowledgement is required for demo financing precheck');
+    err.status = 400;
+    throw err;
+  }
+
+  const profile = user.profile || {};
+  const state = cleanString(input.state || profile.state || '', 20).toUpperCase();
+  const context = input.context && typeof input.context === 'object' && !Array.isArray(input.context)
+    ? input.context
+    : {};
+  const status = 'demo_precheck';
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO financing_prechecks
+        (user_id, role, product_type, state, context, safety_acknowledged, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [user.id, user.role, productType, state, context, true, status]
+    );
+    return normalizeFinancingPrecheck(result.rows[0]);
+  }
+
+  const stored = {
+    id: db.nextId('financing_prechecks'),
+    user_id: user.id,
+    role: user.role,
+    product_type: productType,
+    state,
+    context,
+    safety_acknowledged: true,
+    status,
+    admin_note: '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  db.financing_prechecks.push(stored);
+  saveDatabase();
+  return normalizeFinancingPrecheck(stored);
+}
+
+async function listFinancingPrechecks(filters = {}) {
+  if (USE_POSTGRES) {
+    const params = [];
+    const where = [];
+    if (filters.user_id) {
+      params.push(normalizeNumber(filters.user_id, 0));
+      where.push(`user_id = $${params.length}`);
+    }
+    if (filters.status) {
+      params.push(cleanString(filters.status, 60));
+      where.push(`status = $${params.length}`);
+    }
+    const result = await queryPostgres(
+      `SELECT * FROM financing_prechecks
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY created_at DESC, id DESC`,
+      params
+    );
+    return result.rows.map(normalizeFinancingPrecheck);
+  }
+
+  return db.financing_prechecks
+    .filter((precheck) => !filters.user_id || Number(precheck.user_id) === normalizeNumber(filters.user_id, 0))
+    .filter((precheck) => !filters.status || precheck.status === filters.status)
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || Number(b.id) - Number(a.id))
+    .map(normalizeFinancingPrecheck);
+}
+
+async function enrichFinancingPrecheck(precheck) {
+  const user = await findUserById(precheck.user_id);
+  return {
+    ...precheck,
+    user: user ? publicDocumentOwner(user) : null,
+  };
+}
+
+async function enrichFinancingPrechecks(prechecks) {
+  return Promise.all((prechecks || []).map(enrichFinancingPrecheck));
 }
 
 async function getUserCount() {
@@ -2314,6 +2452,49 @@ const routes = {
     json(res, 200, { wallet: user.wallet || null });
   },
 
+  'POST /api/financing/prechecks': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    const body = await parseBody(req);
+    try {
+      const precheck = await createFinancingPrecheck(user, body);
+      await recordAuditEvent(req, {
+        actorId: auth.userId || null,
+        targetUserId: auth.userId || null,
+        action: 'financing.precheck.created',
+        entityType: 'financing_precheck',
+        entityId: precheck.id,
+        metadata: {
+          product_type: precheck.product_type,
+          status: precheck.status,
+          state: precheck.state,
+          safety_acknowledged: precheck.safety_acknowledged,
+        },
+      });
+      json(res, 201, {
+        message: 'Demo/MVP financing precheck saved. No live funds, credit approval, token lock, insurance assignment, or repayment routing is active.',
+        precheck,
+      });
+    } catch (err) {
+      json(res, err.status || 400, { error: err.message || 'Could not save financing precheck' });
+    }
+  },
+
+  'GET /api/financing/prechecks': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    const prechecks = await listFinancingPrechecks({ user_id: auth.userId });
+    json(res, 200, { prechecks });
+  },
+
   'GET /api/admin/documents': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
@@ -2339,6 +2520,19 @@ const routes = {
       limit: parsed.query.limit,
     });
     json(res, 200, { events });
+  },
+
+  'GET /api/admin/financing-prechecks': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    if (auth.role !== 'admin') return json(res, 403, { error: 'Admin only' });
+
+    const parsed = parse(req.url, true);
+    const prechecks = await listFinancingPrechecks({
+      status: cleanString(parsed.query.status || '', 60),
+    });
+    const enrichedPrechecks = await enrichFinancingPrechecks(prechecks);
+    json(res, 200, { prechecks: enrichedPrechecks });
   },
 
   'PUT /api/admin/documents/:id/review': async (req, res, params) => {

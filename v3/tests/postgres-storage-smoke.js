@@ -16,9 +16,11 @@ fs.writeFileSync(fakePgPath, `
 let users = [];
 let userDocuments = [];
 let auditEvents = [];
+let financingPrechecks = [];
 let nextId = 1;
 let nextDocumentId = 1;
 let nextAuditEventId = 1;
+let nextFinancingPrecheckId = 1;
 
 function normalize(text) {
   return String(text || '').replace(/\\s+/g, ' ').trim().toLowerCase();
@@ -171,6 +173,32 @@ class Pool {
       };
       auditEvents.push(event);
       return { rows: [event], rowCount: 1 };
+    }
+
+    if (sql.startsWith('insert into financing_prechecks')) {
+      const [userId, role, productType, state, context, safetyAcknowledged, status] = params;
+      const precheck = {
+        id: nextFinancingPrecheckId++,
+        user_id: Number(userId),
+        role,
+        product_type: productType,
+        state,
+        context,
+        safety_acknowledged: Boolean(safetyAcknowledged),
+        status,
+        admin_note: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      financingPrechecks.push(precheck);
+      return { rows: [precheck], rowCount: 1 };
+    }
+
+    if (sql.includes('select * from financing_prechecks')) {
+      let rows = financingPrechecks;
+      if (sql.includes('where user_id')) rows = rows.filter((row) => row.user_id === Number(params[0]));
+      if (sql.includes('where status')) rows = rows.filter((row) => row.status === params[0]);
+      return { rows, rowCount: rows.length };
     }
 
     if (sql.includes('select * from audit_events')) {
@@ -448,6 +476,30 @@ async function waitForServer(child) {
     assert.strictEqual(verifiedCompliance.data.documents_approved, true);
     assert.strictEqual(verifiedCompliance.data.wallet_connected, true);
     assert.strictEqual(verifiedCompliance.data.overall_status, 'verified');
+
+    const precheck = await request('POST', '/api/financing/prechecks', {
+      productType: 'escrow_advance',
+      state: 'WA',
+      safetyAcknowledged: true,
+      context: {
+        escrowBalance: 50000,
+        requestedAmount: 10000,
+      },
+    }, token);
+    assert.strictEqual(precheck.status, 201);
+    assert.strictEqual(precheck.data.precheck.product_type, 'escrow_advance');
+    assert.strictEqual(precheck.data.precheck.status, 'demo_precheck');
+    assert.strictEqual(precheck.data.precheck.safety_acknowledged, true);
+    assert.match(precheck.data.message, /demo\/mvp/i);
+
+    const myPrechecks = await request('GET', '/api/financing/prechecks', null, token);
+    assert.strictEqual(myPrechecks.status, 200);
+    assert.strictEqual(myPrechecks.data.prechecks.length, 1);
+
+    const adminPrechecks = await request('GET', '/api/admin/financing-prechecks?status=demo_precheck', null, adminToken);
+    assert.strictEqual(adminPrechecks.status, 200);
+    assert.strictEqual(adminPrechecks.data.prechecks.length, 1);
+    assert.strictEqual(adminPrechecks.data.prechecks[0].user.companyName, 'Postgres Builder LLC');
 
     console.log('postgres storage smoke test passed');
   } finally {
