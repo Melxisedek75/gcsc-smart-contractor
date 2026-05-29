@@ -389,16 +389,25 @@ Goal: define exact signed escrow path before coding money movement.
 
 ### Task 5.1 — Read Existing XPR/Wallet Code
 
-- [ ] Inspect `C:\gcsc-store\src\services\webauth*`.
-- [ ] Inspect `C:\gcsc-store\src\services\xprSettlement*`.
-- [ ] Inspect backend XPR endpoints in `v3\pure-server.js`.
-- [ ] Inspect current smart contracts if `C:\gcsc-website` exists.
-- [ ] If contracts repo is missing, record blocker and continue with frontend/backend integration docs only.
+- [x] Inspect `C:\gcsc-store\src\services\webauth*`.
+- [x] Inspect `C:\gcsc-store\src\services\xprSettlement*`.
+- [x] Inspect backend XPR endpoints in `v3\pure-server.js`.
+- [x] Inspect current smart contracts if `C:\gcsc-website` exists.
+- [x] If contracts repo is missing, record blocker and continue with frontend/backend integration docs only.
+
+Day 5 inspection notes, 2026-05-29:
+
+- Frontend WebAuth service uses `@proton/web-sdk`, returns wallet metadata and a signing session with `session.transact`.
+- Frontend XPR settlement service signs `gcscrow1111` testnet actions: `submitmilestone`, `approvemilestone`, `releasemilestone`, `disputemilestone`.
+- Dashboard records returned WebAuth transaction ids through `POST /api/milestones/:id/chain-txs`.
+- Backend stores chain tx evidence in `milestone_chain_txs` and verifies through Hyperion.
+- Current backend verifier confirms the expected contract action exists in the transaction; Day 6 must harden duplicate tx rejection and verification audit events.
+- `C:\gcsc-website` is not present locally, so contract build/deployment verification remains blocked until the repo is restored or cloned.
 
 ### Task 5.2 — Create XPR Escrow Settlement Spec
 
-- [ ] Create `XPR-ESCROW-SETTLEMENT-SPEC.md`.
-- [ ] Define:
+- [x] Create `XPR-ESCROW-SETTLEMENT-SPEC.md`.
+- [x] Define:
   - accepted bid -> escrow record;
   - homeowner wallet connect;
   - transfer memo format;
@@ -406,7 +415,12 @@ Goal: define exact signed escrow path before coding money movement.
   - milestone submit/approve/release;
   - audit event mapping;
   - failure states.
-- [ ] Include exact test plan.
+- [x] Include exact test plan.
+
+Day 5 spec notes, 2026-05-29:
+
+- Added `XPR-ESCROW-SETTLEMENT-SPEC.md`.
+- Defined Layer 1 backend escrow state flow, Layer 2 on-chain funding expectations, WebAuth signing flow, transaction evidence storage, verification hardening requirements, audit mapping, failure states, and backend/frontend/contract test plan.
 
 Verification:
 
