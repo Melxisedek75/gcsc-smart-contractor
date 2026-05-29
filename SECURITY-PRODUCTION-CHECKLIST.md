@@ -80,9 +80,12 @@ Additional production smoke:
 
 ```powershell
 npm --prefix v3 run security:cors:smoke
+npm --prefix v3 run security:env:check
 ```
 
 This verifies `https://gcsc.store` receives `Access-Control-Allow-Origin`, an external origin is rejected with HTTP 403, and `/api/admin/audit-events` still returns HTTP 401 without JWT.
+
+The security env check validates production `NODE_ENV`, `JWT_SECRET`, `DATABASE_URL`, strict frontend/CORS origins, rate-limit status, and admin bootstrap state. It prints status by variable name only and does not print secret values.
 
 ## Current Controls
 
@@ -90,6 +93,7 @@ This verifies `https://gcsc.store` receives `Access-Control-Allow-Origin`, an ex
 - Admin endpoints require `role === "admin"`.
 - CORS is allowlist-based through `CORS_ALLOWED_ORIGINS`.
 - Public CORS smoke verifies allowed/denied origins and the admin audit unauthenticated guard.
+- Secret-safe production env validation catches weak/missing JWT secrets, missing database URL, wildcard/local CORS origins, disabled rate limits, and incomplete admin bootstrap variables.
 - Backend responses set baseline HTTP security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
 - Rate limits are active for auth, profile, documents, wallet, and bid acceptance endpoints.
 - Stripe payment endpoints are test-mode only; live payments are disabled.
@@ -133,6 +137,7 @@ The operations snapshot records a critical `backend security headers` check in t
 
 1. Create first admin safely through Railway variables.
 2. Disable admin bootstrap after first successful login.
-3. Run restore drill using `POSTGRES-RESTORE-DRILL.md`.
-4. Add external uptime/error alerts from `MONITORING-RUNBOOK.md`.
-5. Open a dependency-upgrade branch for `@proton/web-sdk`, `googleapis`, `node-cron`, and transitive `uuid/zod/elliptic` findings.
+3. Run `npm --prefix v3 run security:env:check` in the production environment before pilot redeploy.
+4. Run restore drill using `POSTGRES-RESTORE-DRILL.md`.
+5. Add external uptime/error alerts from `MONITORING-RUNBOOK.md`.
+6. Open a dependency-upgrade branch for `@proton/web-sdk`, `googleapis`, `node-cron`, and transitive `uuid/zod/elliptic` findings.

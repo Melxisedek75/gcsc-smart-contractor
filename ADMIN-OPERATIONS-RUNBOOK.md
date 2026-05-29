@@ -44,6 +44,14 @@ npm --prefix v3 run admin:bootstrap:check
 
 This check prints only set/missing status and never prints `ADMIN_PASSWORD`, `JWT_SECRET`, or `DATABASE_URL`.
 
+For the broader production security env gate before a pilot redeploy, run:
+
+```powershell
+npm --prefix v3 run security:env:check
+```
+
+This check validates `NODE_ENV`, `JWT_SECRET`, `DATABASE_URL`, strict frontend/CORS origins, rate-limit status, and bootstrap requirements without printing secret values.
+
 6. Redeploy `gcsc-backend`.
 7. Go to `https://gcsc.store/dashboard`.
 8. Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.

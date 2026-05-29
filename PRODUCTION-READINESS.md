@@ -59,6 +59,7 @@ Go/no-go package:
 - `npm --prefix v3 run admin:bootstrap:check` validates first-admin env presence without printing password, JWT secret, or database URL.
 - `npm --prefix v3 run db:migrations:check` validates production SQL migration file presence/order without using database credentials.
 - `npm --prefix v3 run security:cors:smoke` verifies public production CORS allow/deny behavior and the admin audit HTTP 401 guard.
+- `npm --prefix v3 run security:env:check` validates production env safety without printing JWT, database URL, or admin password values.
 - `npm --prefix v3 run smoke:production` now also verifies live backend security headers on `/health`.
 - GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
@@ -79,7 +80,7 @@ Go/no-go package:
 | Audit log | MVP ready | Profile, document, wallet, project, bid, milestone, chain transaction, payment intent, and financing precheck events are recorded and exposed to admins. |
 | Financing prechecks | Demo/MVP only | Users can save future financing interest for admin review; no live lending, token lock, insurance assignment, funds issuance, or repayment routing is active. |
 | Admin operations | MVP documented | `ADMIN-OPERATIONS-RUNBOOK.md` covers first admin bootstrap, document review, audit review, backups, rollback, and real-money gates. |
-| Security hardening | Partial | CORS whitelist, endpoint rate limits, public CORS smoke, and baseline HTTP security headers are implemented; external review still pending. |
+| Security hardening | Partial | CORS whitelist, endpoint rate limits, public CORS smoke, secret-safe env check, and baseline HTTP security headers are implemented; external review still pending. |
 
 ## Ready To Demonstrate
 

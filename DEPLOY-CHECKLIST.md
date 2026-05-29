@@ -235,6 +235,14 @@ RATE_LIMIT_STORE_MAX_KEYS=5000
 RATE_LIMITS_DISABLED=false
 ```
 
+Before a production pilot deploy, validate these settings from a Railway shell or trusted local terminal with production variables loaded:
+
+```bash
+npm --prefix v3 run security:env:check
+```
+
+The command fails on wildcard/local CORS origins, disabled rate limits, weak/missing JWT secrets, missing database URL, or incomplete admin bootstrap variables. It prints variable names and pass/fail status only, not secret values.
+
 ## 5. Google OAuth Setup
 
 1. Open Google Cloud Console.
@@ -414,6 +422,7 @@ Repeatable production smoke command from the repository root:
 ```bash
 npm --prefix v3 run smoke:production
 npm --prefix v3 run security:cors:smoke
+npm --prefix v3 run security:env:check
 ```
 
 Repeatable non-secret operations status report:
@@ -523,6 +532,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - `/health` returns HTTP 200.
 - `/health` JSON shows PostgreSQL mode on Railway, or `services.database=connected` on the older Render backend.
 - `npm --prefix v3 run security:cors:smoke` passes: `https://gcsc.store` is allowed, an external origin is rejected, and admin audit guard remains HTTP 401 without JWT.
+- `npm --prefix v3 run security:env:check` passes in the production environment without printing secrets.
 - `/health` includes baseline security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
 - Render logs show `Database connection: OK`.
 - Railway logs show the server listening on the injected `PORT`.

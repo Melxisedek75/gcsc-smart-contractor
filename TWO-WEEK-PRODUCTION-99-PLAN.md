@@ -142,6 +142,7 @@ Audit trail progress, 2026-05-29:
 - Added baseline HTTP security headers in `v3/pure-server.js` with regression coverage in `npm --prefix v3 run test:pg-storage`.
 - Added live baseline security header verification to `npm --prefix v3 run smoke:production` and the scheduled GitHub Actions smoke path.
 - Added backend security header status to `npm --prefix v3 run ops:status` ignored JSON evidence reports.
+- Added `npm --prefix v3 run security:env:check` to validate production `NODE_ENV`, `JWT_SECRET`, `DATABASE_URL`, strict frontend/CORS origins, rate-limit status, and admin bootstrap variables without printing secret values.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -793,6 +794,8 @@ Day 10 authorization notes, 2026-05-29:
 - Production CORS smoke verifies `https://gcsc.store` is allowed, an external origin is rejected with HTTP 403, and `/api/admin/audit-events` remains HTTP 401 without JWT.
 - Added baseline HTTP security headers for backend responses: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
 - Production smoke now checks the live `/health` response for all baseline security headers.
+- Added `v3/scripts/check-security-env.mjs`, `npm --prefix v3 run security:env:check`, and `v3/tests/security-env-check-script.test.js`.
+- The security env check fails on weak/missing production env, wildcard/local CORS origins, disabled rate limits, unsafe bootstrap state, and never prints JWT, database URL, or admin password values.
 
 Verification:
 
