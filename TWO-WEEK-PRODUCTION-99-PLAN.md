@@ -137,6 +137,7 @@ Audit trail progress, 2026-05-29:
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
+- Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -320,6 +321,8 @@ Day 3 backup notes, 2026-05-29:
 - Added `v3/tests/backup-script.test.js`.
 - Added `backups/` to `.gitignore`.
 - Verification passed: `node v3\tests\backup-script.test.js`, `git check-ignore backups/test.dump`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`.
+- Added `v3/scripts/check-migration-readiness.mjs`, `npm --prefix v3 run db:migrations:check`, and `v3/tests/migration-readiness-script.test.js`.
+- Migration readiness check confirms the production SQL order and warns not to apply `database/migrations/001-add-contractor-verifications.sql` to v3 without manual comparison.
 
 Verification:
 

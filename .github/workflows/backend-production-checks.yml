@@ -70,6 +70,12 @@ jobs:
       - name: Admin bootstrap env check script validation
         run: npm --prefix v3 run test:admin-bootstrap-check-script
 
+      - name: Migration readiness script validation
+        run: npm --prefix v3 run test:migration-readiness-script
+
+      - name: Migration readiness check
+        run: npm --prefix v3 run db:migrations:check
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production
 

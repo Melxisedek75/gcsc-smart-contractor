@@ -295,6 +295,12 @@ If testing before mainnet deployment, use the testnet chain ID and testnet endpo
 
 ## 8. PostgreSQL Migrations
 
+Before running migrations, verify the expected production migration files and order:
+
+```bash
+npm --prefix v3 run db:migrations:check
+```
+
 Run these from the repository root, using the Render database connection string in your terminal:
 
 ```bash

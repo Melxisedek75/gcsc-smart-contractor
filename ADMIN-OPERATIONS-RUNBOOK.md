@@ -188,6 +188,14 @@ Risky operations include:
 - Schema change.
 - Real-money pilot data cleanup.
 
+Before any migration, run:
+
+```powershell
+npm --prefix v3 run db:migrations:check
+```
+
+This validates the expected production SQL files and warns about legacy migrations that should not be applied to the v3 backend without manual comparison.
+
 Recommended command from a trusted local terminal with `DATABASE_URL` set:
 
 ```bash
