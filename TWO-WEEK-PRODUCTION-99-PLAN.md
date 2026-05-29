@@ -268,17 +268,25 @@ Goal: prove data can be backed up and restored before any real-money pilot.
 
 ### Task 3.1 — Backup Script
 
-- [ ] Create `v3/scripts/backup-postgres.mjs`.
-- [ ] Script must require `DATABASE_URL`.
-- [ ] Script must run `pg_dump` with custom format.
-- [ ] Script must write backup to a local `backups/` folder ignored by git.
-- [ ] Script must print backup file path and size.
-- [ ] Add `backups/` to `.gitignore` if missing.
-- [ ] Add npm script `db:backup`.
+- [x] Create `v3/scripts/backup-postgres.mjs`.
+- [x] Script must require `DATABASE_URL`.
+- [x] Script must run `pg_dump` with custom format.
+- [x] Script must write backup to a local `backups/` folder ignored by git.
+- [x] Script must print backup file path and size.
+- [x] Add `backups/` to `.gitignore` if missing.
+- [x] Add npm script `db:backup`.
 
 TDD:
 
-- [ ] Add a validator test that checks script exists, refuses missing `DATABASE_URL`, and writes only to ignored backup paths.
+- [x] Add a validator test that checks script exists, refuses missing `DATABASE_URL`, and writes only to ignored backup paths.
+
+Day 3 backup notes, 2026-05-29:
+
+- Added `v3/scripts/backup-postgres.mjs`.
+- Added `npm --prefix v3 run db:backup`.
+- Added `v3/tests/backup-script.test.js`.
+- Added `backups/` to `.gitignore`.
+- Verification passed: `node v3\tests\backup-script.test.js`, `git check-ignore backups/test.dump`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`.
 
 Verification:
 
@@ -297,10 +305,15 @@ git push origin main
 
 ### Task 3.2 — Restore Drill Documentation
 
-- [ ] Create `POSTGRES-RESTORE-DRILL.md`.
-- [ ] Include exact restore command for a non-production DB.
-- [ ] Include evidence checklist.
-- [ ] Do not include real DB URLs or passwords.
+- [x] Create `POSTGRES-RESTORE-DRILL.md`.
+- [x] Include exact restore command for a non-production DB.
+- [x] Include evidence checklist.
+- [x] Do not include real DB URLs or passwords.
+
+Day 3 restore notes, 2026-05-29:
+
+- Added `POSTGRES-RESTORE-DRILL.md` with backup creation, non-production restore command, verification queries, evidence requirements, pass criteria, and fail criteria.
+- No live restore was executed because it requires founder-provided non-production PostgreSQL connection details.
 
 Verification:
 

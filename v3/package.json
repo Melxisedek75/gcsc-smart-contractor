@@ -11,6 +11,7 @@
     "test:pg-workflow": "node tests/postgres-workflow-smoke.js",
     "smoke:production": "node scripts/production-smoke.mjs",
     "check:auth-channel-verification": "node scripts/validate-auth-channel-verification.mjs",
+    "db:backup": "node scripts/backup-postgres.mjs",
     "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql"
   },
   "engines": {
