@@ -414,6 +414,7 @@ Day 4 CI notes, 2026-05-29:
 - Workflow uses only public endpoints and no repository secrets.
 - Added daily `14:00 UTC` scheduled execution for public production smoke and `ops:status`.
 - Added `v3/tests/ci-monitoring-workflow.test.js` and `npm --prefix v3 run test:ci-monitoring-workflow` to prevent accidental removal of the schedule, public smoke, ops status, or no-secrets constraint.
+- Added CI validation for `npm --prefix v3 run test:security-env-check-script` so the secret-safe production env checker cannot be removed silently.
 
 Verification:
 

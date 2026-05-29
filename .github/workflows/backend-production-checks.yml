@@ -81,6 +81,9 @@ jobs:
       - name: Security CORS smoke script validation
         run: npm --prefix v3 run test:security-cors-smoke-script
 
+      - name: Security env check script validation
+        run: npm --prefix v3 run test:security-env-check-script
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production
 

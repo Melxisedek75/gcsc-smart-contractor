@@ -124,6 +124,14 @@ npm --prefix v3 run ops:status
 
 The operations snapshot records a critical `backend security headers` check in the ignored JSON evidence report.
 
+CI coverage:
+
+```powershell
+npm --prefix v3 run test:ci-monitoring-workflow
+```
+
+The GitHub Actions workflow now validates the security env checker script without requiring repository secrets.
+
 ## Remaining Security Blockers
 
 - First production admin account must be created and bootstrap disabled.
