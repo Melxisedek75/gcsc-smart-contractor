@@ -182,6 +182,7 @@ Use the first output for `JWT_SECRET`. Use the second output for `ENCRYPTION_SEC
 The production Dashboard admin screens require a real user with role `admin`. The backend can create the first admin account safely during startup.
 
 Operational details are in `ADMIN-OPERATIONS-RUNBOOK.md`.
+The founder-facing action list is in `FOUNDER-ACTION-PACKET.md`.
 
 Set these Railway variables:
 

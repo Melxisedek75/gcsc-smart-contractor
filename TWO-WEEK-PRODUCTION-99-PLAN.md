@@ -132,6 +132,7 @@ Audit trail progress, 2026-05-29:
 - GitHub Pages build was updated from the verified frontend bundle.
 - Production smoke now checks bundle freshness markers for `gcsc.store` and reports a stale-bundle warning for Railway frontend unless `STRICT_RAILWAY_FRONTEND=1` is enabled.
 - Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
+- Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -175,6 +176,7 @@ Blocked, 2026-05-29:
 - Missing founder-provided Railway admin variables and password.
 - Codex must not invent or enter admin credentials.
 - Continue with safe non-secret tasks until founder confirms admin variables are set.
+- Founder-facing steps are consolidated in `FOUNDER-ACTION-PACKET.md`.
 
 Codex action after founder confirms variables are set:
 

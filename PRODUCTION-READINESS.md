@@ -53,6 +53,7 @@ Go/no-go package:
 
 - `PILOT-RUNBOOK.md` defines the controlled non-money pilot flow.
 - `PILOT-GO-NOGO.md` defines current pass/fail/blocked gates.
+- `FOUNDER-ACTION-PACKET.md` lists the founder-controlled actions needed to unblock admin setup, Railway frontend redeploy, monitoring, restore drill, Stripe test mode, XPR testnet settlement, contract permission verification, and legal/security review.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 
 ## Current Live Stack
@@ -148,9 +149,9 @@ Verification evidence:
 
 ## Recommended Next Build Sequence
 
-1. Create the first admin account in Railway using `ADMIN_BOOTSTRAP_ENABLED=true`.
+1. Follow `FOUNDER-ACTION-PACKET.md` Priority 1 to create the first admin account and disable bootstrap.
 2. Log in, verify Admin Documents and Audit Log.
-3. Disable admin bootstrap and redeploy.
+3. Follow `FOUNDER-ACTION-PACKET.md` Priority 2 to redeploy Railway frontend if the strict bundle check still fails.
 4. Run the role-by-role pilot in `PILOT-RUNBOOK.md`.
 5. Configure monitoring alerts from `MONITORING-RUNBOOK.md`.
 6. Run a PostgreSQL backup and restore drill into a non-production database.

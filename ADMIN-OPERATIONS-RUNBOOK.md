@@ -22,6 +22,8 @@ It does not approve real-money escrow, lending, insurance, or token-collateral w
 
 Use this only once, when there is no admin account yet.
 
+For the full founder-controlled sequence, use `FOUNDER-ACTION-PACKET.md` Priority 1.
+
 1. Open Railway.
 2. Open the `gcsc-backend` service.
 3. Open Variables.

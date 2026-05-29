@@ -69,6 +69,8 @@ Latest full verification pass: 2026-05-29
 
 ## Founder Approvals Required
 
+Use `FOUNDER-ACTION-PACKET.md` as the step-by-step checklist for founder-controlled actions.
+
 Controlled non-money pilot requires founder approval for:
 
 1. Creating the first admin account through Railway variables.
@@ -148,8 +150,8 @@ Stop the pilot if any of these happen:
 
 ## Next Actions
 
-1. Founder creates first admin account in Railway.
-2. Founder disables bootstrap and redeploys backend.
+1. Follow `FOUNDER-ACTION-PACKET.md` Priority 1 to create first admin account in Railway.
+2. Follow `FOUNDER-ACTION-PACKET.md` Priority 2 to redeploy Railway frontend if strict smoke still shows stale bundle.
 3. Run `PILOT-RUNBOOK.md` with admin, homeowner, and contractor accounts.
 4. Configure monitoring alerts.
 5. Run PostgreSQL backup and restore drill against non-production DB.
