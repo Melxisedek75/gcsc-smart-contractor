@@ -963,9 +963,9 @@ npm --prefix v3 run smoke:production
 
 If frontend/backend changed:
 
-- [ ] Deploy.
-- [ ] Re-run smoke.
-- [ ] Update `PILOT-GO-NOGO.md`.
+- [x] Deploy not required because runtime frontend/backend code did not change.
+- [x] Re-run smoke.
+- [x] Update `PILOT-GO-NOGO.md`.
 
 Day 14 final smoke notes, 2026-05-29:
 
