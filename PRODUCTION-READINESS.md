@@ -2,6 +2,51 @@
 
 Date: 2026-05-29
 
+## Readiness Score
+
+Last full dress rehearsal: 2026-05-29
+
+| Area | Current readiness | Evidence | Main remaining blocker |
+|---|---:|---|---|
+| MVP demo | 90% | Live backend/frontend smoke, dashboard validators, trust workflow validators, pilot runbook | First real admin account still needs founder-set Railway variables and bootstrap disablement |
+| Controlled non-money pilot | 74% | Admin runbook, monitoring runbook, backup script, audit log, contractor verification guard, document review, bid guard, pilot runbook | Restore drill, monitoring setup, real admin login, and live role-by-role rehearsal are still pending |
+| Real-money production | 43% | Stripe test-mode safety checks, XPR settlement spec, smart contract build/test evidence, legal wording cleanup | No live XPR escrow settlement, no live Stripe/payout approval, no external legal/security review, no restore drill |
+
+These percentages are engineering readiness estimates, not legal approval or financial approval.
+
+## Full Dress Rehearsal Evidence
+
+2026-05-29 verification pass:
+
+- `node --check v3\pure-server.js` passed.
+- `npm --prefix v3 run test:pg-storage` passed.
+- `npm --prefix v3 run test:pg-workflow` passed.
+- `npm --prefix v3 run test:stripe-readiness` passed.
+- `npm --prefix v3 run smoke:production` passed:
+  - backend health OK;
+  - database mode `postgres`;
+  - unauthenticated admin audit endpoint returned HTTP 401;
+  - `https://gcsc.store` returned HTTP 200;
+  - Railway frontend returned HTTP 200.
+- Frontend validation/build passed in `C:\gcsc-store`:
+  - `npm run check:dashboard-live`;
+  - `npm run check:admin-documents`;
+  - `npm run check:admin-audit-log`;
+  - `npm run check:contractor-verification`;
+  - `npm run check:public-contractor-profile`;
+  - `npm run check:trust-workflow`;
+  - `npm run check:loans-financing`;
+  - `npm run check:legal-claims`;
+  - `npm run check:xpr-settlement`;
+  - `npm run build`.
+- Backup script dry-run without `DATABASE_URL` safely refused to run. Live backup/restore drill remains blocked until founder provides a non-production PostgreSQL target and permits use of production `DATABASE_URL` in a local terminal session.
+- Admin guard direct check returned HTTP 401 for `/api/admin/audit-events?limit=1` without token.
+
+Known rehearsal caveat:
+
+- `https://gcsc.store` is the current canonical pilot URL.
+- `https://gcsc-store-production.up.railway.app` may lag behind the GitHub Pages build until the Railway frontend service is manually redeployed or a Railway deploy token is provided through a secret-safe channel.
+
 ## Current Live Stack
 
 | Layer | Status | Notes |
@@ -70,6 +115,9 @@ Date: 2026-05-29
 1. Create the first admin account in Railway using `ADMIN_BOOTSTRAP_ENABLED=true`.
 2. Log in, verify Admin Documents and Audit Log.
 3. Disable admin bootstrap and redeploy.
-4. Run the admin operations checklist in `ADMIN-OPERATIONS-RUNBOOK.md`.
-5. Run a complete homeowner -> contractor -> bid -> verification -> accept flow.
-6. Add on-chain WebAuth signing and escrow settlement smoke tests.
+4. Run the role-by-role pilot in `PILOT-RUNBOOK.md`.
+5. Configure monitoring alerts from `MONITORING-RUNBOOK.md`.
+6. Run a PostgreSQL backup and restore drill into a non-production database.
+7. Run a complete homeowner -> contractor -> bid -> verification -> accept flow on live services.
+8. Add on-chain WebAuth signing and escrow settlement smoke tests.
+9. Complete Stripe test-mode payment with real Stripe test keys and signed webhook events.

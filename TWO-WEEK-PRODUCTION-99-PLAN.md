@@ -865,15 +865,25 @@ Goal: run everything as if launching pilot tomorrow.
 
 ### Task 13.1 — Full Verification Pass
 
-- [ ] Backend tests.
-- [ ] Frontend validators.
-- [ ] Frontend build.
-- [ ] Production smoke.
-- [ ] Audit log guard.
-- [ ] Admin runbook check.
-- [ ] Backup command dry-run or documented blocker.
-- [ ] XPR settlement blocker list reviewed.
-- [ ] Stripe readiness blocker list reviewed.
+- [x] Backend tests.
+- [x] Frontend validators.
+- [x] Frontend build.
+- [x] Production smoke.
+- [x] Audit log guard.
+- [x] Admin runbook check.
+- [x] Backup command dry-run or documented blocker.
+- [x] XPR settlement blocker list reviewed.
+- [x] Stripe readiness blocker list reviewed.
+
+Day 13 full dress rehearsal notes, 2026-05-29:
+
+- Backend verification passed: `node --check v3\pure-server.js`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`, `npm --prefix v3 run test:stripe-readiness`, and `npm --prefix v3 run smoke:production`.
+- Frontend verification passed: dashboard live, admin documents, admin audit log, contractor verification, public contractor profile, trust workflow, loans/financing, legal claims, XPR settlement validators, and `npm run build`.
+- Production smoke confirmed backend health OK, PostgreSQL mode, `gcsc.store` HTTP 200, Railway frontend HTTP 200, and unauthenticated admin audit guard HTTP 401.
+- Backup script safely refused to run without `DATABASE_URL`; live backup/restore drill remains blocked until founder provides a non-production restore database and permits a production backup run.
+- Admin runbook remains operationally valid, but first real admin creation is still blocked on founder-set Railway variables.
+- XPR settlement blocker list remains: real testnet signed transaction, Hyperion confirmation, contract deployment/permission verification, and founder approval before any real token movement.
+- Stripe blocker list remains: founder-provided Stripe test keys, Railway webhook setup, real Stripe test-mode card run, Connect payout design, legal review, and explicit live-mode approval.
 
 Commands:
 
@@ -895,12 +905,21 @@ npm run build
 
 ### Task 13.2 — Readiness Score Update
 
-- [ ] Update `PRODUCTION-READINESS.md`.
-- [ ] Add readiness percentages:
+- [x] Update `PRODUCTION-READINESS.md`.
+- [x] Add readiness percentages:
   - MVP demo;
   - pilot production;
   - real-money production.
-- [ ] List exact remaining blockers.
+- [x] List exact remaining blockers.
+
+Day 13 readiness score notes, 2026-05-29:
+
+- Updated `PRODUCTION-READINESS.md` with current readiness estimates:
+  - MVP demo: 90%;
+  - controlled non-money pilot: 74%;
+  - real-money production: 43%.
+- Added full dress rehearsal evidence and current blockers.
+- Marked readiness percentages as engineering estimates, not legal or financial approval.
 
 Commit:
 
