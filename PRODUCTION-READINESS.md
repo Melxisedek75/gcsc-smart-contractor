@@ -46,6 +46,8 @@ Known rehearsal caveat:
 
 - `https://gcsc.store` is the current canonical pilot URL.
 - `https://gcsc-store-production.up.railway.app` may lag behind the GitHub Pages build until the Railway frontend service is manually redeployed or a Railway deploy token is provided through a secret-safe channel.
+- `npm --prefix v3 run smoke:production` now verifies current frontend bundle markers on `gcsc.store` and reports Railway frontend stale bundles as warnings.
+- Use `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` and `STRICT_RAILWAY_FRONTEND=1` after redeploy to prove the Railway frontend bundle is current.
 
 Go/no-go package:
 

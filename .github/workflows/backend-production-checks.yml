@@ -53,5 +53,8 @@ jobs:
       - name: PostgreSQL workflow smoke
         run: npm --prefix v3 run test:pg-workflow
 
+      - name: Production smoke script validation
+        run: npm --prefix v3 run test:production-smoke-script
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production

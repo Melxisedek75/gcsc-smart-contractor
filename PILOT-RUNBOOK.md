@@ -80,6 +80,8 @@ Optional browser checks:
 
 If `gcsc.store` is current but Railway frontend still shows stale content, use `gcsc.store` for the pilot and redeploy the Railway frontend later.
 
+Use `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` if the Railway frontend service needs to be brought current. After redeploy, run strict smoke with `STRICT_RAILWAY_FRONTEND=1`.
+
 ## Admin Setup Gate
 
 If the admin account does not exist yet, stop the pilot and complete `ADMIN-OPERATIONS-RUNBOOK.md`.

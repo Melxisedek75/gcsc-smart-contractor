@@ -411,6 +411,20 @@ Expected:
 }
 ```
 
+Frontend freshness note:
+
+- The smoke command requires the canonical `https://gcsc.store` bundle to include current production markers.
+- Railway frontend may show `frontend bundle stale warning` until its frontend service is redeployed.
+- After Railway frontend redeploy, run strict verification:
+
+```powershell
+$env:STRICT_RAILWAY_FRONTEND="1"
+npm --prefix v3 run smoke:production
+Remove-Item Env:\STRICT_RAILWAY_FRONTEND
+```
+
+Use `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` for the manual Railway redeploy steps.
+
 Admin audit endpoint after admin login:
 
 ```bash

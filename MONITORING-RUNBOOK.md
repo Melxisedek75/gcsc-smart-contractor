@@ -12,7 +12,7 @@ This runbook does not require secrets and does not create paid monitoring accoun
 |---|---|---|
 | Backend health | `https://gcsc-backend-production.up.railway.app/health` | HTTP 200, JSON `status=ok`, `database=postgres` |
 | Main site | `https://gcsc.store/` | HTTP 200, built frontend shell |
-| Railway frontend | `https://gcsc-store-production.up.railway.app/` | HTTP 200, built frontend shell |
+| Railway frontend | `https://gcsc-store-production.up.railway.app/` | HTTP 200, built frontend shell; strict bundle freshness after redeploy |
 | Admin audit unauthenticated guard | `https://gcsc-backend-production.up.railway.app/api/admin/audit-events?limit=1` | HTTP 401 without JWT |
 
 ## Local Smoke Command
@@ -21,6 +21,14 @@ Run after every deploy:
 
 ```powershell
 npm --prefix v3 run smoke:production
+```
+
+The smoke script treats `gcsc.store` as the canonical strict frontend. Railway frontend staleness is reported as a warning until the Railway frontend service is redeployed. After a Railway frontend redeploy, run:
+
+```powershell
+$env:STRICT_RAILWAY_FRONTEND="1"
+npm --prefix v3 run smoke:production
+Remove-Item Env:\STRICT_RAILWAY_FRONTEND
 ```
 
 Expected output:
@@ -98,4 +106,3 @@ Do not record:
 - Passwords.
 - Webhook secrets.
 - Private incident channels.
-

@@ -130,6 +130,8 @@ Audit trail progress, 2026-05-29:
 - Frontend Admin Audit Log now labels and filters the expanded event set: project, bid submission/acceptance, milestone lifecycle, chain transaction, financing, and payment intent events.
 - Frontend verification passed: `npm run check:admin-audit-log`, full dashboard validators, and `npm run build`.
 - GitHub Pages build was updated from the verified frontend bundle.
+- Production smoke now checks bundle freshness markers for `gcsc.store` and reports a stale-bundle warning for Railway frontend unless `STRICT_RAILWAY_FRONTEND=1` is enabled.
+- Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -567,6 +569,7 @@ Day 7 live deploy check, 2026-05-29:
 - `https://gcsc-store-production.up.railway.app/` still serves an older frontend bundle with the previous long action names.
 - Blocker: local Railway CLI is not installed and no Railway API token is available in the workspace, so Codex cannot force-redeploy the Railway frontend service from here.
 - Safe next action: founder can trigger redeploy in Railway UI for the frontend service, or provide a Railway token through Railway/Codex secret handling, not through git.
+- Added strict smoke support through `STRICT_RAILWAY_FRONTEND=1`; normal smoke now keeps `gcsc.store` strict and reports Railway frontend staleness as a warning until redeploy is available.
 
 Verification:
 

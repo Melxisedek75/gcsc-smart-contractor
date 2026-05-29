@@ -1,6 +1,14 @@
 const backendUrl = (process.env.BACKEND_URL || 'https://gcsc-backend-production.up.railway.app').replace(/\/+$/, '');
 const mainSiteUrl = (process.env.MAIN_SITE_URL || 'https://gcsc.store').replace(/\/+$/, '');
 const railwayFrontendUrl = (process.env.RAILWAY_FRONTEND_URL || 'https://gcsc-store-production.up.railway.app').replace(/\/+$/, '');
+const strictRailwayFrontend = process.env.STRICT_RAILWAY_FRONTEND === '1';
+
+const requiredFrontendBundleMarkers = [
+  'Milestone Released',
+  'Chain Tx Failed',
+  'Payment intent created',
+  'project.created',
+];
 
 async function readJson(url) {
   const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } });
@@ -30,6 +38,37 @@ async function requireFrontend(label, url) {
     throw new Error(`${label} did not return the expected built frontend shell`);
   }
   console.log(`${label}: frontend shell ok`);
+  return { html, url: response.url || url };
+}
+
+function extractBundleUrl(label, html, baseUrl) {
+  const match = html.match(/<script[^>]+src=["']([^"']*assets\/[^"']+\.js)["']/);
+  if (!match) {
+    throw new Error(`${label} did not expose a built frontend JS bundle`);
+  }
+  return new URL(match[1], baseUrl).toString();
+}
+
+async function checkFrontendBundle(label, url, options = {}) {
+  const { required = true } = options;
+  const { html, url: resolvedUrl } = await requireFrontend(label, url);
+  const bundleUrl = extractBundleUrl(label, html, resolvedUrl);
+  const response = await fetch(`${bundleUrl}?smoke=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } });
+  if (response.status !== 200) {
+    throw new Error(`${label} bundle expected HTTP 200, got ${response.status}`);
+  }
+  const bundle = await response.text();
+  const missing = requiredFrontendBundleMarkers.filter((marker) => !bundle.includes(marker));
+  if (missing.length === 0) {
+    console.log(`${label}: frontend bundle current`);
+    return true;
+  }
+  const message = `${label}: frontend bundle stale warning: missing ${missing.join(', ')}`;
+  if (required) {
+    throw new Error(message);
+  }
+  console.warn(message);
+  return false;
 }
 
 async function run() {
@@ -50,8 +89,8 @@ async function run() {
     throw new Error(`admin audit unauthenticated guard expected HTTP 401, got ${adminAuditResponse.status}`);
   }
 
-  await requireFrontend('main site', `${mainSiteUrl}/`);
-  await requireFrontend('railway frontend', `${railwayFrontendUrl}/`);
+  await checkFrontendBundle('main site', `${mainSiteUrl}/`, { required: true });
+  await checkFrontendBundle('railway frontend', `${railwayFrontendUrl}/`, { required: strictRailwayFrontend });
 }
 
 run().catch((error) => {

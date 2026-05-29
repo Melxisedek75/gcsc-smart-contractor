@@ -12,6 +12,12 @@ assert.strictEqual(
   'package.json must expose smoke:production'
 );
 
+assert.strictEqual(
+  pkg.scripts['test:production-smoke-script'],
+  'node tests/production-smoke-script.test.js',
+  'package.json must expose test:production-smoke-script'
+);
+
 const source = fs.readFileSync(scriptPath, 'utf8');
 
 for (const required of [
@@ -22,6 +28,14 @@ for (const required of [
   '/api/admin/audit-events?limit=1',
   'status === 401',
   'database',
+  'requiredFrontendBundleMarkers',
+  'Milestone Released',
+  'Chain Tx Failed',
+  'Payment intent created',
+  'project.created',
+  'STRICT_RAILWAY_FRONTEND',
+  'frontend bundle current',
+  'frontend bundle stale warning',
 ]) {
   assert.ok(source.includes(required), `production smoke script must include ${required}`);
 }
