@@ -815,20 +815,35 @@ Goal: create exact pilot script for founder/customer demo.
 
 ### Task 12.1 — Create Pilot Runbook
 
-- [ ] Create `PILOT-RUNBOOK.md`.
-- [ ] Include exact roles:
+- [x] Create `PILOT-RUNBOOK.md`.
+- [x] Include exact roles:
   - admin;
   - homeowner;
   - contractor.
-- [ ] Include full click-by-click flow.
-- [ ] Include expected backend audit events.
-- [ ] Include what is demo-only and what is not real-money enabled.
+- [x] Include full click-by-click flow.
+- [x] Include expected backend audit events.
+- [x] Include what is demo-only and what is not real-money enabled.
+
+Day 12 pilot runbook notes, 2026-05-29:
+
+- Added `PILOT-RUNBOOK.md`.
+- Runbook covers admin, homeowner, and contractor roles.
+- Runbook includes click-by-click flows for contractor onboarding, admin document review, homeowner project creation, contractor bidding, verified bid acceptance, milestone workflow, XPR/WebAuth transaction evidence, and financing precheck review.
+- Expected audit events are mapped for `profile.updated`, `document.submitted`, `document.reviewed`, `wallet.connected`, `bid.accepted`, `financing.precheck.created`, `escrow.chain_tx.confirmed`, and `escrow.chain_tx.failed`.
+- Real-money boundaries are explicit: no live Stripe charges, contractor payouts, live lending, insurance assignment, mainnet escrow settlement, or real token movement during pilot.
+- Admin setup remains a gate until the first admin account is created and bootstrap is disabled.
 
 ### Task 12.2 — Add Smoke Checklist
 
-- [ ] Add pre-demo checks.
-- [ ] Add post-demo checks.
-- [ ] Add rollback step if demo breaks.
+- [x] Add pre-demo checks.
+- [x] Add post-demo checks.
+- [x] Add rollback step if demo breaks.
+
+Day 12 smoke/rollback notes, 2026-05-29:
+
+- Pre-demo checks require `npm --prefix v3 run smoke:production`, dashboard open check, and current/stale frontend note.
+- Post-demo checks require Audit Log review and non-secret evidence capture.
+- Rollback steps cover frontend-only failures, backend health/API failures, database issues, and security incidents.
 
 Verification:
 
