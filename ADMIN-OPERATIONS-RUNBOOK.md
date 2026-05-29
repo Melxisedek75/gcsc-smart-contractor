@@ -101,7 +101,19 @@ Priority events:
 | `document.submitted` | Starts compliance review. |
 | `document.reviewed` | Changes contractor verification state. |
 | `wallet.connected` | Links platform account to wallet identity. |
+| `project.created` | Starts homeowner project scope and budget record. |
+| `bid.submitted` | Creates contractor proposal record for a homeowner project. |
 | `bid.accepted` | Creates homeowner/contractor commitment and may trigger escrow flow. |
+| `escrow.milestone.created` | Defines milestone amount and acceptance checkpoint. |
+| `escrow.milestone.submitted` | Contractor claims milestone work is complete. |
+| `escrow.milestone.approved` | Homeowner confirms submitted work is acceptable. |
+| `escrow.milestone.released` | Platform records release state; this is not proof of real-money payout without verified chain/payment evidence. |
+| `escrow.milestone.disputed` | Pauses trust workflow and requires review before further release. |
+| `escrow.chain_tx.recorded` | Stores XPR/WebAuth transaction evidence before verification. |
+| `escrow.chain_tx.confirmed` | Hyperion found the expected contract action. |
+| `escrow.chain_tx.failed` | Hyperion could not confirm the expected contract action. |
+| `financing.precheck.created` | User requested demo-only review of a future financing workflow. |
+| `payment.intent.created` | Stripe test-mode PaymentIntent was created; live payments remain disabled until gates pass. |
 
 If an unexpected event appears:
 
@@ -202,4 +214,3 @@ Do not accept real homeowner funds or contractor payouts until all gates pass.
 | Payments | Stripe test mode and live mode reviewed; webhook signatures verified. |
 | Legal | Escrow, token, financing, insurance, and compliance language reviewed. |
 | Security | External review or structured internal security checklist completed. |
-

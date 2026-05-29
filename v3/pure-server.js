@@ -2934,6 +2934,23 @@ const routes = {
     const body = await parseBody(req);
     if (!body.title || !body.description) return json(res, 400, { error: 'Title and description required' });
     const project = await createStoredProject(user.userId, body);
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: user.userId,
+      action: 'project.created',
+      entityType: 'project',
+      entityId: project.id,
+      metadata: {
+        project_id: project.id,
+        title: project.title,
+        category: project.category,
+        budget_min: project.budget_min,
+        budget_max: project.budget_max,
+        location: project.location,
+        timeline_days: project.timeline_days,
+        status: project.status,
+      },
+    });
     json(res, 201, { message: 'Project created', project });
   },
 
@@ -2978,6 +2995,22 @@ const routes = {
     if (!project) return json(res, 404, { error: 'Project not found' });
 
     const bid = await createStoredBid(user.userId, body);
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: project.homeowner_id,
+      action: 'bid.submitted',
+      entityType: 'bid',
+      entityId: bid.id,
+      metadata: {
+        bid_id: bid.id,
+        project_id: bid.project_id,
+        contractor_id: bid.contractor_id,
+        homeowner_id: project.homeowner_id,
+        amount: bid.amount,
+        proposed_timeline_days: bid.proposed_timeline_days,
+        status: bid.status,
+      },
+    });
     json(res, 201, { message: 'Bid placed', bid });
   },
 
@@ -3050,6 +3083,20 @@ const routes = {
 
     try {
       const milestone = await createStoredMilestone(escrow, await parseBody(req));
+      await recordAuditEvent(req, {
+        actorId: user.userId,
+        targetUserId: escrow.contractor_id,
+        action: 'escrow.milestone.created',
+        entityType: 'milestone',
+        entityId: milestone.id,
+        metadata: {
+          escrow_id: escrow.id,
+          milestone_id: milestone.id,
+          project_id: escrow.project_id,
+          amount: milestone.amount,
+          status: milestone.status,
+        },
+      });
       json(res, 201, { message: 'Milestone created', milestone });
     } catch (err) {
       json(res, err.status || 400, { error: err.message || 'Could not create milestone' });
@@ -3069,6 +3116,20 @@ const routes = {
     if (milestone.status !== 'pending') return json(res, 400, { error: 'Milestone must be pending' });
 
     const updated = await updateStoredMilestoneStatus(milestone, 'submitted', `contractor:${user.userId}`);
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: escrow.homeowner_id,
+      action: 'escrow.milestone.submitted',
+      entityType: 'milestone',
+      entityId: updated.id,
+      metadata: {
+        escrow_id: escrow.id,
+        milestone_id: updated.id,
+        project_id: escrow.project_id,
+        amount: updated.amount,
+        status: updated.status,
+      },
+    });
     json(res, 200, { message: 'Milestone submitted', milestone: updated });
   },
 
@@ -3085,6 +3146,20 @@ const routes = {
     if (milestone.status !== 'submitted') return json(res, 400, { error: 'Milestone must be submitted' });
 
     const updated = await updateStoredMilestoneStatus(milestone, 'approved', `homeowner:${user.userId}`);
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: escrow.contractor_id,
+      action: 'escrow.milestone.approved',
+      entityType: 'milestone',
+      entityId: updated.id,
+      metadata: {
+        escrow_id: escrow.id,
+        milestone_id: updated.id,
+        project_id: escrow.project_id,
+        amount: updated.amount,
+        status: updated.status,
+      },
+    });
     json(res, 200, { message: 'Milestone approved', milestone: updated });
   },
 
@@ -3105,6 +3180,22 @@ const routes = {
     const updatedEscrow = releasedTotal >= escrow.total_amount
       ? await updateStoredEscrowStatus(escrow, 'completed')
       : escrow;
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: escrow.contractor_id,
+      action: 'escrow.milestone.released',
+      entityType: 'milestone',
+      entityId: updated.id,
+      metadata: {
+        escrow_id: escrow.id,
+        milestone_id: updated.id,
+        project_id: escrow.project_id,
+        amount: updated.amount,
+        status: updated.status,
+        released_total: releasedTotal,
+        escrow_status: updatedEscrow.status,
+      },
+    });
     json(res, 200, { message: 'Milestone released', milestone: updated, escrow: updatedEscrow });
   },
 
@@ -3123,6 +3214,21 @@ const routes = {
 
     const updated = await updateStoredMilestoneStatus(milestone, 'disputed', `user:${user.userId}`);
     const updatedEscrow = await updateStoredEscrowStatus(escrow, 'disputed');
+    await recordAuditEvent(req, {
+      actorId: user.userId,
+      targetUserId: escrow.homeowner_id === user.userId ? escrow.contractor_id : escrow.homeowner_id,
+      action: 'escrow.milestone.disputed',
+      entityType: 'milestone',
+      entityId: updated.id,
+      metadata: {
+        escrow_id: escrow.id,
+        milestone_id: updated.id,
+        project_id: escrow.project_id,
+        amount: updated.amount,
+        status: updated.status,
+        escrow_status: updatedEscrow.status,
+      },
+    });
     json(res, 200, { message: 'Milestone disputed', milestone: updated, escrow: updatedEscrow });
   },
 
@@ -3140,6 +3246,24 @@ const routes = {
 
     try {
       const chainTx = await createStoredMilestoneChainTx(milestone, escrow, user.userId, await parseBody(req));
+      await recordAuditEvent(req, {
+        actorId: user.userId,
+        targetUserId: escrow.homeowner_id === user.userId ? escrow.contractor_id : escrow.homeowner_id,
+        action: 'escrow.chain_tx.recorded',
+        entityType: 'milestone_chain_tx',
+        entityId: chainTx.id,
+        metadata: {
+          escrow_id: escrow.id,
+          milestone_id: milestone.id,
+          project_id: escrow.project_id,
+          action: chainTx.action,
+          tx_id: chainTx.tx_id,
+          chain_id: chainTx.chain_id,
+          contract_account: chainTx.contract_account,
+          actor: chainTx.actor,
+          status: chainTx.status,
+        },
+      });
       json(res, 201, { message: 'Chain transaction recorded', chain_tx: chainTx });
     } catch (err) {
       json(res, err.status || 400, { error: err.message || 'Could not record chain transaction' });

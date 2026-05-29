@@ -717,6 +717,23 @@ async function waitForServer(child) {
     assert.strictEqual(bidAudit.data.events[0].entity_id, bid.data.bid.id);
     assert.strictEqual(bidAudit.data.events[0].metadata.escrow_id, accepted.data.escrow_id);
 
+    const projectAudit = await request('GET', '/api/admin/audit-events?action=project.created', null, adminToken);
+    assert.strictEqual(projectAudit.status, 200);
+    assert.strictEqual(projectAudit.data.events.length, 1);
+    assert.strictEqual(projectAudit.data.events[0].actor_id, owner.data.user.id);
+    assert.strictEqual(projectAudit.data.events[0].entity_id, project.data.project.id);
+    assert.strictEqual(projectAudit.data.events[0].metadata.category, 'remodel');
+    assert.strictEqual(projectAudit.data.events[0].metadata.budget_max, 5000);
+
+    const bidSubmittedAudit = await request('GET', '/api/admin/audit-events?action=bid.submitted', null, adminToken);
+    assert.strictEqual(bidSubmittedAudit.status, 200);
+    assert.strictEqual(bidSubmittedAudit.data.events.length, 1);
+    assert.strictEqual(bidSubmittedAudit.data.events[0].actor_id, contractor.data.user.id);
+    assert.strictEqual(bidSubmittedAudit.data.events[0].target_user_id, owner.data.user.id);
+    assert.strictEqual(bidSubmittedAudit.data.events[0].entity_id, bid.data.bid.id);
+    assert.strictEqual(bidSubmittedAudit.data.events[0].metadata.project_id, project.data.project.id);
+    assert.strictEqual(bidSubmittedAudit.data.events[0].metadata.amount, 2500);
+
     await stopServer(child);
     fs.rmSync(jsonDbPath, { force: true });
     child = startServer();
@@ -770,9 +787,24 @@ async function waitForServer(child) {
     assert.strictEqual(milestone.status, 201);
     assert.strictEqual(milestone.data.milestone.status, 'pending');
 
+    const milestoneCreatedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.created', null, adminToken);
+    assert.strictEqual(milestoneCreatedAudit.status, 200);
+    assert.strictEqual(milestoneCreatedAudit.data.events.length, 1);
+    assert.strictEqual(milestoneCreatedAudit.data.events[0].actor_id, owner.data.user.id);
+    assert.strictEqual(milestoneCreatedAudit.data.events[0].target_user_id, contractor.data.user.id);
+    assert.strictEqual(milestoneCreatedAudit.data.events[0].entity_id, milestone.data.milestone.id);
+    assert.strictEqual(milestoneCreatedAudit.data.events[0].metadata.escrow_id, accepted.data.escrow_id);
+
     const submitted = await request('POST', `/api/milestones/${milestone.data.milestone.id}/submit`, null, contractorLogin.data.token);
     assert.strictEqual(submitted.status, 200);
     assert.strictEqual(submitted.data.milestone.status, 'submitted');
+
+    const milestoneSubmittedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.submitted', null, adminToken);
+    assert.strictEqual(milestoneSubmittedAudit.status, 200);
+    assert.strictEqual(milestoneSubmittedAudit.data.events.length, 1);
+    assert.strictEqual(milestoneSubmittedAudit.data.events[0].actor_id, contractor.data.user.id);
+    assert.strictEqual(milestoneSubmittedAudit.data.events[0].target_user_id, owner.data.user.id);
+    assert.strictEqual(milestoneSubmittedAudit.data.events[0].entity_id, milestone.data.milestone.id);
 
     const earlyRelease = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
     assert.strictEqual(earlyRelease.status, 400);
@@ -781,9 +813,24 @@ async function waitForServer(child) {
     assert.strictEqual(approved.status, 200);
     assert.strictEqual(approved.data.milestone.status, 'approved');
 
+    const milestoneApprovedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.approved', null, adminToken);
+    assert.strictEqual(milestoneApprovedAudit.status, 200);
+    assert.strictEqual(milestoneApprovedAudit.data.events.length, 1);
+    assert.strictEqual(milestoneApprovedAudit.data.events[0].actor_id, owner.data.user.id);
+    assert.strictEqual(milestoneApprovedAudit.data.events[0].target_user_id, contractor.data.user.id);
+    assert.strictEqual(milestoneApprovedAudit.data.events[0].entity_id, milestone.data.milestone.id);
+
     const released = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
     assert.strictEqual(released.status, 200);
     assert.strictEqual(released.data.milestone.status, 'released');
+
+    const milestoneReleasedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.released', null, adminToken);
+    assert.strictEqual(milestoneReleasedAudit.status, 200);
+    assert.strictEqual(milestoneReleasedAudit.data.events.length, 1);
+    assert.strictEqual(milestoneReleasedAudit.data.events[0].actor_id, owner.data.user.id);
+    assert.strictEqual(milestoneReleasedAudit.data.events[0].target_user_id, contractor.data.user.id);
+    assert.strictEqual(milestoneReleasedAudit.data.events[0].entity_id, milestone.data.milestone.id);
+    assert.strictEqual(milestoneReleasedAudit.data.events[0].metadata.released_total, 1000);
 
     const releaseTxId = verifiedReleaseTxId;
     const releaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
@@ -798,6 +845,15 @@ async function waitForServer(child) {
     assert.strictEqual(releaseTx.data.chain_tx.tx_id, releaseTxId);
     assert.strictEqual(releaseTx.data.chain_tx.action, 'releasems');
     assert.strictEqual(releaseTx.data.chain_tx.status, 'broadcast');
+
+    const chainTxRecordedAudit = await request('GET', '/api/admin/audit-events?action=escrow.chain_tx.recorded', null, adminToken);
+    assert.strictEqual(chainTxRecordedAudit.status, 200);
+    assert.strictEqual(chainTxRecordedAudit.data.events.length, 1);
+    assert.strictEqual(chainTxRecordedAudit.data.events[0].actor_id, owner.data.user.id);
+    assert.strictEqual(chainTxRecordedAudit.data.events[0].target_user_id, contractor.data.user.id);
+    assert.strictEqual(chainTxRecordedAudit.data.events[0].entity_id, releaseTx.data.chain_tx.id);
+    assert.strictEqual(chainTxRecordedAudit.data.events[0].metadata.tx_id, releaseTxId);
+    assert.strictEqual(chainTxRecordedAudit.data.events[0].metadata.action, 'releasems');
 
     const duplicateReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
       action: 'approvems',
@@ -867,6 +923,14 @@ async function waitForServer(child) {
     assert.strictEqual(disputed.status, 200);
     assert.strictEqual(disputed.data.milestone.status, 'disputed');
     assert.strictEqual(disputed.data.escrow.status, 'disputed');
+
+    const milestoneDisputedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.disputed', null, adminToken);
+    assert.strictEqual(milestoneDisputedAudit.status, 200);
+    assert.strictEqual(milestoneDisputedAudit.data.events.length, 1);
+    assert.strictEqual(milestoneDisputedAudit.data.events[0].actor_id, contractor.data.user.id);
+    assert.strictEqual(milestoneDisputedAudit.data.events[0].target_user_id, owner.data.user.id);
+    assert.strictEqual(milestoneDisputedAudit.data.events[0].entity_id, disputedMilestone.data.milestone.id);
+    assert.strictEqual(milestoneDisputedAudit.data.events[0].metadata.escrow_status, 'disputed');
 
     const escrowAfterMilestones = await request('GET', `/api/escrow/${accepted.data.escrow_id}`, null, login.data.token);
     assert.strictEqual(escrowAfterMilestones.status, 200);

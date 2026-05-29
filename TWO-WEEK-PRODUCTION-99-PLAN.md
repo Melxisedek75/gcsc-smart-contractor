@@ -114,6 +114,21 @@ The project reaches 99% production readiness for a controlled pilot only when al
 - [ ] Legal/compliance review completed for escrow, token, financing, and insurance language.
 - [ ] Final real-money launch decision is explicitly approved by founder.
 
+Audit trail progress, 2026-05-29:
+
+- Expanded backend audit coverage for MVP trust-sensitive events:
+  - `project.created`;
+  - `bid.submitted`;
+  - `escrow.milestone.created`;
+  - `escrow.milestone.submitted`;
+  - `escrow.milestone.approved`;
+  - `escrow.milestone.released`;
+  - `escrow.milestone.disputed`;
+  - `escrow.chain_tx.recorded`.
+- Existing coverage already included `profile.updated`, `document.submitted`, `document.reviewed`, `wallet.connected`, `bid.accepted`, `financing.precheck.created`, `payment.intent.created`, `escrow.chain_tx.confirmed`, and `escrow.chain_tx.failed`.
+- Verification passed: `node --check v3\pure-server.js`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`, and `npm --prefix v3 run smoke:production`.
+- Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
+
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
 
 Goal: make the project controllable before deeper production work.

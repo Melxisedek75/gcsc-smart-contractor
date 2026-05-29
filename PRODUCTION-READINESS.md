@@ -66,7 +66,7 @@ Go/no-go package:
 | Bid safety | MVP ready | Bid acceptance blocks unverified contractors. |
 | Public contractor profile | MVP ready | Homeowners can inspect contractor profile details before accepting bids. |
 | Wallet | MVP ready | WebAuth wallet metadata can be connected/stored; on-chain signing is still a next milestone. |
-| Audit log | MVP ready | Profile, document, wallet, and bid acceptance events are recorded and exposed to admins. |
+| Audit log | MVP ready | Profile, document, wallet, project, bid, milestone, chain transaction, payment intent, and financing precheck events are recorded and exposed to admins. |
 | Financing prechecks | Demo/MVP only | Users can save future financing interest for admin review; no live lending, token lock, insurance assignment, funds issuance, or repayment routing is active. |
 | Admin operations | MVP documented | `ADMIN-OPERATIONS-RUNBOOK.md` covers first admin bootstrap, document review, audit review, backups, rollback, and real-money gates. |
 | Security hardening | Partial | CORS whitelist and endpoint rate limits are implemented; external review still pending. |
@@ -83,6 +83,33 @@ Go/no-go package:
 - Contractor verification guard before bid acceptance.
 - Public contractor profile/details view.
 - Basic WebAuth wallet connection metadata.
+
+## Audit Trail Coverage
+
+Current MVP trust-sensitive audit events:
+
+- `profile.updated`
+- `document.submitted`
+- `document.reviewed`
+- `wallet.connected`
+- `project.created`
+- `bid.submitted`
+- `bid.accepted`
+- `escrow.milestone.created`
+- `escrow.milestone.submitted`
+- `escrow.milestone.approved`
+- `escrow.milestone.released`
+- `escrow.milestone.disputed`
+- `escrow.chain_tx.recorded`
+- `escrow.chain_tx.confirmed`
+- `escrow.chain_tx.failed`
+- `financing.precheck.created`
+- `payment.intent.created`
+
+Verification evidence:
+
+- `npm --prefix v3 run test:pg-storage` verifies profile, document, wallet, financing, admin guard, and review audit behavior.
+- `npm --prefix v3 run test:pg-workflow` verifies project, bid, milestone, chain transaction recorded, chain transaction confirmed, and chain transaction failed audit behavior.
 
 ## Not Ready For Real-Money Production
 
