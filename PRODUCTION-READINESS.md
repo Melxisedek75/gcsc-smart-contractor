@@ -110,6 +110,7 @@ Verification evidence:
 
 - `npm --prefix v3 run test:pg-storage` verifies profile, document, wallet, financing, admin guard, and review audit behavior.
 - `npm --prefix v3 run test:pg-workflow` verifies project, bid, milestone, chain transaction recorded, chain transaction confirmed, and chain transaction failed audit behavior.
+- Frontend `npm run check:admin-audit-log` verifies the Dashboard labels and filters for the expanded trust event set.
 
 ## Not Ready For Real-Money Production
 

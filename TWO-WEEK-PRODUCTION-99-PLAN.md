@@ -127,6 +127,9 @@ Audit trail progress, 2026-05-29:
   - `escrow.chain_tx.recorded`.
 - Existing coverage already included `profile.updated`, `document.submitted`, `document.reviewed`, `wallet.connected`, `bid.accepted`, `financing.precheck.created`, `payment.intent.created`, `escrow.chain_tx.confirmed`, and `escrow.chain_tx.failed`.
 - Verification passed: `node --check v3\pure-server.js`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`, and `npm --prefix v3 run smoke:production`.
+- Frontend Admin Audit Log now labels and filters the expanded event set: project, bid submission/acceptance, milestone lifecycle, chain transaction, financing, and payment intent events.
+- Frontend verification passed: `npm run check:admin-audit-log`, full dashboard validators, and `npm run build`.
+- GitHub Pages build was updated from the verified frontend bundle.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate

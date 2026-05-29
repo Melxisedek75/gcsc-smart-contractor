@@ -209,7 +209,7 @@ Do not accept real homeowner funds or contractor payouts until all gates pass.
 | Backups | Backup created, restore tested on non-production DB. |
 | Monitoring | Uptime/error alerts configured for backend and frontend. |
 | Contractor verification | Required document workflow tested with approve/reject paths. |
-| Audit trail | Profile, document, wallet, and bid acceptance events verified. |
+| Audit trail | Profile, document, wallet, project, bid, milestone, chain transaction, financing, and payment events verified. |
 | Escrow settlement | XPR escrow create/fund/approve/release tested end-to-end with real signed transactions. |
 | Payments | Stripe test mode and live mode reviewed; webhook signatures verified. |
 | Legal | Escrow, token, financing, insurance, and compliance language reviewed. |
