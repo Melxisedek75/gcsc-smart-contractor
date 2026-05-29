@@ -134,13 +134,14 @@ Audit trail progress, 2026-05-29:
 - Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
-- Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
+- Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
 - Added `npm --prefix v3 run security:cors:smoke` to verify public CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - Added baseline HTTP security headers in `v3/pure-server.js` with regression coverage in `npm --prefix v3 run test:pg-storage`.
 - Added live baseline security header verification to `npm --prefix v3 run smoke:production` and the scheduled GitHub Actions smoke path.
+- Added backend security header status to `npm --prefix v3 run ops:status` ignored JSON evidence reports.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -390,6 +391,7 @@ Day 4 monitoring notes, 2026-05-29:
 - Third-party monitoring services are documented as founder-approved options only; no account setup or credentials were entered.
 - Added `v3/scripts/production-status-report.mjs`, `npm --prefix v3 run ops:status`, and `v3/tests/ops-status-report-script.test.js`.
 - The status report writes non-secret JSON to ignored `evidence/` and fails on critical public-service failures while keeping Railway frontend staleness as a warning.
+- The status report now records backend security headers as a critical check.
 - Live run passed on 2026-05-29 with zero critical failures, one known Railway frontend freshness warning, and four founder/external blockers recorded in ignored evidence output.
 
 Verification:

@@ -112,6 +112,14 @@ npm --prefix v3 run smoke:production
 
 The production smoke now fails if the live `/health` response is missing or changes any baseline security header.
 
+Operations snapshot coverage:
+
+```powershell
+npm --prefix v3 run ops:status
+```
+
+The operations snapshot records a critical `backend security headers` check in the ignored JSON evidence report.
+
 ## Remaining Security Blockers
 
 - First production admin account must be created and bootstrap disabled.

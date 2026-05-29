@@ -37,7 +37,7 @@ For a non-secret daily operations snapshot, run:
 npm --prefix v3 run ops:status
 ```
 
-This writes a JSON report under `evidence/`, which is ignored by git. The report includes backend health, admin audit 401 guard, `gcsc.store` bundle freshness, Railway frontend freshness, and the current blocked founder/external items.
+This writes a JSON report under `evidence/`, which is ignored by git. The report includes backend health, backend security headers, admin audit 401 guard, `gcsc.store` bundle freshness, Railway frontend freshness, and the current blocked founder/external items.
 
 For a public CORS/security smoke check, run:
 
@@ -100,7 +100,7 @@ It performs:
 - backend syntax and smoke tests;
 - public production smoke against backend health, backend security headers, `gcsc.store`, Railway frontend, and admin audit 401 guard;
 - public CORS smoke for allowed `gcsc.store`, denied external origin, and admin audit 401 guard;
-- non-secret `ops:status` report generation;
+- non-secret `ops:status` report generation, including backend security header status;
 - no repository secrets, no admin JWT, no database URL, and no Stripe/XPR private values.
 
 If this scheduled workflow fails, treat it as a production monitoring signal and run the manual incident flow below.

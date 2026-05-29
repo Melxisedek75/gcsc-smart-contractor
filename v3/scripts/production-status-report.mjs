@@ -18,6 +18,15 @@ const requiredFrontendBundleMarkers = [
   'project.created',
 ];
 
+const requiredSecurityHeaders = [
+  ['X-Content-Type-Options', 'nosniff'],
+  ['X-Frame-Options', 'DENY'],
+  ['Referrer-Policy', 'no-referrer'],
+  ['Strict-Transport-Security', 'max-age=31536000; includeSubDomains'],
+  ['Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"],
+  ['Permissions-Policy', 'geolocation=(), camera=(), microphone=()'],
+];
+
 function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
@@ -65,6 +74,24 @@ async function checkBackendHealth(report) {
       status: ok ? 'pass' : 'fail',
       expected: 'HTTP 200, status=ok, database=postgres',
       observed: `HTTP ${response.status}, body=${JSON.stringify(body).slice(0, 300)}`,
+      url,
+    });
+
+    const missingHeaders = requiredSecurityHeaders
+      .map(([name, expected]) => {
+        const observed = response.headers.get(name);
+        return observed === expected ? null : { name, expected, observed };
+      })
+      .filter(Boolean);
+
+    addCheck(report, {
+      label: 'backend security headers',
+      severity: 'critical',
+      status: missingHeaders.length === 0 ? 'pass' : 'fail',
+      expected: 'baseline security headers on /health',
+      observed: missingHeaders.length === 0
+        ? 'all baseline security headers present'
+        : `missing_or_changed=${JSON.stringify(missingHeaders)}`,
       url,
     });
   } catch (error) {
