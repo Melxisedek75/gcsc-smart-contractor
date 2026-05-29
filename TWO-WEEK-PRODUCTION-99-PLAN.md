@@ -765,7 +765,7 @@ Goal: remove unsupported claims and isolate legal-risk areas.
 
 ### Task 11.1 — Copy Audit
 
-- [ ] Search frontend and docs for:
+- [x] Search frontend and docs for:
   - fake user claims;
   - fake countries;
   - fake revenue;
@@ -780,11 +780,25 @@ Commands:
 rg -n "certified|guaranteed|countries|\\$[0-9]+M|live lending|insured|SEC|audit|CertiK|SOC 2|ISO" C:\gcsc-store C:\gcsc-smart-contractor
 ```
 
+Day 11 copy audit notes, 2026-05-29:
+
+- Scanned `C:\gcsc-store` and `C:\gcsc-smart-contractor` for unsupported certification, revenue, country, guarantee, live lending, audit, SEC, and insurance claims.
+- Focused frontend risks were found in `src/pages/Token.tsx` and `src/pages/Security.tsx`.
+- Backend matches were mostly investor/application docs, audit labels, runbooks, or explicit "not live" disclaimers and were not changed in this frontend wording pass.
+
 ### Task 11.2 — Fix Unsupported Claims
 
-- [ ] Replace unsupported claims with planned/in-progress wording.
-- [ ] Keep product value proposition factual.
-- [ ] Add legal review markers where founder/legal must approve.
+- [x] Replace unsupported claims with planned/in-progress wording.
+- [x] Keep product value proposition factual.
+- [x] Add legal review markers where founder/legal must approve.
+
+Day 11 frontend legal wording notes, 2026-05-29:
+
+- Added `npm run check:legal-claims`.
+- Removed token-page claims for passive income, FDIC-insured wallets, lowest card fees, 24/7 support, instant token purchase, and fixed country availability.
+- Changed Metal Pay copy to planned token access with eligibility/jurisdiction limits.
+- Changed Security page from completed/current claims to target/planned wording for app security, encryption, MFA, disaster recovery, smart contract deployment, on-chain records, audits, and digital asset legal review.
+- Verification passed: `npm run check:legal-claims`, trust/admin/profile validators, loans financing validator, and `npm run build`.
 
 Verification:
 
