@@ -160,6 +160,14 @@ curl -i "https://gcsc-backend-production.up.railway.app/api/admin/audit-events?l
 
 Expected: HTTP 401 without a token.
 
+For a local non-secret operations snapshot:
+
+```powershell
+npm --prefix v3 run ops:status
+```
+
+The command writes `evidence/production-status-*.json`, which is ignored by git. Use it for daily status review and copy only non-secret summaries into committed docs.
+
 ## PostgreSQL Backups
 
 Before any risky operation, take a backup.

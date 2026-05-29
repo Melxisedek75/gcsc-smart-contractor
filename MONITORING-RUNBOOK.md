@@ -31,6 +31,14 @@ npm --prefix v3 run smoke:production
 Remove-Item Env:\STRICT_RAILWAY_FRONTEND
 ```
 
+For a non-secret daily operations snapshot, run:
+
+```powershell
+npm --prefix v3 run ops:status
+```
+
+This writes a JSON report under `evidence/`, which is ignored by git. The report includes backend health, admin audit 401 guard, `gcsc.store` bundle freshness, Railway frontend freshness, and the current blocked founder/external items.
+
 Expected output:
 
 ```text
@@ -99,6 +107,7 @@ After monitoring is configured, record in `ADMIN-OPERATIONS-EVIDENCE.md`:
 - Alert destination type, not secret values.
 - Date/time of first successful alert test.
 - Screenshot or copied status summary, if available.
+- Local `ops:status` report path or copied non-secret summary.
 
 Do not record:
 

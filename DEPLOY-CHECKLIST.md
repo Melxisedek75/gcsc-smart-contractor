@@ -403,6 +403,12 @@ Repeatable production smoke command from the repository root:
 npm --prefix v3 run smoke:production
 ```
 
+Repeatable non-secret operations status report:
+
+```bash
+npm --prefix v3 run ops:status
+```
+
 Expected:
 
 ```json
@@ -507,6 +513,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - First admin account can log in after one-time bootstrap.
 - Admin can open Dashboard -> Audit Log and read `/api/admin/audit-events`.
 - Admin can export audit evidence locally with `npm --prefix v3 run audit:export` using a short-lived `ADMIN_JWT`; exported JSON stays under ignored `evidence/`.
+- Operator can run `npm --prefix v3 run ops:status`; generated status JSON stays under ignored `evidence/`.
 - Non-admin user cannot read `/api/admin/audit-events`.
 - Admin can approve/reject contractor documents.
 - Homeowner can create a project.

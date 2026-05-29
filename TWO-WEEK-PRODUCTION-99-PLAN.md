@@ -134,6 +134,7 @@ Audit trail progress, 2026-05-29:
 - Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
+- Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -378,6 +379,9 @@ Day 4 monitoring notes, 2026-05-29:
 - Monitoring runbook covers backend health, main site, Railway frontend, and admin audit unauthenticated guard.
 - Alert policy covers backend non-200, database mode regression, frontend non-200, repeated 5xx, deploy failure, and admin auth guard regression.
 - Third-party monitoring services are documented as founder-approved options only; no account setup or credentials were entered.
+- Added `v3/scripts/production-status-report.mjs`, `npm --prefix v3 run ops:status`, and `v3/tests/ops-status-report-script.test.js`.
+- The status report writes non-secret JSON to ignored `evidence/` and fails on critical public-service failures while keeping Railway frontend staleness as a warning.
+- Live run passed on 2026-05-29 with zero critical failures, one known Railway frontend freshness warning, and four founder/external blockers recorded in ignored evidence output.
 
 Verification:
 
