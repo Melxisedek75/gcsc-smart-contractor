@@ -1481,54 +1481,36 @@ async function createStoredMilestoneChainTx(milestone, escrow, userId, body) {
     throw Object.assign(new Error('Escrow role cannot record this chain action'), { status: 403 });
   }
 
+  const existingTx = await findStoredChainTxByTxId(txId);
+  if (existingTx) {
+    throw Object.assign(new Error('Duplicate chain transaction id'), { status: 409 });
+  }
+
   if (USE_POSTGRES) {
     const result = await queryPostgres(
       `INSERT INTO milestone_chain_txs
         (milestone_id, escrow_id, action, tx_id, chain_id, contract_account, actor, status, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (tx_id) DO UPDATE SET
-        milestone_id = EXCLUDED.milestone_id,
-        escrow_id = EXCLUDED.escrow_id,
-        action = EXCLUDED.action,
-        chain_id = EXCLUDED.chain_id,
-        contract_account = EXCLUDED.contract_account,
-        actor = EXCLUDED.actor,
-        status = EXCLUDED.status,
-        created_by = EXCLUDED.created_by
        RETURNING *`,
       [milestone.id, escrow.id, action, txId, chainId, contractAccount, actor, status, userId]
     );
     return normalizeChainTx(result.rows[0]);
   }
 
-  let chainTx = db.milestone_chain_txs.find(tx => tx.tx_id === txId);
-  if (chainTx) {
-    Object.assign(chainTx, {
-      milestone_id: milestone.id,
-      escrow_id: escrow.id,
-      action,
-      chain_id: chainId,
-      contract_account: contractAccount,
-      actor,
-      status,
-      created_by: userId,
-    });
-  } else {
-    chainTx = {
-      id: db.nextId('milestone_chain_txs'),
-      milestone_id: milestone.id,
-      escrow_id: escrow.id,
-      action,
-      tx_id: txId,
-      chain_id: chainId,
-      contract_account: contractAccount,
-      actor,
-      status,
-      created_by: userId,
-      created_at: new Date().toISOString(),
-    };
-    db.milestone_chain_txs.push(chainTx);
-  }
+  const chainTx = {
+    id: db.nextId('milestone_chain_txs'),
+    milestone_id: milestone.id,
+    escrow_id: escrow.id,
+    action,
+    tx_id: txId,
+    chain_id: chainId,
+    contract_account: contractAccount,
+    actor,
+    status,
+    created_by: userId,
+    created_at: new Date().toISOString(),
+  };
+  db.milestone_chain_txs.push(chainTx);
   saveDatabase();
   return normalizeChainTx(chainTx);
 }
@@ -2904,6 +2886,25 @@ const routes = {
 
     try {
       const verified = await verifyStoredChainTx(chainTx);
+      await recordAuditEvent(req, {
+        actorId: user.userId,
+        targetUserId: escrow.homeowner_id === user.userId ? escrow.contractor_id : escrow.homeowner_id,
+        action: verified.status === 'confirmed' ? 'escrow.chain_tx.confirmed' : 'escrow.chain_tx.failed',
+        entityType: 'milestone_chain_tx',
+        entityId: verified.id,
+        metadata: {
+          escrow_id: escrow.id,
+          milestone_id: milestone.id,
+          project_id: escrow.project_id,
+          action: verified.action,
+          tx_id: verified.tx_id,
+          chain_id: verified.chain_id,
+          contract_account: verified.contract_account,
+          actor: verified.actor,
+          verification_status: verified.status,
+          verification_error: verified.verification_error || '',
+        },
+      });
       json(res, 200, { message: 'Chain transaction verified', chain_tx: verified });
     } catch (err) {
       json(res, 502, { error: err.message || 'Could not verify chain transaction' });

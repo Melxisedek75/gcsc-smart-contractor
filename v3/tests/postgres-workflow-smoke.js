@@ -783,11 +783,54 @@ async function waitForServer(child) {
     assert.strictEqual(releaseTx.status, 201);
     assert.strictEqual(releaseTx.data.chain_tx.tx_id, releaseTxId);
     assert.strictEqual(releaseTx.data.chain_tx.action, 'releasemilestone');
+    assert.strictEqual(releaseTx.data.chain_tx.status, 'broadcast');
+
+    const duplicateReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
+      action: 'approvemilestone',
+      tx_id: releaseTxId,
+      chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
+      contract_account: 'gcscrow1111',
+      actor: 'owner.test',
+      status: 'broadcast',
+    }, login.data.token);
+    assert.strictEqual(duplicateReleaseTx.status, 409);
+    assert.match(duplicateReleaseTx.data.error, /duplicate/i);
 
     const verifiedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs/${releaseTxId}/verify`, null, login.data.token);
     assert.strictEqual(verifiedReleaseTx.status, 200);
     assert.strictEqual(verifiedReleaseTx.data.chain_tx.status, 'confirmed');
     assert.ok(verifiedReleaseTx.data.chain_tx.verified_at);
+
+    const confirmedChainAudit = await request('GET', '/api/admin/audit-events?action=escrow.chain_tx.confirmed', null, adminToken);
+    assert.strictEqual(confirmedChainAudit.status, 200);
+    assert.strictEqual(confirmedChainAudit.data.events.length, 1);
+    assert.strictEqual(confirmedChainAudit.data.events[0].entity_type, 'milestone_chain_tx');
+    assert.strictEqual(confirmedChainAudit.data.events[0].metadata.tx_id, releaseTxId);
+    assert.strictEqual(confirmedChainAudit.data.events[0].metadata.action, 'releasemilestone');
+
+    const missingTxId = 'c'.repeat(64);
+    const missingChainTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
+      action: 'approvemilestone',
+      tx_id: missingTxId,
+      chain_id: '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd',
+      contract_account: 'gcscrow1111',
+      actor: 'owner.test',
+      status: 'broadcast',
+    }, login.data.token);
+    assert.strictEqual(missingChainTx.status, 201);
+    assert.strictEqual(missingChainTx.data.chain_tx.status, 'broadcast');
+
+    const failedChainTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs/${missingTxId}/verify`, null, login.data.token);
+    assert.strictEqual(failedChainTx.status, 200);
+    assert.strictEqual(failedChainTx.data.chain_tx.status, 'failed');
+    assert.match(failedChainTx.data.chain_tx.verification_error, /transaction not found/i);
+
+    const failedChainAudit = await request('GET', '/api/admin/audit-events?action=escrow.chain_tx.failed', null, adminToken);
+    assert.strictEqual(failedChainAudit.status, 200);
+    assert.strictEqual(failedChainAudit.data.events.length, 1);
+    assert.strictEqual(failedChainAudit.data.events[0].entity_type, 'milestone_chain_tx');
+    assert.strictEqual(failedChainAudit.data.events[0].metadata.tx_id, missingTxId);
+    assert.strictEqual(failedChainAudit.data.events[0].metadata.verification_status, 'failed');
 
     const unauthorizedReleaseTx = await request('POST', `/api/milestones/${milestone.data.milestone.id}/chain-txs`, {
       action: 'releasemilestone',
@@ -815,10 +858,13 @@ async function waitForServer(child) {
     assert.strictEqual(escrowAfterMilestones.status, 200);
     assert.strictEqual(escrowAfterMilestones.data.milestones.length, 2);
     const milestoneWithTx = escrowAfterMilestones.data.milestones.find((item) => item.id === milestone.data.milestone.id);
-    assert.strictEqual(milestoneWithTx.chain_txs.length, 1);
-    assert.strictEqual(milestoneWithTx.chain_txs[0].tx_id, releaseTxId);
-    assert.strictEqual(milestoneWithTx.chain_txs[0].contract_account, 'gcscrow1111');
-    assert.strictEqual(milestoneWithTx.chain_txs[0].status, 'confirmed');
+    assert.strictEqual(milestoneWithTx.chain_txs.length, 2);
+    const confirmedTx = milestoneWithTx.chain_txs.find((tx) => tx.tx_id === releaseTxId);
+    const failedTx = milestoneWithTx.chain_txs.find((tx) => tx.tx_id === missingTxId);
+    assert.strictEqual(confirmedTx.contract_account, 'gcscrow1111');
+    assert.strictEqual(confirmedTx.status, 'confirmed');
+    assert.strictEqual(failedTx.contract_account, 'gcscrow1111');
+    assert.strictEqual(failedTx.status, 'failed');
 
     console.log('postgres workflow persistence smoke test passed');
   } finally {

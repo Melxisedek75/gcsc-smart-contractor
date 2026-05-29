@@ -444,12 +444,20 @@ Goal: backend can record and verify escrow chain transaction state safely.
 
 ### Task 6.1 — Add Backend Tests First
 
-- [ ] Add tests for:
+- [x] Add tests for:
   - pending chain tx record;
   - successful verification update;
   - failed verification update;
   - duplicate tx hash rejection;
   - audit event on verification.
+
+Day 6 test notes, 2026-05-29:
+
+- Added workflow coverage for broadcast chain tx evidence.
+- Added RED test for duplicate `tx_id` rejection. It failed on previous upsert behavior with `201 !== 409`.
+- Added verification audit coverage for `escrow.chain_tx.confirmed`.
+- Added failed Hyperion lookup coverage for `escrow.chain_tx.failed`.
+- Updated final escrow milestone assertion to verify both confirmed and failed chain tx records.
 
 Verification RED:
 
@@ -461,9 +469,16 @@ Expected before implementation: test fails for missing behavior if not already p
 
 ### Task 6.2 — Implement Minimal Backend Support
 
-- [ ] Implement only the missing behavior.
-- [ ] Do not add real token transfer.
-- [ ] Do not require private keys.
+- [x] Implement only the missing behavior.
+- [x] Do not add real token transfer.
+- [x] Do not require private keys.
+
+Day 6 implementation notes, 2026-05-29:
+
+- `createStoredMilestoneChainTx` now rejects duplicate transaction ids with HTTP 409 instead of updating prior evidence.
+- PostgreSQL chain tx insert no longer uses `ON CONFLICT ... DO UPDATE`.
+- In-memory chain tx storage now appends only new records after duplicate check.
+- Verification endpoint now records `escrow.chain_tx.confirmed` or `escrow.chain_tx.failed` audit events with escrow, milestone, project, tx, chain, contract, actor, status, and error metadata.
 
 Verification:
 
