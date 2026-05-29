@@ -508,11 +508,19 @@ Goal: replace passive wallet metadata with a clear signed-action flow where poss
 
 ### Task 7.1 — Frontend Tests / Validators
 
-- [ ] Add validator for:
+- [x] Add validator for:
   - wallet connected state;
   - escrow settlement call-to-action only after accepted bid;
   - no fake transaction success;
   - clear pending/verified/failed states.
+
+Day 7 validator notes, 2026-05-29:
+
+- Extended `C:\gcsc-store\scripts\validate-xpr-settlement-layer.mjs`.
+- Added checks that Dashboard requires a saved WebAuth wallet before escrow signing.
+- Added checks that Dashboard refuses to record missing WebAuth transaction ids.
+- Added checks that Dashboard rejects WebAuth account mismatch before recording tx evidence.
+- Confirmed settlement controls remain scoped to accepted escrow details.
 
 Verification RED:
 
@@ -522,10 +530,18 @@ npm run check:xpr-settlement
 
 ### Task 7.2 — Implement Signing UX
 
-- [ ] Add UI state for signed escrow action.
-- [ ] Require connected WebAuth wallet before settlement action.
-- [ ] Show transaction hash only from real response/user input.
-- [ ] Add error state for cancelled wallet signing.
+- [x] Add UI state for signed escrow action.
+- [x] Require connected WebAuth wallet before settlement action.
+- [x] Show transaction hash only from real response/user input.
+- [x] Add error state for cancelled wallet signing.
+
+Day 7 implementation notes, 2026-05-29:
+
+- `C:\gcsc-store\src\pages\Dashboard.tsx` now blocks escrow signing until `user.wallet.accountName` exists.
+- Signed WebAuth account must match the saved account before chain evidence is recorded.
+- Missing WebAuth transaction id now shows an error and records nothing.
+- Existing cancellation/error handling continues through the `catch` path.
+- Verification passed: `npm run check:xpr-settlement`, `npm run check:webauth`, `npm run check:chain-audit`, global frontend validators, and `npm run build`.
 
 Verification:
 
