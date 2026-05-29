@@ -47,6 +47,12 @@ Known rehearsal caveat:
 - `https://gcsc.store` is the current canonical pilot URL.
 - `https://gcsc-store-production.up.railway.app` may lag behind the GitHub Pages build until the Railway frontend service is manually redeployed or a Railway deploy token is provided through a secret-safe channel.
 
+Go/no-go package:
+
+- `PILOT-RUNBOOK.md` defines the controlled non-money pilot flow.
+- `PILOT-GO-NOGO.md` defines current pass/fail/blocked gates.
+- Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
+
 ## Current Live Stack
 
 | Layer | Status | Notes |

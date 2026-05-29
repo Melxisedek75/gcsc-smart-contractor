@@ -935,14 +935,23 @@ Goal: produce final go/no-go decision package.
 
 ### Task 14.1 — Create Go/No-Go Checklist
 
-- [ ] Create `PILOT-GO-NOGO.md`.
-- [ ] Include:
+- [x] Create `PILOT-GO-NOGO.md`.
+- [x] Include:
   - launch gates;
   - pass/fail status;
   - evidence links or command outputs;
   - founder-required approvals;
   - legal/security blockers;
   - real-money disabled/enabled status.
+
+Day 14 go/no-go notes, 2026-05-29:
+
+- Added `PILOT-GO-NOGO.md`.
+- Current decision is:
+  - MVP demo: go with controls;
+  - controlled non-money pilot: conditional go after first admin setup, bootstrap disablement, monitoring/backup setup, and role-by-role rehearsal;
+  - real-money production: no-go.
+- Founder approvals, legal blockers, security blockers, pass criteria, no-go triggers, and next actions are listed explicitly.
 
 ### Task 14.2 — Final Smoke
 
@@ -957,6 +966,11 @@ If frontend/backend changed:
 - [ ] Deploy.
 - [ ] Re-run smoke.
 - [ ] Update `PILOT-GO-NOGO.md`.
+
+Day 14 final smoke notes, 2026-05-29:
+
+- Runtime frontend/backend code did not change in this Day 14 block, so no deploy is required.
+- Final smoke passed: backend health OK, database `postgres`, admin audit unauthenticated guard HTTP 401, `gcsc.store` HTTP 200, Railway frontend HTTP 200.
 
 Commit:
 
