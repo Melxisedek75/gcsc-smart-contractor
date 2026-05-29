@@ -443,6 +443,34 @@ async function waitForServer(child) {
     assert.strictEqual(pendingCompliance.data.documents_approved, false);
     assert.strictEqual(pendingCompliance.data.overall_status, 'pending_review');
 
+    const licenseForRejection = documents.data.documents.find((doc) => doc.document_type === 'contractor_license');
+    const rejectionNote = 'License image is unreadable; please upload a clearer copy.';
+    const rejected = await request('PUT', `/api/admin/documents/${licenseForRejection.id}/review`, {
+      status: 'rejected',
+      reviewNote: rejectionNote,
+    }, adminToken);
+    assert.strictEqual(rejected.status, 200);
+    assert.strictEqual(rejected.data.document.status, 'rejected');
+    assert.strictEqual(rejected.data.document.review_note, rejectionNote);
+
+    const rejectedCompliance = await request('GET', '/api/auth/compliance', null, token);
+    assert.strictEqual(rejectedCompliance.status, 200);
+    assert.strictEqual(rejectedCompliance.data.overall_status, 'rejected');
+
+    const resubmittedLicense = await request('POST', '/api/auth/documents', {
+      documentType: 'contractor_license',
+      fileName: 'license-clear.pdf',
+      mimeType: 'application/pdf',
+      fileDataUrl: 'data:application/pdf;base64,aGVsbG8=',
+      reviewNote: 'Clearer Washington contractor license',
+    }, token);
+    assert.strictEqual(resubmittedLicense.status, 201);
+    assert.strictEqual(resubmittedLicense.data.document.status, 'submitted');
+
+    const resubmittedCompliance = await request('GET', '/api/auth/compliance', null, token);
+    assert.strictEqual(resubmittedCompliance.status, 200);
+    assert.strictEqual(resubmittedCompliance.data.overall_status, 'pending_review');
+
     const wallet = await request('POST', '/api/wallet/connect', {
       accountName: 'gcscacct111',
       permission: 'active',
@@ -451,7 +479,11 @@ async function waitForServer(child) {
     assert.strictEqual(wallet.status, 200);
     assert.strictEqual(wallet.data.wallet.accountName, 'gcscacct111');
 
-    for (const doc of documents.data.documents) {
+    const documentsForApproval = await request('GET', '/api/auth/documents', null, token);
+    assert.strictEqual(documentsForApproval.status, 200);
+    assert.strictEqual(documentsForApproval.data.documents.length, 3);
+
+    for (const doc of documentsForApproval.data.documents) {
       const reviewed = await request('PUT', `/api/admin/documents/${doc.id}/review`, {
         status: 'approved',
         reviewNote: 'Approved in smoke test',

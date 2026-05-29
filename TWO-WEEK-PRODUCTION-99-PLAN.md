@@ -120,17 +120,26 @@ Goal: make the project controllable before deeper production work.
 
 ### Task 1.1 — Verify Current State
 
-- [ ] Run `git status --short --branch` in all repos.
-- [ ] Run `git log --oneline -5` in all repos.
-- [ ] Run backend global verification commands.
-- [ ] Run frontend global verification commands if frontend files changed since last verified build.
-- [ ] Record latest commit hashes in this file under Day 1 notes.
+- [x] Run `git status --short --branch` in all repos.
+- [x] Run `git log --oneline -5` in all repos.
+- [x] Run backend global verification commands.
+- [x] Run frontend global verification commands if frontend files changed since last verified build.
+- [x] Record latest commit hashes in this file under Day 1 notes.
 
 Acceptance:
 
 - No dirty worktree except intentional edits.
 - Backend tests pass.
 - Production smoke passes.
+
+Day 1 notes, 2026-05-29:
+
+- Backend `C:\gcsc-smart-contractor`: clean before work, latest baseline commit `6eeccbe docs: add two-week production readiness plan`.
+- Frontend `C:\gcsc-store`: clean, latest baseline commit `57efb40 fix: improve loans financing dashboard layout`.
+- Pages `C:\gcsc-store-pages`: clean, latest baseline commit `3b66178 deploy: update loans financing layout build`.
+- Contracts repo `C:\gcsc-website`: not present locally; future contract tasks must clone or restore it before contract work.
+- Backend verification passed: `node --check v3\pure-server.js`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`, `npm --prefix v3 run smoke:production`.
+- Frontend baseline verification passed: dashboard/admin/audit/contractor/profile validators and `npm run build`.
 
 ### Task 1.2 — First Admin Account
 
@@ -140,6 +149,12 @@ Founder action required:
 - [ ] Founder sets `ADMIN_EMAIL`.
 - [ ] Founder sets `ADMIN_PASSWORD`.
 - [ ] Founder sets `ADMIN_FULL_NAME=GCSC Admin`.
+
+Blocked, 2026-05-29:
+
+- Missing founder-provided Railway admin variables and password.
+- Codex must not invent or enter admin credentials.
+- Continue with safe non-secret tasks until founder confirms admin variables are set.
 
 Codex action after founder confirms variables are set:
 
@@ -164,6 +179,10 @@ Acceptance:
 - [ ] Record date, checks performed, no secrets.
 - [ ] Commit and push evidence file.
 
+Blocked, 2026-05-29:
+
+- Depends on Task 1.2 first admin creation and bootstrap disablement.
+
 Verification:
 
 ```powershell
@@ -176,8 +195,8 @@ Goal: prove the non-money platform trust flow works on live services.
 
 ### Task 2.1 — Backend Workflow Smoke Test Coverage
 
-- [ ] Inspect `v3/tests/postgres-storage-smoke.js`.
-- [ ] Add or confirm coverage for:
+- [x] Inspect `v3/tests/postgres-storage-smoke.js`.
+- [x] Add or confirm coverage for:
   - contractor document submission;
   - admin approval;
   - admin rejection with note;
@@ -185,6 +204,12 @@ Goal: prove the non-money platform trust flow works on live services.
   - bid acceptance blocked for unverified contractor;
   - bid acceptance allowed for verified contractor;
   - audit events for document and bid actions.
+
+Day 2 notes, started 2026-05-29:
+
+- Existing backend tests already covered contractor document submission, admin approval, compliance `pending_review` and `verified`, unverified bid block, verified bid acceptance, public contractor profile, and audit events.
+- Added explicit coverage for admin rejection with review note, compliance `rejected`, contractor resubmission, and return to `pending_review`.
+- Verification passed: `npm --prefix v3 run test:pg-storage` and `npm --prefix v3 run test:pg-workflow`.
 
 Verification:
 
@@ -780,4 +805,3 @@ Live smoke:
 Блокеры:
 Следующая задача:
 ```
-
