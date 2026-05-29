@@ -396,6 +396,12 @@ curl -i https://gcsc-backend-production.up.railway.app/health
 curl -s https://gcsc-backend-production.up.railway.app/health
 ```
 
+Repeatable production smoke command from the repository root:
+
+```bash
+npm --prefix v3 run smoke:production
+```
+
 Expected:
 
 ```json
