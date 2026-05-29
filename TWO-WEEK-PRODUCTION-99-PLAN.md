@@ -133,6 +133,7 @@ Audit trail progress, 2026-05-29:
 - Production smoke now checks bundle freshness markers for `gcsc.store` and reports a stale-bundle warning for Railway frontend unless `STRICT_RAILWAY_FRONTEND=1` is enabled.
 - Added `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` with exact manual redeploy and strict verification steps.
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
+- Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -200,6 +201,12 @@ Acceptance:
 - [ ] Add a short `ADMIN-OPERATIONS-EVIDENCE.md` file after admin is created.
 - [ ] Record date, checks performed, no secrets.
 - [ ] Commit and push evidence file.
+
+Preparation completed, 2026-05-29:
+
+- Added `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`.
+- Added `npm --prefix v3 run audit:export` to export admin audit events into ignored `evidence/`.
+- Added `npm --prefix v3 run test:admin-audit-export-script`.
 
 Blocked, 2026-05-29:
 

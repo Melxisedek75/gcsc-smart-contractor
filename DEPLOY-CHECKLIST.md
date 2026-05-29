@@ -506,6 +506,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - `GET /api/me` works with the JWT.
 - First admin account can log in after one-time bootstrap.
 - Admin can open Dashboard -> Audit Log and read `/api/admin/audit-events`.
+- Admin can export audit evidence locally with `npm --prefix v3 run audit:export` using a short-lived `ADMIN_JWT`; exported JSON stays under ignored `evidence/`.
 - Non-admin user cannot read `/api/admin/audit-events`.
 - Admin can approve/reject contractor documents.
 - Homeowner can create a project.

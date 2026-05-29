@@ -56,5 +56,8 @@ jobs:
       - name: Production smoke script validation
         run: npm --prefix v3 run test:production-smoke-script
 
+      - name: Admin audit export script validation
+        run: npm --prefix v3 run test:admin-audit-export-script
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production

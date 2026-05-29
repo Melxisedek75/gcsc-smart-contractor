@@ -153,6 +153,14 @@ Codex verification:
 npm --prefix v3 run smoke:production
 ```
 
+Optional local audit export after admin login:
+
+```powershell
+$env:ADMIN_JWT="<admin-jwt-from-local-login-session>"
+npm --prefix v3 run audit:export
+Remove-Item Env:\ADMIN_JWT
+```
+
 Evidence to record later:
 
 - Date/time.

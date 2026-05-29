@@ -54,6 +54,7 @@ Go/no-go package:
 - `PILOT-RUNBOOK.md` defines the controlled non-money pilot flow.
 - `PILOT-GO-NOGO.md` defines current pass/fail/blocked gates.
 - `FOUNDER-ACTION-PACKET.md` lists the founder-controlled actions needed to unblock admin setup, Railway frontend redeploy, monitoring, restore drill, Stripe test mode, XPR testnet settlement, contract permission verification, and legal/security review.
+- `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md` and `npm --prefix v3 run audit:export` prepare non-secret evidence capture after the first admin account exists.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 
 ## Current Live Stack

@@ -95,6 +95,16 @@ Review cadence:
 - During pilot usage: review daily.
 - Before any production launch decision: export or copy a summary of relevant events.
 
+Use this local helper after logging in as admin and copying a short-lived admin JWT into the terminal session:
+
+```powershell
+$env:ADMIN_JWT="<admin-jwt-from-local-login-session>"
+npm --prefix v3 run audit:export
+Remove-Item Env:\ADMIN_JWT
+```
+
+The export is written under `evidence/`, which is ignored by git. Record only the non-secret summary in `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md` or a copied evidence file after the pilot.
+
 Priority events:
 
 | Event | Why it matters |
