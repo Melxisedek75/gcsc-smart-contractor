@@ -228,13 +228,19 @@ git push origin main
 
 ### Task 2.2 — Frontend Workflow Validation
 
-- [ ] Inspect existing validators in `C:\gcsc-store\scripts`.
-- [ ] Add validator if missing for complete trust workflow visibility:
+- [x] Inspect existing validators in `C:\gcsc-store\scripts`.
+- [x] Add validator if missing for complete trust workflow visibility:
   - Admin Review visible only for admin;
   - Audit Log visible only for admin;
   - contractor profile link shown before accepting bid;
   - unverified bid warning/block shown;
   - review note is required on rejection.
+
+Day 2 frontend notes, 2026-05-29:
+
+- Existing validation was split across admin document, audit log, contractor verification, and public contractor profile validators.
+- Added `npm run check:trust-workflow` as a single aggregate production trust workflow validator.
+- Verification passed: `npm run check:trust-workflow`, existing trust validators, and `npm run build`.
 
 Verification:
 
