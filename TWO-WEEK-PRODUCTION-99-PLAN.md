@@ -543,6 +543,13 @@ Day 7 implementation notes, 2026-05-29:
 - Existing cancellation/error handling continues through the `catch` path.
 - Verification passed: `npm run check:xpr-settlement`, `npm run check:webauth`, `npm run check:chain-audit`, global frontend validators, and `npm run build`.
 
+Day 7 live deploy check, 2026-05-29:
+
+- `https://gcsc.store/` serves the updated bundle with `submitms`, `approvems`, `releasems`, `disputems`.
+- `https://gcsc-store-production.up.railway.app/` still serves an older frontend bundle with the previous long action names.
+- Blocker: local Railway CLI is not installed and no Railway API token is available in the workspace, so Codex cannot force-redeploy the Railway frontend service from here.
+- Safe next action: founder can trigger redeploy in Railway UI for the frontend service, or provide a Railway token through Railway/Codex secret handling, not through git.
+
 Verification:
 
 ```powershell
@@ -640,29 +647,45 @@ Goal: make payment status explicit without enabling real money prematurely.
 
 ### Task 9.1 — Stripe Backend Tests
 
-- [ ] Inspect current Stripe endpoints.
-- [ ] Add/confirm tests for:
+- [x] Inspect current Stripe endpoints.
+- [x] Add/confirm tests for:
   - missing Stripe keys -> safe 503;
   - test PaymentIntent creation path;
   - webhook signature failure;
   - webhook signature success with test secret if locally supported.
 
+Day 9 Stripe backend notes, 2026-05-29:
+
+- Production Railway backend starts `node v3/pure-server.js`, so payment readiness was implemented and tested against `pure-server.js`, not only the legacy Express router.
+- Added `v3/tests/stripe-readiness-smoke.js`.
+- Added `npm --prefix v3 run test:stripe-readiness`.
+- `POST /api/stripe/create-payment-intent` is test-mode only and returns safe `503` when `STRIPE_SECRET_KEY` is missing or not a `sk_test_` key.
+- Test PaymentIntent creation path is covered through a local Stripe SDK stub; no real Stripe network call or live money is used.
+- `POST /api/stripe/webhook` verifies `Stripe-Signature`, rejects invalid signatures with `400`, and accepts locally signed test events.
+
 Verification:
 
 ```powershell
+npm --prefix v3 run test:stripe-readiness
 npm --prefix v3 run test:pg-storage
 npm --prefix v3 run test:pg-workflow
 ```
 
 ### Task 9.2 — Payment Readiness Doc
 
-- [ ] Create `PAYMENT-READINESS.md`.
-- [ ] Include:
+- [x] Create `PAYMENT-READINESS.md`.
+- [x] Include:
   - test-mode checklist;
   - live-mode blockers;
   - webhook endpoint;
   - refund/cancel policy placeholder requiring legal review;
   - contractor payout readiness.
+
+Day 9 payment readiness notes, 2026-05-29:
+
+- Added `PAYMENT-READINESS.md`.
+- Document states Stripe is test-mode only and real-money processing is not enabled.
+- Live-mode blockers include legal review, Stripe account verification, webhook testing, Connect payouts, refund/cancellation policy, backups, monitoring, and explicit founder approval.
 
 Verification:
 

@@ -38,6 +38,7 @@ const CORS_ALLOWED_ORIGINS = new Set([
 ].map((origin) => origin.trim()).filter(Boolean));
 const rateLimitStore = new Map();
 let pgPool = null;
+let stripeClient = null;
 
 // Lightweight JSON persistence keeps real account/profile data between process restarts.
 // A managed PostgreSQL database should replace this before real-money production.
@@ -89,6 +90,13 @@ function parseBody(req) {
     req.on('end', () => {
       try { resolve(JSON.parse(data)); } catch { resolve({}); }
     });
+  });
+}
+function parseRawBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(Buffer.from(c)));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
   });
 }
 function sendEmail(to, subject, html) {
@@ -192,6 +200,7 @@ function createEmptyDatabase() {
     escrow_contracts: [],
     milestones: [],
     milestone_chain_txs: [],
+    stripe_payment_intents: [],
     user_documents: [],
     audit_events: [],
     financing_prechecks: [],
@@ -429,6 +438,32 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_milestone ON milestone_chain_txs (milestone_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_escrow ON milestone_chain_txs (escrow_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_status ON milestone_chain_txs (status)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS stripe_payment_intents (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER,
+      user_id INTEGER,
+      payment_intent_id TEXT UNIQUE NOT NULL,
+      amount_cents INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'usd',
+      status TEXT NOT NULL DEFAULT 'requires_payment_method',
+      stripe_mode TEXT NOT NULL DEFAULT 'test',
+      client_secret TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS project_id INTEGER`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS user_id INTEGER`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS amount_cents INTEGER NOT NULL DEFAULT 0`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'usd'`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS stripe_mode TEXT NOT NULL DEFAULT 'test'`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS client_secret TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE stripe_payment_intents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_stripe_payment_intents_project ON stripe_payment_intents (project_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_stripe_payment_intents_user ON stripe_payment_intents (user_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_stripe_payment_intents_status ON stripe_payment_intents (status)`);
 
   await queryPostgres(`
     CREATE TABLE IF NOT EXISTS audit_events (
@@ -983,6 +1018,120 @@ async function enrichFinancingPrecheck(precheck) {
 
 async function enrichFinancingPrechecks(prechecks) {
   return Promise.all((prechecks || []).map(enrichFinancingPrecheck));
+}
+
+function stripeSecretKey() {
+  return String(process.env.STRIPE_SECRET_KEY || '').trim();
+}
+
+function stripeWebhookSecret() {
+  return String(process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+}
+
+function stripeTestModeReady() {
+  return stripeSecretKey().startsWith('sk_test_');
+}
+
+function getStripeClient() {
+  if (!stripeTestModeReady()) return null;
+  if (!stripeClient) {
+    const Stripe = require('stripe');
+    stripeClient = Stripe(stripeSecretKey(), {
+      apiVersion: '2024-12-18.acacia',
+      appInfo: {
+        name: 'GCSC Smart Contractor',
+        version: '3.0.0',
+      },
+    });
+  }
+  return stripeClient;
+}
+
+function normalizeStripePaymentIntent(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    project_id: row.project_id === null || row.project_id === undefined ? null : Number(row.project_id),
+    user_id: row.user_id === null || row.user_id === undefined ? null : Number(row.user_id),
+    amount_cents: normalizeNumber(row.amount_cents || row.amount_usd),
+    currency: row.currency || 'usd',
+    status: row.status || 'requires_payment_method',
+    stripe_mode: row.stripe_mode || 'test',
+    client_secret: row.client_secret || '',
+  };
+}
+
+async function createStoredStripePaymentIntent(input) {
+  const stored = {
+    project_id: Number(input.project_id),
+    user_id: Number(input.user_id),
+    payment_intent_id: cleanString(input.payment_intent_id, 255),
+    amount_cents: normalizeNumber(input.amount_cents),
+    currency: cleanString(input.currency || 'usd', 10).toLowerCase(),
+    status: cleanString(input.status || 'requires_payment_method', 60),
+    stripe_mode: 'test',
+    client_secret: cleanString(input.client_secret || '', 255),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `INSERT INTO stripe_payment_intents
+        (project_id, user_id, payment_intent_id, amount_cents, currency, status, stripe_mode, client_secret)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (payment_intent_id) DO UPDATE SET
+         status = EXCLUDED.status,
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        stored.project_id,
+        stored.user_id,
+        stored.payment_intent_id,
+        stored.amount_cents,
+        stored.currency,
+        stored.status,
+        stored.stripe_mode,
+        stored.client_secret,
+      ]
+    );
+    return normalizeStripePaymentIntent(result.rows[0]);
+  }
+
+  const existing = db.stripe_payment_intents.find(item => item.payment_intent_id === stored.payment_intent_id);
+  if (existing) {
+    existing.status = stored.status;
+    existing.updated_at = new Date().toISOString();
+    saveDatabase();
+    return normalizeStripePaymentIntent(existing);
+  }
+
+  const created = { id: db.nextId('stripe_payment_intents'), ...stored };
+  db.stripe_payment_intents.push(created);
+  saveDatabase();
+  return normalizeStripePaymentIntent(created);
+}
+
+async function updateStoredStripePaymentIntentStatus(paymentIntentId, status) {
+  const safeStatus = cleanString(status, 60);
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE stripe_payment_intents
+       SET status = $1, updated_at = NOW()
+       WHERE payment_intent_id = $2
+       RETURNING *`,
+      [safeStatus, cleanString(paymentIntentId, 255)]
+    );
+    return normalizeStripePaymentIntent(result.rows[0]);
+  }
+
+  const payment = db.stripe_payment_intents.find(item => item.payment_intent_id === paymentIntentId);
+  if (!payment) return null;
+  payment.status = safeStatus;
+  payment.updated_at = new Date().toISOString();
+  saveDatabase();
+  return normalizeStripePaymentIntent(payment);
 }
 
 async function getUserCount() {
@@ -2151,6 +2300,119 @@ const routes = {
   // Stats
   'GET /api/stats': async (req, res) => {
     json(res, 200, { users: await getUserCount(), projects: await getProjectCount(), completed_escrows: await getCompletedEscrowCount(), platform: 'GCSC Smart Contractor v3.0' });
+  },
+
+  'GET /api/stripe/config': async (req, res) => {
+    json(res, 200, {
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+      currency: 'usd',
+      mode: stripeTestModeReady() ? 'test' : 'disabled',
+      livePaymentsEnabled: false,
+    });
+  },
+
+  'POST /api/stripe/create-payment-intent': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    if (auth.role !== 'homeowner') return json(res, 403, { error: 'Homeowners only' });
+
+    const stripe = getStripeClient();
+    if (!stripe) {
+      return json(res, 503, {
+        error: 'Payment service unavailable. Stripe test mode is not configured.',
+        mode: 'disabled',
+      });
+    }
+
+    const body = await parseBody(req);
+    const projectId = normalizeNumber(body.project_id);
+    const amountCents = normalizeNumber(body.amount_usd || body.amount_cents);
+    if (!projectId) return json(res, 400, { error: 'Valid project_id required' });
+    if (!amountCents || amountCents < 500) return json(res, 400, { error: 'Minimum test payment amount is 500 cents' });
+    if (amountCents > 100_000_000) return json(res, 400, { error: 'Amount exceeds maximum allowed test payment' });
+
+    const project = await findStoredProjectById(projectId);
+    if (!project) return json(res, 404, { error: 'Project not found' });
+    if (project.homeowner_id !== auth.userId) return json(res, 403, { error: 'Only the project owner can fund this escrow' });
+    if (project.status === 'completed' || project.status === 'cancelled') {
+      return json(res, 400, { error: 'Project cannot be funded in its current status' });
+    }
+
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: 'usd',
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          gcsc_project_id: String(project.id),
+          gcsc_user_id: String(auth.userId),
+          gcsc_environment: 'test',
+        },
+        description: `GCSC test escrow funding for project #${project.id}`,
+      });
+      const stored = await createStoredStripePaymentIntent({
+        project_id: project.id,
+        user_id: auth.userId,
+        payment_intent_id: paymentIntent.id,
+        amount_cents: amountCents,
+        currency: paymentIntent.currency || 'usd',
+        status: paymentIntent.status || 'requires_payment_method',
+        client_secret: paymentIntent.client_secret || '',
+      });
+      await recordAuditEvent(req, {
+        actorId: auth.userId,
+        targetUserId: auth.userId,
+        action: 'payment.intent.created',
+        entityType: 'stripe_payment_intent',
+        entityId: stored.id,
+        metadata: {
+          project_id: project.id,
+          payment_intent_id: stored.payment_intent_id,
+          amount_cents: amountCents,
+          mode: 'test',
+        },
+      });
+      json(res, 200, {
+        client_secret: paymentIntent.client_secret,
+        payment_intent_id: paymentIntent.id,
+        amount_cents: amountCents,
+        currency: 'usd',
+        mode: 'test',
+      });
+    } catch (err) {
+      console.error('[STRIPE_PAYMENT_INTENT]', err.message || err);
+      json(res, 502, { error: 'Could not create Stripe test PaymentIntent' });
+    }
+  },
+
+  'POST /api/stripe/webhook': async (req, res) => {
+    const stripe = getStripeClient();
+    const webhookSecret = stripeWebhookSecret();
+    const rawBody = await parseRawBody(req);
+    if (!stripe || !webhookSecret) {
+      return json(res, 503, { error: 'Payment webhook unavailable. Stripe test webhook is not configured.' });
+    }
+
+    const signature = req.headers['stripe-signature'];
+    if (!signature) return json(res, 400, { error: 'Missing stripe-signature header' });
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    } catch (err) {
+      return json(res, 400, { error: 'Invalid signature' });
+    }
+
+    const paymentIntent = event?.data?.object || {};
+    if (event.type === 'payment_intent.succeeded') {
+      await updateStoredStripePaymentIntentStatus(paymentIntent.id, 'succeeded');
+    } else if (event.type === 'payment_intent.payment_failed') {
+      await updateStoredStripePaymentIntentStatus(paymentIntent.id, 'failed');
+    } else if (event.type === 'payment_intent.canceled') {
+      await updateStoredStripePaymentIntentStatus(paymentIntent.id, 'canceled');
+    }
+
+    json(res, 200, { received: true });
   },
 
   // Direct auth API used by the production dashboard
