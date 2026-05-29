@@ -51,6 +51,7 @@ Expected output:
 
 ```text
 backend health: ok, database=postgres
+backend health: backend security headers ok
 admin audit unauthenticated guard: HTTP 401
 main site: HTTP 200
 main site: frontend shell ok
@@ -97,7 +98,7 @@ The repository workflow `.github/workflows/backend-production-checks.yml` runs a
 It performs:
 
 - backend syntax and smoke tests;
-- public production smoke against backend, `gcsc.store`, Railway frontend, and admin audit 401 guard;
+- public production smoke against backend health, backend security headers, `gcsc.store`, Railway frontend, and admin audit 401 guard;
 - public CORS smoke for allowed `gcsc.store`, denied external origin, and admin audit 401 guard;
 - non-secret `ops:status` report generation;
 - no repository secrets, no admin JWT, no database URL, and no Stripe/XPR private values.

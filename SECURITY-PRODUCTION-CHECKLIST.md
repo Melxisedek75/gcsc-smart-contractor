@@ -104,6 +104,14 @@ npm --prefix v3 run test:pg-storage
 
 The PostgreSQL storage smoke test verifies the baseline security headers on `/health`.
 
+Production smoke coverage:
+
+```powershell
+npm --prefix v3 run smoke:production
+```
+
+The production smoke now fails if the live `/health` response is missing or changes any baseline security header.
+
 ## Remaining Security Blockers
 
 - First production admin account must be created and bootstrap disabled.

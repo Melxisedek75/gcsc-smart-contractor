@@ -140,6 +140,7 @@ Audit trail progress, 2026-05-29:
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
 - Added `npm --prefix v3 run security:cors:smoke` to verify public CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - Added baseline HTTP security headers in `v3/pure-server.js` with regression coverage in `npm --prefix v3 run test:pg-storage`.
+- Added live baseline security header verification to `npm --prefix v3 run smoke:production` and the scheduled GitHub Actions smoke path.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -789,6 +790,7 @@ Day 10 authorization notes, 2026-05-29:
 - Added `v3/scripts/security-cors-smoke.mjs`, `npm --prefix v3 run security:cors:smoke`, and `v3/tests/security-cors-smoke-script.test.js`.
 - Production CORS smoke verifies `https://gcsc.store` is allowed, an external origin is rejected with HTTP 403, and `/api/admin/audit-events` remains HTTP 401 without JWT.
 - Added baseline HTTP security headers for backend responses: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Content-Security-Policy`, and `Permissions-Policy`.
+- Production smoke now checks the live `/health` response for all baseline security headers.
 
 Verification:
 

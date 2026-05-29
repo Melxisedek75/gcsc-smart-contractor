@@ -10,6 +10,15 @@ const requiredFrontendBundleMarkers = [
   'project.created',
 ];
 
+const requiredSecurityHeaders = [
+  ['X-Content-Type-Options', 'nosniff'],
+  ['X-Frame-Options', 'DENY'],
+  ['Referrer-Policy', 'no-referrer'],
+  ['Strict-Transport-Security', 'max-age=31536000; includeSubDomains'],
+  ['Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"],
+  ['Permissions-Policy', 'geolocation=(), camera=(), microphone=()'],
+];
+
 async function readJson(url) {
   const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } });
   const text = await response.text();
@@ -20,6 +29,16 @@ async function readJson(url) {
     data = { raw: text };
   }
   return { response, data };
+}
+
+function checkSecurityHeaders(label, response) {
+  for (const [name, expectedValue] of requiredSecurityHeaders) {
+    const actualValue = response.headers.get(name);
+    if (actualValue !== expectedValue) {
+      throw new Error(`${label} expected ${name}=${expectedValue}, got ${actualValue}`);
+    }
+  }
+  console.log(`${label}: backend security headers ok`);
 }
 
 async function requireStatus(label, url, expectedStatus) {
@@ -81,6 +100,7 @@ async function run() {
     throw new Error(`backend health expected status ok and database postgres, got ${JSON.stringify(health)}`);
   }
   console.log(`backend health: ${health.status}, database=${health.database}`);
+  checkSecurityHeaders('backend health', healthResponse);
 
   const adminAuditResponse = await fetch(`${backendUrl}/api/admin/audit-events?limit=1`);
   if (adminAuditResponse.status === 401) {
