@@ -1,6 +1,8 @@
 name: Backend Production Checks
 
 on:
+  schedule:
+    - cron: '0 14 * * *'
   push:
     branches:
       - main
@@ -62,5 +64,11 @@ jobs:
       - name: Operations status report script validation
         run: npm --prefix v3 run test:ops-status-report-script
 
+      - name: CI monitoring workflow validation
+        run: npm --prefix v3 run test:ci-monitoring-workflow
+
       - name: Production public smoke
         run: npm --prefix v3 run smoke:production
+
+      - name: Production status report
+        run: npm --prefix v3 run ops:status

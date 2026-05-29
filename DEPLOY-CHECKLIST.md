@@ -409,6 +409,8 @@ Repeatable non-secret operations status report:
 npm --prefix v3 run ops:status
 ```
 
+The GitHub Actions workflow also runs the public smoke/status checks daily at `14:00 UTC` without secrets.
+
 Expected:
 
 ```json

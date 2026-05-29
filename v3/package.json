@@ -13,6 +13,7 @@
     "test:production-smoke-script": "node tests/production-smoke-script.test.js",
     "test:admin-audit-export-script": "node tests/admin-audit-export-script.test.js",
     "test:ops-status-report-script": "node tests/ops-status-report-script.test.js",
+    "test:ci-monitoring-workflow": "node tests/ci-monitoring-workflow.test.js",
     "smoke:production": "node scripts/production-smoke.mjs",
     "ops:status": "node scripts/production-status-report.mjs",
     "check:auth-channel-verification": "node scripts/validate-auth-channel-verification.mjs",

@@ -135,6 +135,7 @@ Audit trail progress, 2026-05-29:
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering backend health, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
+- Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Top-level audit gate remains unchecked until the first live admin account exists and the audit log is verified against a live role-by-role pilot run.
 
 ## Day 1 — Friday, 2026-05-29 — Control Plane And Admin Gate
@@ -400,6 +401,8 @@ Day 4 CI notes, 2026-05-29:
 - Added `.github/workflows/backend-production-checks.yml`.
 - Workflow runs `npm ci --prefix v3`, `node --check v3/pure-server.js`, backend smoke tests, and public production smoke.
 - Workflow uses only public endpoints and no repository secrets.
+- Added daily `14:00 UTC` scheduled execution for public production smoke and `ops:status`.
+- Added `v3/tests/ci-monitoring-workflow.test.js` and `npm --prefix v3 run test:ci-monitoring-workflow` to prevent accidental removal of the schedule, public smoke, ops status, or no-secrets constraint.
 
 Verification:
 

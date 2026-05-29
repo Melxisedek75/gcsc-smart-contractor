@@ -79,8 +79,21 @@ Do not create accounts or enter credentials autonomously. Founder approval is re
 Recommended starting point:
 
 1. Keep Railway health check active.
-2. Add GitHub Actions CI/static checks.
+2. Keep the GitHub Actions scheduled public smoke check active.
 3. Founder chooses one external monitor for backend `/health` and `gcsc.store`.
+
+## GitHub Actions Scheduled Smoke
+
+The repository workflow `.github/workflows/backend-production-checks.yml` runs automatically every day at `14:00 UTC`.
+
+It performs:
+
+- backend syntax and smoke tests;
+- public production smoke against backend, `gcsc.store`, Railway frontend, and admin audit 401 guard;
+- non-secret `ops:status` report generation;
+- no repository secrets, no admin JWT, no database URL, and no Stripe/XPR private values.
+
+If this scheduled workflow fails, treat it as a production monitoring signal and run the manual incident flow below.
 
 ## Manual Incident Flow
 
