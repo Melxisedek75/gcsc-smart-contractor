@@ -42,6 +42,7 @@ https://gcsc.store
 6. Add PostgreSQL first, then copy its `DATABASE_URL` into the backend service variables.
 7. Add `JWT_SECRET`, CORS settings, and admin bootstrap variables if an admin account must be created.
 8. Deploy and smoke test `/health`.
+9. For first-admin setup, document review, audit review, backup, and rollback operations, follow `ADMIN-OPERATIONS-RUNBOOK.md`.
 
 ## 1. Render Setup Order
 
@@ -179,6 +180,8 @@ Use the first output for `JWT_SECRET`. Use the second output for `ENCRYPTION_SEC
 ## 4A. First Admin Account
 
 The production Dashboard admin screens require a real user with role `admin`. The backend can create the first admin account safely during startup.
+
+Operational details are in `ADMIN-OPERATIONS-RUNBOOK.md`.
 
 Set these Railway variables:
 

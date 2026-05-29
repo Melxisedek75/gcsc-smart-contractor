@@ -1,6 +1,6 @@
 # GCSC Smart Contractor Production Readiness
 
-Date: 2026-05-28
+Date: 2026-05-29
 
 ## Current Live Stack
 
@@ -17,6 +17,7 @@ Date: 2026-05-28
 | Wallet | MVP ready | WebAuth wallet metadata can be connected/stored; on-chain signing is still a next milestone. |
 | Audit log | MVP ready | Profile, document, wallet, and bid acceptance events are recorded and exposed to admins. |
 | Financing prechecks | Demo/MVP only | Users can save future financing interest for admin review; no live lending, token lock, insurance assignment, funds issuance, or repayment routing is active. |
+| Admin operations | MVP documented | `ADMIN-OPERATIONS-RUNBOOK.md` covers first admin bootstrap, document review, audit review, backups, rollback, and real-money gates. |
 | Security hardening | Partial | CORS whitelist and endpoint rate limits are implemented; external review still pending. |
 
 ## Ready To Demonstrate
@@ -37,7 +38,7 @@ Date: 2026-05-28
 - Admin account must be created with the one-time bootstrap variables and then bootstrap must be disabled.
 - On-chain escrow settlement needs a full live XPR test with real accounts and contract permissions.
 - Stripe payments and contractor payouts need a production-mode verification run.
-- Database backups, log retention, monitoring alerts, and incident response process are not fully documented.
+- Database backups, log retention, monitoring alerts, and incident response process still need live configuration and a restore drill.
 - External security review and legal review are still required before holding real customer funds.
 - WebAuth integration currently stores wallet identity; full signed transaction flows are not complete.
 - SmartContractor Financing is not live lending. Escrow advances, token-collateral credit, ClaimBridge, and working-capital flows require state eligibility, legal/provider review, security review, and final approval before any real-money activation.
@@ -54,8 +55,8 @@ Date: 2026-05-28
 2. Finish production operations:
    - Enable automated PostgreSQL backups.
    - Add uptime/error monitoring.
-   - Add deploy rollback runbook.
-   - Define admin access policy and log review cadence.
+   - Run a restore drill on a non-production database.
+   - Follow `ADMIN-OPERATIONS-RUNBOOK.md` for admin access, audit review cadence, rollback, and launch gates.
 
 3. Complete payment and compliance controls:
    - Stripe live-mode smoke test.
@@ -69,5 +70,6 @@ Date: 2026-05-28
 1. Create the first admin account in Railway using `ADMIN_BOOTSTRAP_ENABLED=true`.
 2. Log in, verify Admin Documents and Audit Log.
 3. Disable admin bootstrap and redeploy.
-4. Run a complete homeowner -> contractor -> bid -> verification -> accept flow.
-5. Add on-chain WebAuth signing and escrow settlement smoke tests.
+4. Run the admin operations checklist in `ADMIN-OPERATIONS-RUNBOOK.md`.
+5. Run a complete homeowner -> contractor -> bid -> verification -> accept flow.
+6. Add on-chain WebAuth signing and escrow settlement smoke tests.
