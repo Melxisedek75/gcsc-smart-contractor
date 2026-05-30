@@ -61,7 +61,10 @@ fs.writeFileSync(reportPath, JSON.stringify({
   summary: {
     critical: [],
     warnings: ['railway frontend freshness'],
-    blocked: ['admin-account: Founder must create first admin.'],
+    blocked: [
+      'admin-account: Founder must create first admin.',
+      'github-actions-account-lock: Founder must resolve GitHub account/billing lock before scheduled production smoke can be treated as active monitoring.',
+    ],
   },
 }, null, 2));
 
@@ -80,10 +83,12 @@ const outputPath = result.stdout.match(/production gates summary: (.+production-
 const markdown = fs.readFileSync(outputPath, 'utf8');
 
 assert.match(markdown, /# Production Gate Summary/, 'summary must have a clear title');
+assert.match(markdown, /## Blocked Items/, 'summary must include a blocked items section');
 assert.match(markdown, /\| Gate \| Status \| Blocker \|/, 'summary must include a gates table');
 assert.match(markdown, /admin-account/, 'summary must include admin account gate');
 assert.match(markdown, /security-review/, 'summary must include security review gate');
 assert.match(markdown, /railway frontend freshness/, 'summary must include warning summary');
+assert.match(markdown, /github-actions-account-lock/, 'summary must include dynamic blocked items from ops:status');
 assert.match(markdown, /No secrets/, 'summary must include no-secrets note');
 assert.doesNotMatch(markdown, /Bearer\s+[A-Za-z0-9._-]+/, 'summary must not include bearer tokens');
 assert.doesNotMatch(markdown, /postgres:\/\/|postgresql:\/\//i, 'summary must not include database URLs');

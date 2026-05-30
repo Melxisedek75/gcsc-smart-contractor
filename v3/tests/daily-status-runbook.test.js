@@ -24,6 +24,7 @@ for (const required of [
   'production-status-',
   'Critical failures',
   'Warnings',
+  'Blocked Items',
   'Blocked gates',
   'admin-account',
   'postgres-restore-drill',

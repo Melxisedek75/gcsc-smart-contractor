@@ -32,6 +32,8 @@ The local files are written under ignored `evidence/`. The evidence scan must pa
 
 The local `ops:status` report also checks public GitHub Actions status. If GitHub reports an account/billing lock, the report records warning `github actions scheduled smoke` and blocked item `github-actions-account-lock`.
 
+`ops:gates` writes a `Blocked Items` section before the Gates table. Read that section first because it includes dynamic blockers discovered by live checks, not only the static production gate rows. Example: `github-actions-account-lock` appears there when GitHub refuses to start scheduled monitoring jobs.
+
 ## Morning Decision Flow
 
 ### 1. Critical failures
@@ -57,9 +59,15 @@ If `Warnings` is greater than `0`:
 
 Next action: follow `RAILWAY-FRONTEND-REDEPLOY-RUNBOOK.md` if the Railway frontend needs to be current.
 
-### 3. Blocked gates
+### 3. Blocked Items And Blocked Gates
 
-Read every row under `Blocked gates` or the Gates table.
+Read the `Blocked Items` list first, then every row under `Blocked gates` or the Gates table.
+
+Dynamic blocked items are operational blockers discovered during the latest status run. They may not have a dedicated production gate row, but they still affect readiness. Current example:
+
+| Blocked item | Meaning | Founder action |
+|---|---|---|
+| `github-actions-account-lock` | GitHub Actions scheduled smoke cannot be treated as active monitoring because GitHub refused to start the job. | Resolve GitHub account/billing lock, then rerun `Backend Production Checks`. |
 
 Current expected gate blockers:
 
