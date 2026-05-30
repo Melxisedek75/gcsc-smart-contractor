@@ -331,32 +331,60 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'Only the homeowner can approve milestones.' });
         }
 
-        // --- Get milestone ---
-        const milestone = await db.selectOne(
-            `SELECT * FROM milestones WHERE escrow_id = $1 AND milestone_index = $2`,
-            [escrowId, milestoneIndex]
-        );
+        // --- Approve and release (transaction with row-level lock) ---
+        // SECURITY: the milestone row is locked with SELECT ... FOR UPDATE and its
+        // status re-checked INSIDE the transaction to prevent a TOCTOU race where
+        // two concurrent approve requests both pass an outside-the-lock check and
+        // release the same milestone twice.
+        let releasedAmount = 0;
+        let finalEscrowStatus = escrow.status;
 
-        if (!milestone) {
-            return res.status(404).json({ error: 'Milestone not found.' });
-        }
-
-        if (milestone.status !== 'completed') {
-            return res.status(400).json({
-                error: `Milestone must be completed by the contractor before approval. Current status: ${milestone.status}.`,
-            });
-        }
-
-        // --- Approve and release (transaction) ---
         await db.transaction(async (client) => {
-            // 1. Mark milestone as released
+            // 1. Lock the milestone row (prevents concurrent double-release)
+            const lockResult = await client.query(
+                `SELECT * FROM milestones
+                 WHERE escrow_id = $1 AND milestone_index = $2
+                 FOR UPDATE`,
+                [escrowId, milestoneIndex]
+            );
+
+            if (lockResult.rows.length === 0) {
+                throw new Error('Milestone not found');
+            }
+
+            const lockedMilestone = lockResult.rows[0];
+
+            if (lockedMilestone.status !== 'completed') {
+                throw new Error(
+                    `Milestone must be completed by the contractor before approval. ` +
+                    `Current status: ${lockedMilestone.status}`
+                );
+            }
+
+            // 2. Record release amount (in cents)
+            releasedAmount = lockedMilestone.amount;
+
+            // 3. Mark milestone as released, tracking the released amount
             await client.query(
-                `UPDATE milestones SET status = 'released', updated_at = NOW()
+                `UPDATE milestones
+                 SET status = 'released',
+                     released_amount = amount,
+                     updated_at = NOW()
                  WHERE escrow_id = $1 AND milestone_index = $2`,
                 [escrowId, milestoneIndex]
             );
 
-            // 2. Check if all milestones are now released
+            // 4. Audit log entry for the milestone release
+            await client.query(
+                `INSERT INTO milestone_audit_log
+                 (escrow_id, milestone_index, action, performed_by,
+                  previous_status, new_status, notes, created_at)
+                 VALUES ($1, $2, 'approved', $3, 'completed', 'released',
+                         'Payment released: ' || $4 || ' cents', NOW())`,
+                [escrowId, milestoneIndex, user.id, releasedAmount]
+            );
+
+            // 5. Check if all milestones are now released
             const pendingResult = await client.query(
                 `SELECT COUNT(*) as count FROM milestones
                  WHERE escrow_id = $1 AND status NOT IN ('released', 'cancelled')`,
@@ -371,6 +399,17 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
                      WHERE id = $1`,
                     [escrowId]
                 );
+                finalEscrowStatus = 'released';
+
+                // Audit log for escrow completion
+                await client.query(
+                    `INSERT INTO milestone_audit_log
+                     (escrow_id, milestone_index, action, performed_by,
+                      previous_status, new_status, notes, created_at)
+                     VALUES ($1, -1, 'escrow_completed', $2, 'funded', 'released',
+                             'All milestones released', NOW())`,
+                    [escrowId, user.id]
+                );
 
                 // Mark project as completed
                 await client.query(
@@ -379,13 +418,14 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
                     [escrow.project_id]
                 );
             }
-        });
 
-        // Get updated escrow status
-        const updatedEscrow = await db.selectOne(
-            'SELECT status FROM escrow_contracts WHERE id = $1',
-            [escrowId]
-        );
+            // NOTE (payout integration): the DB status is now 'released'. The ACTUAL
+            // transfer of funds to the contractor (Stripe Connect transfer / XPR
+            // on-chain release) must be performed by the settlement layer keyed on
+            // this audit-log entry so the DB status and real money movement stay in
+            // sync. See XPR-ESCROW-SETTLEMENT-SPEC.md. Do NOT mark released here
+            // without a corresponding settlement record.
+        });
 
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Milestone ${milestoneIndex} approved on escrow ${escrowId}`);
@@ -395,13 +435,20 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
             escrow_id: escrowId,
             milestone_index: milestoneIndex,
             status: 'released',
-            escrow_status: updatedEscrow.status,
-            next_step: updatedEscrow.status === 'released'
+            released_amount_cents: releasedAmount,
+            escrow_status: finalEscrowStatus,
+            next_step: finalEscrowStatus === 'released'
                 ? 'All milestones complete. Project is finished.'
                 : 'Awaiting remaining milestones.',
         });
 
     } catch (err) {
+        if (err.message && err.message.includes('Milestone must be completed')) {
+            return res.status(400).json({ error: err.message });
+        }
+        if (err.message && err.message.includes('Milestone not found')) {
+            return res.status(404).json({ error: err.message });
+        }
         return sendError(res, 500, 'Failed to approve milestone.', err, errorId);
     }
 });
@@ -472,13 +519,13 @@ router.post('/:id/dispute', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'Only the homeowner or contractor can open a dispute.' });
         }
 
-        // --- Status check ---
+        // --- Status check (also blocks 'cancelled') ---
         if (escrow.status === 'disputed') {
             return res.status(400).json({ error: 'Escrow is already in dispute.' });
         }
 
-        if (escrow.status === 'refunded' || escrow.status === 'released') {
-            return res.status(400).json({ error: 'Cannot dispute a completed escrow.' });
+        if (['refunded', 'released', 'cancelled'].includes(escrow.status)) {
+            return res.status(400).json({ error: 'Cannot dispute a completed or cancelled escrow.' });
         }
 
         // --- Open dispute (transaction) ---
@@ -495,6 +542,16 @@ router.post('/:id/dispute', requireAuth, async (req, res) => {
                  (escrow_id, opened_by, reason, evidence, status, created_at)
                  VALUES ($1, $2, $3, $4, $5, NOW())`,
                 [escrowId, user.id, reason, validatedEvidence, 'open']
+            );
+
+            // 3. Audit log entry for dispute opening
+            await client.query(
+                `INSERT INTO milestone_audit_log
+                 (escrow_id, milestone_index, action, performed_by,
+                  previous_status, new_status, notes, created_at)
+                 VALUES ($1, -1, 'dispute_opened', $2, $3, 'disputed',
+                         'Dispute reason: ' || LEFT($4, 200), NOW())`,
+                [escrowId, user.id, escrow.status, reason]
             );
         });
 

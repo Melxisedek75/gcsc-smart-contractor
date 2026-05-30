@@ -1,7 +1,7 @@
 {
   "name": "gcsc-smart-contractor-backend",
   "version": "3.0.0",
-  "description": "GCSC Smart Contractor — P2P Construction Marketplace with XPR Blockchain Escrow",
+  "description": "GCSC Smart Contractor \u2014 P2P Construction Marketplace with XPR Blockchain Escrow",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -34,7 +34,7 @@
     "db:backup": "node scripts/backup-postgres.mjs",
     "db:restore:drill": "node scripts/restore-postgres-drill.mjs",
     "db:migrations:check": "node scripts/check-migration-readiness.mjs",
-    "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql"
+    "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql && psql $DATABASE_URL -f database/escrow-audit-migration.sql"
   },
   "engines": {
     "node": ">=18.0.0"
