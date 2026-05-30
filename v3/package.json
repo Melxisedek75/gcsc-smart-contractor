@@ -18,6 +18,7 @@
     "test:migration-readiness-script": "node tests/migration-readiness-script.test.js",
     "test:security-cors-smoke-script": "node tests/security-cors-smoke-script.test.js",
     "test:security-env-check-script": "node tests/security-env-check-script.test.js",
+    "test:restore-drill-script": "node tests/restore-drill-script.test.js",
     "smoke:production": "node scripts/production-smoke.mjs",
     "ops:status": "node scripts/production-status-report.mjs",
     "security:cors:smoke": "node scripts/security-cors-smoke.mjs",
@@ -26,6 +27,7 @@
     "audit:export": "node scripts/export-admin-audit.mjs",
     "admin:bootstrap:check": "node scripts/check-admin-bootstrap-env.mjs",
     "db:backup": "node scripts/backup-postgres.mjs",
+    "db:restore:drill": "node scripts/restore-postgres-drill.mjs",
     "db:migrations:check": "node scripts/check-migration-readiness.mjs",
     "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql"
   },

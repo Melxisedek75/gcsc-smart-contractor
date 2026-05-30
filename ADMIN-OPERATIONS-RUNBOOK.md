@@ -218,6 +218,21 @@ ls -lh gcsc-backup-YYYYMMDD-HHMM.dump
 
 Restore drill should be tested on a non-production database before any real-money launch.
 
+Preferred restore drill helper:
+
+```powershell
+$env:RESTORE_DATABASE_URL="<non-production-postgres-connection-string>"
+$env:BACKUP_FILE="backups\gcsc-backup-YYYY-MM-DDTHH-MM-SS-msZ.dump"
+$env:RESTORE_DRY_RUN="1"
+npm --prefix v3 run db:restore:drill
+Remove-Item Env:\RESTORE_DRY_RUN
+npm --prefix v3 run db:restore:drill
+Remove-Item Env:\BACKUP_FILE
+Remove-Item Env:\RESTORE_DATABASE_URL
+```
+
+The helper is secret-safe: it prints `RESTORE_DATABASE_URL: set`, not the connection string.
+
 ## Rollback
 
 Use rollback if:

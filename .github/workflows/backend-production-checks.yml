@@ -75,6 +75,9 @@ jobs:
       - name: Migration readiness script validation
         run: npm --prefix v3 run test:migration-readiness-script
 
+      - name: Restore drill script validation
+        run: npm --prefix v3 run test:restore-drill-script
+
       - name: Migration readiness check
         run: npm --prefix v3 run db:migrations:check
 

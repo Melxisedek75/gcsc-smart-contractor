@@ -52,12 +52,14 @@ function checkRepositoryGuardrails(report) {
   const label = 'repository production guardrails';
   const packageJsonPath = path.join(repoRoot, 'v3', 'package.json');
   const securityEnvScriptPath = path.join(repoRoot, 'v3', 'scripts', 'check-security-env.mjs');
+  const restoreDrillScriptPath = path.join(repoRoot, 'v3', 'scripts', 'restore-postgres-drill.mjs');
   const workflowPath = path.join(repoRoot, '.github', 'workflows', 'backend-production-checks.yml');
   const missing = [];
   const changed = [];
 
   const packageJsonRaw = readTextIfExists(packageJsonPath);
   const securityEnvScript = readTextIfExists(securityEnvScriptPath);
+  const restoreDrillScript = readTextIfExists(restoreDrillScriptPath);
   const workflow = readTextIfExists(workflowPath);
 
   if (!packageJsonRaw) {
@@ -65,6 +67,9 @@ function checkRepositoryGuardrails(report) {
   }
   if (!securityEnvScript) {
     missing.push('v3/scripts/check-security-env.mjs');
+  }
+  if (!restoreDrillScript) {
+    missing.push('v3/scripts/restore-postgres-drill.mjs');
   }
   if (!workflow) {
     missing.push('.github/workflows/backend-production-checks.yml');
@@ -79,6 +84,12 @@ function checkRepositoryGuardrails(report) {
     if (scripts['test:security-env-check-script'] !== 'node tests/security-env-check-script.test.js') {
       changed.push('test:security-env-check-script package script');
     }
+    if (scripts['db:restore:drill'] !== 'node scripts/restore-postgres-drill.mjs') {
+      changed.push('db:restore:drill package script');
+    }
+    if (scripts['test:restore-drill-script'] !== 'node tests/restore-drill-script.test.js') {
+      changed.push('test:restore-drill-script package script');
+    }
   }
 
   if (securityEnvScript) {
@@ -92,6 +103,7 @@ function checkRepositoryGuardrails(report) {
   if (workflow) {
     for (const required of [
       'test:security-env-check-script',
+      'test:restore-drill-script',
       'smoke:production',
       'security:cors:smoke',
       'ops:status',

@@ -39,7 +39,7 @@ These percentages are engineering readiness estimates, not legal approval or fin
   - `npm run check:legal-claims`;
   - `npm run check:xpr-settlement`;
   - `npm run build`.
-- Backup script dry-run without `DATABASE_URL` safely refused to run. Live backup/restore drill remains blocked until founder provides a non-production PostgreSQL target and permits use of production `DATABASE_URL` in a local terminal session.
+- Backup script dry-run without `DATABASE_URL` safely refused to run. Restore drill helper is available through `npm --prefix v3 run db:restore:drill`. Live backup/restore drill remains blocked until founder provides a non-production PostgreSQL target and permits use of production `DATABASE_URL` in a local terminal session.
 - Admin guard direct check returned HTTP 401 for `/api/admin/audit-events?limit=1` without token.
 
 Known rehearsal caveat:
@@ -58,6 +58,7 @@ Go/no-go package:
 - `npm --prefix v3 run ops:status` prepares non-secret daily operations snapshots under ignored `evidence/`, including repository production guardrails and backend security header status.
 - `npm --prefix v3 run admin:bootstrap:check` validates first-admin env presence without printing password, JWT secret, or database URL.
 - `npm --prefix v3 run db:migrations:check` validates production SQL migration file presence/order without using database credentials.
+- `npm --prefix v3 run db:restore:drill` prepares a secret-safe restore drill into a non-production database.
 - `npm --prefix v3 run security:cors:smoke` verifies public production CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - `npm --prefix v3 run security:env:check` validates production env safety without printing JWT, database URL, or admin password values.
 - `npm --prefix v3 run smoke:production` now also verifies live backend security headers on `/health`.

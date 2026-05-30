@@ -60,6 +60,35 @@ $env:RESTORE_DATABASE_URL="<non-production-postgres-connection-string>"
 
 Replace the backup filename with the local file produced by `db:backup`.
 
+Preferred helper command:
+
+```powershell
+$env:RESTORE_DATABASE_URL="<non-production-postgres-connection-string>"
+$env:BACKUP_FILE="backups\gcsc-backup-YYYY-MM-DDTHH-MM-SS-msZ.dump"
+$env:RESTORE_DRY_RUN="1"
+npm --prefix v3 run db:restore:drill
+Remove-Item Env:\RESTORE_DRY_RUN
+```
+
+Expected dry-run output:
+
+```text
+PostgreSQL restore drill check (secret-safe)
+RESTORE_DATABASE_URL: set
+BACKUP_FILE: backups\gcsc-backup-YYYY-MM-DDTHH-MM-SS-msZ.dump
+Restore drill dry run ready...
+```
+
+To execute the restore against the non-production database, remove `RESTORE_DRY_RUN` and run:
+
+```powershell
+npm --prefix v3 run db:restore:drill
+```
+
+The helper refuses backup files outside the ignored `backups/` folder and does not print `RESTORE_DATABASE_URL`.
+
+Equivalent manual command:
+
 ```powershell
 pg_restore `
   --dbname "$env:RESTORE_DATABASE_URL" `
@@ -74,6 +103,7 @@ pg_restore `
 Remove the restore target from the shell after the drill:
 
 ```powershell
+Remove-Item Env:\BACKUP_FILE
 Remove-Item Env:\RESTORE_DATABASE_URL
 ```
 
@@ -125,6 +155,7 @@ Do not record:
 - Restore completes into non-production PostgreSQL.
 - Core tables can be queried.
 - Evidence file is committed without secrets.
+- `npm --prefix v3 run test:restore-drill-script` passes.
 
 ## Fail Criteria
 
@@ -133,4 +164,3 @@ Do not record:
 - Restore fails.
 - Restored schema is missing core tables.
 - Any secret is written to a tracked file.
-

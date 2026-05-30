@@ -543,6 +543,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - Admin can open Dashboard -> Audit Log and read `/api/admin/audit-events`.
 - Admin can export audit evidence locally with `npm --prefix v3 run audit:export` using a short-lived `ADMIN_JWT`; exported JSON stays under ignored `evidence/`.
 - Operator can run `npm --prefix v3 run ops:status`; generated status JSON stays under ignored `evidence/`.
+- Restore drill helper can be dry-run with `RESTORE_DRY_RUN=1`, `BACKUP_FILE`, and non-production `RESTORE_DATABASE_URL`.
 - Non-admin user cannot read `/api/admin/audit-events`.
 - Admin can approve/reject contractor documents.
 - Homeowner can create a project.

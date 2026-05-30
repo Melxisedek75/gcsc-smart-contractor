@@ -27,6 +27,8 @@ for (const required of [
   'npm --prefix v3 run test:security-cors-smoke-script',
   'Security env check script validation',
   'npm --prefix v3 run test:security-env-check-script',
+  'Restore drill script validation',
+  'npm --prefix v3 run test:restore-drill-script',
   'Security CORS public smoke',
   'npm --prefix v3 run security:cors:smoke',
   'Production status report',

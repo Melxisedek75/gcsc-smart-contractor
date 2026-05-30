@@ -324,8 +324,11 @@ Day 3 backup notes, 2026-05-29:
 - Added `v3/scripts/backup-postgres.mjs`.
 - Added `npm --prefix v3 run db:backup`.
 - Added `v3/tests/backup-script.test.js`.
+- Added `v3/scripts/restore-postgres-drill.mjs`.
+- Added `npm --prefix v3 run db:restore:drill`.
+- Added `v3/tests/restore-drill-script.test.js`.
 - Added `backups/` to `.gitignore`.
-- Verification passed: `node v3\tests\backup-script.test.js`, `git check-ignore backups/test.dump`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`.
+- Verification passed: `node v3\tests\backup-script.test.js`, `npm --prefix v3 run test:restore-drill-script`, `git check-ignore backups/test.dump`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`.
 - Added `v3/scripts/check-migration-readiness.mjs`, `npm --prefix v3 run db:migrations:check`, and `v3/tests/migration-readiness-script.test.js`.
 - Migration readiness check confirms the production SQL order and warns not to apply `database/migrations/001-add-contractor-verifications.sql` to v3 without manual comparison.
 
@@ -417,6 +420,7 @@ Day 4 CI notes, 2026-05-29:
 - Added `v3/tests/ci-monitoring-workflow.test.js` and `npm --prefix v3 run test:ci-monitoring-workflow` to prevent accidental removal of the schedule, public smoke, ops status, or no-secrets constraint.
 - Added CI validation for `npm --prefix v3 run test:security-env-check-script` so the secret-safe production env checker cannot be removed silently.
 - Added repository guardrail verification to `npm --prefix v3 run ops:status`; daily status now fails critically if the production env checker, CI smoke workflow, or no-secrets guardrail is removed.
+- Added CI validation for `npm --prefix v3 run test:restore-drill-script` so restore drill helper behavior is protected without database credentials.
 
 Verification:
 
@@ -937,7 +941,7 @@ Day 13 full dress rehearsal notes, 2026-05-29:
 - Backend verification passed: `node --check v3\pure-server.js`, `npm --prefix v3 run test:pg-storage`, `npm --prefix v3 run test:pg-workflow`, `npm --prefix v3 run test:stripe-readiness`, and `npm --prefix v3 run smoke:production`.
 - Frontend verification passed: dashboard live, admin documents, admin audit log, contractor verification, public contractor profile, trust workflow, loans/financing, legal claims, XPR settlement validators, and `npm run build`.
 - Production smoke confirmed backend health OK, PostgreSQL mode, `gcsc.store` HTTP 200, Railway frontend HTTP 200, and unauthenticated admin audit guard HTTP 401.
-- Backup script safely refused to run without `DATABASE_URL`; live backup/restore drill remains blocked until founder provides a non-production restore database and permits a production backup run.
+- Backup script safely refused to run without `DATABASE_URL`; restore drill helper is available through `npm --prefix v3 run db:restore:drill`; live backup/restore drill remains blocked until founder provides a non-production restore database and permits a production backup run.
 - Admin runbook remains operationally valid, but first real admin creation is still blocked on founder-set Railway variables.
 - XPR settlement blocker list remains: real testnet signed transaction, Hyperion confirmation, contract deployment/permission verification, and founder approval before any real token movement.
 - Stripe blocker list remains: founder-provided Stripe test keys, Railway webhook setup, real Stripe test-mode card run, Connect payout design, legal review, and explicit live-mode approval.
