@@ -30,6 +30,8 @@ npm --prefix v3 run ops:evidence:scan
 
 The local files are written under ignored `evidence/`. The evidence scan must pass before any generated status or gate files are shared outside the local machine.
 
+The local `ops:status` report also checks public GitHub Actions status. If GitHub reports an account/billing lock, the report records warning `github actions scheduled smoke` and blocked item `github-actions-account-lock`.
+
 ## Morning Decision Flow
 
 ### 1. Critical failures

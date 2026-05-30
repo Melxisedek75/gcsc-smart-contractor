@@ -12,6 +12,9 @@ const evidenceDir = process.env.STATUS_EVIDENCE_DIR
 const backendUrl = (process.env.BACKEND_URL || 'https://gcsc-backend-production.up.railway.app').replace(/\/+$/, '');
 const mainSiteUrl = (process.env.MAIN_SITE_URL || 'https://gcsc.store').replace(/\/+$/, '');
 const railwayFrontendUrl = (process.env.RAILWAY_FRONTEND_URL || 'https://gcsc-store-production.up.railway.app').replace(/\/+$/, '');
+const githubRepositorySlug = process.env.GITHUB_REPOSITORY_SLUG || 'Melxisedek75/gcsc-smart-contractor';
+const githubApiBaseUrl = (process.env.GITHUB_API_BASE_URL || 'https://api.github.com').replace(/\/+$/, '');
+const githubActionsStatusFixture = process.env.GITHUB_ACTIONS_STATUS_FIXTURE || '';
 
 const requiredFrontendBundleMarkers = [
   'Milestone Released',
@@ -109,6 +112,13 @@ function addCheck(report, check) {
   }
   if (check.severity === 'warning' && check.status !== 'pass') {
     report.summary.warnings.push(check.label);
+  }
+}
+
+function addBlockedItem(report, id, message) {
+  const entry = `${id}: ${message}`;
+  if (!report.summary.blocked.includes(entry)) {
+    report.summary.blocked.push(entry);
   }
 }
 
@@ -251,6 +261,139 @@ async function fetchText(url) {
     return { response, text };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function fetchJson(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'Cache-Control': 'no-cache',
+        'User-Agent': 'GCSC-SmartContractor-Production-Status',
+      },
+      signal: controller.signal,
+    });
+    const body = await response.text();
+    let parsed = {};
+    try {
+      parsed = body ? JSON.parse(body) : {};
+    } catch {
+      parsed = { raw: body.slice(0, 300) };
+    }
+    return { response, parsed };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function loadGithubActionsStatus() {
+  if (githubActionsStatusFixture) {
+    const fixture = JSON.parse(fs.readFileSync(path.resolve(githubActionsStatusFixture), 'utf8'));
+    return {
+      latestRun: fixture.workflow_runs?.[0] || null,
+      jobs: fixture.jobs || [],
+      annotations: (fixture.jobs || []).flatMap((job) => job.annotations || []),
+      source: 'fixture',
+    };
+  }
+
+  const runsUrl = `${githubApiBaseUrl}/repos/${githubRepositorySlug}/actions/runs?per_page=10`;
+  const { response: runsResponse, parsed: runsBody } = await fetchJson(runsUrl);
+  if (runsResponse.status !== 200) {
+    return {
+      latestRun: null,
+      jobs: [],
+      annotations: [],
+      source: runsUrl,
+      apiError: `HTTP ${runsResponse.status}`,
+    };
+  }
+
+  const latestRun = (runsBody.workflow_runs || []).find((run) => run.name === 'Backend Production Checks') || null;
+  if (!latestRun) {
+    return {
+      latestRun: null,
+      jobs: [],
+      annotations: [],
+      source: runsUrl,
+      apiError: 'no Backend Production Checks run found',
+    };
+  }
+
+  const jobsUrl = `${githubApiBaseUrl}/repos/${githubRepositorySlug}/actions/runs/${latestRun.id}/jobs?per_page=100`;
+  const { response: jobsResponse, parsed: jobsBody } = await fetchJson(jobsUrl);
+  const jobs = jobsResponse.status === 200 ? jobsBody.jobs || [] : [];
+  const annotations = [];
+
+  for (const job of jobs) {
+    if (job.conclusion !== 'failure') {
+      continue;
+    }
+
+    const checkUrl = `${githubApiBaseUrl}/repos/${githubRepositorySlug}/check-runs/${job.id}`;
+    const { response: checkResponse, parsed: checkBody } = await fetchJson(checkUrl);
+    const annotationsUrl = checkResponse.status === 200 ? checkBody.output?.annotations_url : null;
+    if (!annotationsUrl) {
+      continue;
+    }
+
+    const { response: annotationsResponse, parsed: annotationsBody } = await fetchJson(annotationsUrl);
+    if (annotationsResponse.status === 200) {
+      annotations.push(...(annotationsBody.value || annotationsBody || []).map((item) => item.message || '').filter(Boolean));
+    }
+  }
+
+  return {
+    latestRun,
+    jobs,
+    annotations,
+    source: runsUrl,
+  };
+}
+
+async function checkGithubActionsStatus(report) {
+  const label = 'github actions scheduled smoke';
+  try {
+    const status = await loadGithubActionsStatus();
+    const latestRun = status.latestRun;
+    const annotations = status.annotations || [];
+    const accountLocked = annotations.some((message) => /account is locked due to a billing issue/i.test(message));
+
+    if (accountLocked) {
+      addBlockedItem(
+        report,
+        'github-actions-account-lock',
+        'Founder must resolve GitHub account/billing lock before scheduled production smoke can be treated as active monitoring.'
+      );
+    }
+
+    const runOk = latestRun?.status === 'completed' && latestRun?.conclusion === 'success';
+    const observed = accountLocked
+      ? 'The job was not started because your account is locked due to a billing issue.'
+      : latestRun
+        ? `run=${latestRun.id}, status=${latestRun.status}, conclusion=${latestRun.conclusion || 'none'}, event=${latestRun.event || 'unknown'}`
+        : status.apiError || 'no Backend Production Checks run found';
+
+    addCheck(report, {
+      label,
+      severity: 'warning',
+      status: runOk ? 'pass' : 'fail',
+      expected: 'Backend Production Checks starts, runs public smoke/status checks, scans evidence, and uploads artifact',
+      observed,
+      url: latestRun?.html_url || `https://github.com/${githubRepositorySlug}/actions`,
+    });
+  } catch (error) {
+    addCheck(report, {
+      label,
+      severity: 'warning',
+      status: 'fail',
+      expected: 'reachable GitHub Actions public status',
+      observed: error.message,
+      url: `https://github.com/${githubRepositorySlug}/actions`,
+    });
   }
 }
 
@@ -405,6 +548,7 @@ const report = {
 };
 
 checkRepositoryGuardrails(report);
+await checkGithubActionsStatus(report);
 await checkBackendHealth(report);
 await checkAdminGuard(report);
 await checkFrontend(report, 'main site frontend freshness', mainSiteUrl, 'critical');

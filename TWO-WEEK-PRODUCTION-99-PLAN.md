@@ -431,6 +431,7 @@ Day 4 CI notes, 2026-05-29:
 - Added CI validation for `npm --prefix v3 run test:daily-status-runbook` and repository guardrail coverage for `DAILY-STATUS-RUNBOOK.md`.
 - Added CI validation for `npm --prefix v3 run test:production-evidence-scan-script` and a scheduled `npm --prefix v3 run ops:evidence:scan` step before artifact upload, so the uploaded daily evidence fails closed if a secret-like value appears.
 - Blocked, 2026-05-29: latest push run `26675045787` for commit `004bc80` did not start because GitHub reported the account is locked due to a billing issue. This is an external account blocker, not a code failure. Local fallback checks remain required until the founder resolves GitHub Actions billing/account status.
+- Added automatic GitHub Actions public status detection to `npm --prefix v3 run ops:status`; account/billing lock now appears as a warning plus `github-actions-account-lock` blocked item in local evidence.
 
 Verification:
 
