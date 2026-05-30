@@ -201,6 +201,8 @@ Daily GitHub Actions runs upload both files as an artifact named `production-sta
 4. Download `production-status-evidence`.
 5. Review `production-gates-*.md` first, then `production-status-*.json` if more detail is needed.
 
+Use `DAILY-STATUS-RUNBOOK.md` for the morning decision flow after downloading the artifact.
+
 ## PostgreSQL Backups
 
 Before any risky operation, take a backup.

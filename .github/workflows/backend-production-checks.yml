@@ -15,6 +15,7 @@ on:
       - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
       - 'MONITORING-RUNBOOK.md'
       - 'SECURITY-PRODUCTION-CHECKLIST.md'
+      - 'DAILY-STATUS-RUNBOOK.md'
   pull_request:
     branches:
       - main
@@ -27,6 +28,7 @@ on:
       - 'TWO-WEEK-PRODUCTION-99-PLAN.md'
       - 'MONITORING-RUNBOOK.md'
       - 'SECURITY-PRODUCTION-CHECKLIST.md'
+      - 'DAILY-STATUS-RUNBOOK.md'
   workflow_dispatch:
 
 jobs:
@@ -68,6 +70,9 @@ jobs:
 
       - name: Production gates summary script validation
         run: npm --prefix v3 run test:production-gates-summary-script
+
+      - name: Daily status runbook validation
+        run: npm --prefix v3 run test:daily-status-runbook
 
       - name: CI monitoring workflow validation
         run: npm --prefix v3 run test:ci-monitoring-workflow

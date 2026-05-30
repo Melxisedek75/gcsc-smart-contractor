@@ -14,6 +14,7 @@
     "test:admin-audit-export-script": "node tests/admin-audit-export-script.test.js",
     "test:ops-status-report-script": "node tests/ops-status-report-script.test.js",
     "test:production-gates-summary-script": "node tests/production-gates-summary-script.test.js",
+    "test:daily-status-runbook": "node tests/daily-status-runbook.test.js",
     "test:ci-monitoring-workflow": "node tests/ci-monitoring-workflow.test.js",
     "test:admin-bootstrap-check-script": "node tests/admin-bootstrap-check-script.test.js",
     "test:migration-readiness-script": "node tests/migration-readiness-script.test.js",

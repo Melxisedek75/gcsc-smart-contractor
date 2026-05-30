@@ -125,6 +125,7 @@ function checkRepositoryGuardrails(report) {
   const securityEnvScriptPath = path.join(repoRoot, 'v3', 'scripts', 'check-security-env.mjs');
   const restoreDrillScriptPath = path.join(repoRoot, 'v3', 'scripts', 'restore-postgres-drill.mjs');
   const productionGatesSummaryScriptPath = path.join(repoRoot, 'v3', 'scripts', 'production-gates-summary.mjs');
+  const dailyStatusRunbookPath = path.join(repoRoot, 'DAILY-STATUS-RUNBOOK.md');
   const workflowPath = path.join(repoRoot, '.github', 'workflows', 'backend-production-checks.yml');
   const missing = [];
   const changed = [];
@@ -133,6 +134,7 @@ function checkRepositoryGuardrails(report) {
   const securityEnvScript = readTextIfExists(securityEnvScriptPath);
   const restoreDrillScript = readTextIfExists(restoreDrillScriptPath);
   const productionGatesSummaryScript = readTextIfExists(productionGatesSummaryScriptPath);
+  const dailyStatusRunbook = readTextIfExists(dailyStatusRunbookPath);
   const workflow = readTextIfExists(workflowPath);
 
   if (!packageJsonRaw) {
@@ -146,6 +148,9 @@ function checkRepositoryGuardrails(report) {
   }
   if (!productionGatesSummaryScript) {
     missing.push('v3/scripts/production-gates-summary.mjs');
+  }
+  if (!dailyStatusRunbook) {
+    missing.push('DAILY-STATUS-RUNBOOK.md');
   }
   if (!workflow) {
     missing.push('.github/workflows/backend-production-checks.yml');
@@ -172,6 +177,9 @@ function checkRepositoryGuardrails(report) {
     if (scripts['test:production-gates-summary-script'] !== 'node tests/production-gates-summary-script.test.js') {
       changed.push('test:production-gates-summary-script package script');
     }
+    if (scripts['test:daily-status-runbook'] !== 'node tests/daily-status-runbook.test.js') {
+      changed.push('test:daily-status-runbook package script');
+    }
   }
 
   if (securityEnvScript) {
@@ -187,6 +195,7 @@ function checkRepositoryGuardrails(report) {
       'test:security-env-check-script',
       'test:restore-drill-script',
       'test:production-gates-summary-script',
+      'test:daily-status-runbook',
       'smoke:production',
       'security:cors:smoke',
       'ops:status',
