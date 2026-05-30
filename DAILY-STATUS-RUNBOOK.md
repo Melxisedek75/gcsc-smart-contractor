@@ -15,15 +15,18 @@ Primary automated run:
 5. Open `production-gates-*.md` first.
 6. Open `production-status-*.json` only if more detail is needed.
 
+The scheduled workflow scans generated evidence before uploading the artifact. If the artifact is missing because the evidence scan failed, treat that as a security stop and inspect the workflow log for the pattern name without copying any suspected secret into chat or docs.
+
 Local fallback:
 
 ```powershell
 npm --prefix v3 run smoke:production
 npm --prefix v3 run ops:status
 npm --prefix v3 run ops:gates
+npm --prefix v3 run ops:evidence:scan
 ```
 
-The local files are written under ignored `evidence/`.
+The local files are written under ignored `evidence/`. The evidence scan must pass before any generated status or gate files are shared outside the local machine.
 
 ## Morning Decision Flow
 

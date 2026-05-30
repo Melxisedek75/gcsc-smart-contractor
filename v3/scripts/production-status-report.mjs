@@ -125,6 +125,7 @@ function checkRepositoryGuardrails(report) {
   const securityEnvScriptPath = path.join(repoRoot, 'v3', 'scripts', 'check-security-env.mjs');
   const restoreDrillScriptPath = path.join(repoRoot, 'v3', 'scripts', 'restore-postgres-drill.mjs');
   const productionGatesSummaryScriptPath = path.join(repoRoot, 'v3', 'scripts', 'production-gates-summary.mjs');
+  const evidenceScanScriptPath = path.join(repoRoot, 'v3', 'scripts', 'scan-production-evidence.mjs');
   const dailyStatusRunbookPath = path.join(repoRoot, 'DAILY-STATUS-RUNBOOK.md');
   const workflowPath = path.join(repoRoot, '.github', 'workflows', 'backend-production-checks.yml');
   const missing = [];
@@ -134,6 +135,7 @@ function checkRepositoryGuardrails(report) {
   const securityEnvScript = readTextIfExists(securityEnvScriptPath);
   const restoreDrillScript = readTextIfExists(restoreDrillScriptPath);
   const productionGatesSummaryScript = readTextIfExists(productionGatesSummaryScriptPath);
+  const evidenceScanScript = readTextIfExists(evidenceScanScriptPath);
   const dailyStatusRunbook = readTextIfExists(dailyStatusRunbookPath);
   const workflow = readTextIfExists(workflowPath);
 
@@ -148,6 +150,9 @@ function checkRepositoryGuardrails(report) {
   }
   if (!productionGatesSummaryScript) {
     missing.push('v3/scripts/production-gates-summary.mjs');
+  }
+  if (!evidenceScanScript) {
+    missing.push('v3/scripts/scan-production-evidence.mjs');
   }
   if (!dailyStatusRunbook) {
     missing.push('DAILY-STATUS-RUNBOOK.md');
@@ -180,6 +185,12 @@ function checkRepositoryGuardrails(report) {
     if (scripts['test:daily-status-runbook'] !== 'node tests/daily-status-runbook.test.js') {
       changed.push('test:daily-status-runbook package script');
     }
+    if (scripts['ops:evidence:scan'] !== 'node scripts/scan-production-evidence.mjs') {
+      changed.push('ops:evidence:scan package script');
+    }
+    if (scripts['test:production-evidence-scan-script'] !== 'node tests/production-evidence-scan-script.test.js') {
+      changed.push('test:production-evidence-scan-script package script');
+    }
   }
 
   if (securityEnvScript) {
@@ -196,10 +207,12 @@ function checkRepositoryGuardrails(report) {
       'test:restore-drill-script',
       'test:production-gates-summary-script',
       'test:daily-status-runbook',
+      'test:production-evidence-scan-script',
       'smoke:production',
       'security:cors:smoke',
       'ops:status',
       'ops:gates',
+      'ops:evidence:scan',
       'actions/upload-artifact@v4',
       'production-status-evidence',
       'evidence/production-status-*.json',

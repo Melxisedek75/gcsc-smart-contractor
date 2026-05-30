@@ -74,6 +74,9 @@ jobs:
       - name: Daily status runbook validation
         run: npm --prefix v3 run test:daily-status-runbook
 
+      - name: Production evidence scan script validation
+        run: npm --prefix v3 run test:production-evidence-scan-script
+
       - name: CI monitoring workflow validation
         run: npm --prefix v3 run test:ci-monitoring-workflow
 
@@ -106,6 +109,9 @@ jobs:
 
       - name: Production gates summary
         run: npm --prefix v3 run ops:gates
+
+      - name: Production evidence secret scan
+        run: npm --prefix v3 run ops:evidence:scan
 
       - name: Upload production evidence artifact
         uses: actions/upload-artifact@v4

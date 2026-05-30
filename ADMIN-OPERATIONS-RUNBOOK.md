@@ -193,6 +193,14 @@ npm --prefix v3 run ops:gates
 
 This writes `evidence/production-gates-*.md`, which is also ignored by git.
 
+Before sharing or archiving generated production evidence, scan it for secret-like values:
+
+```powershell
+npm --prefix v3 run ops:evidence:scan
+```
+
+The scan checks ignored `production-status-*.json` and `production-gates-*.md` files for token, database URL, Stripe secret, bearer token, and private key patterns. It reports only file names and pattern names, not the matched secret value.
+
 Daily GitHub Actions runs upload both files as an artifact named `production-status-evidence`:
 
 1. Open GitHub repository `Melxisedek75/gcsc-smart-contractor`.
@@ -200,6 +208,8 @@ Daily GitHub Actions runs upload both files as an artifact named `production-sta
 3. Open the latest `Backend Production Checks` run.
 4. Download `production-status-evidence`.
 5. Review `production-gates-*.md` first, then `production-status-*.json` if more detail is needed.
+
+The scheduled workflow runs the evidence secret scan before artifact upload. If the scan fails, treat the run as a security incident and do not download or distribute the artifact until the source of the leaked value is removed.
 
 Use `DAILY-STATUS-RUNBOOK.md` for the morning decision flow after downloading the artifact.
 

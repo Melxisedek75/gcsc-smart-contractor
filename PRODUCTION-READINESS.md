@@ -58,13 +58,14 @@ Go/no-go package:
 - `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md` and `npm --prefix v3 run audit:export` prepare non-secret evidence capture after the first admin account exists.
 - `npm --prefix v3 run ops:status` prepares non-secret daily operations snapshots under ignored `evidence/`, including repository production guardrails, backend security header status, and a detailed `productionGates` ledger with each current blocker.
 - `npm --prefix v3 run ops:gates` converts the latest ignored status JSON into a human-readable Markdown gate summary for daily review.
+- `npm --prefix v3 run ops:evidence:scan` scans generated production status/gate evidence for secret-like values before local sharing or GitHub Actions artifact upload.
 - `npm --prefix v3 run admin:bootstrap:check` validates first-admin env presence without printing password, JWT secret, or database URL.
 - `npm --prefix v3 run db:migrations:check` validates production SQL migration file presence/order without using database credentials.
 - `npm --prefix v3 run db:restore:drill` prepares a secret-safe restore drill into a non-production database.
 - `npm --prefix v3 run security:cors:smoke` verifies public production CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - `npm --prefix v3 run security:env:check` validates production env safety without printing JWT, database URL, or admin password values.
 - `npm --prefix v3 run smoke:production` now also verifies live backend security headers on `/health`.
-- GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets, validates the production env checker script, and uploads the generated `production-status-evidence` artifact for review.
+- GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets, validates the production env checker and evidence scanner scripts, scans generated evidence for secret-like values, and uploads the generated `production-status-evidence` artifact for review.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 
 ## Current Live Stack

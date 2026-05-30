@@ -430,9 +430,10 @@ Repeatable non-secret operations status report:
 ```bash
 npm --prefix v3 run ops:status
 npm --prefix v3 run ops:gates
+npm --prefix v3 run ops:evidence:scan
 ```
 
-The status report includes repository production guardrails, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown table. The scheduled GitHub Actions workflow uploads both files as the `production-status-evidence` artifact. Use `DAILY-STATUS-RUNBOOK.md` to interpret the artifact each morning.
+The status report includes repository production guardrails, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown table. The evidence scan checks generated status/gate files for secret-like values before they are shared or uploaded. The scheduled GitHub Actions workflow uploads both files as the `production-status-evidence` artifact after the scan passes. Use `DAILY-STATUS-RUNBOOK.md` to interpret the artifact each morning.
 
 The GitHub Actions workflow also runs the public smoke/status checks daily at `14:00 UTC` without secrets.
 
@@ -545,6 +546,7 @@ If XPR packages or endpoint are unavailable, this returns 503 `XPR chain API una
 - Admin can export audit evidence locally with `npm --prefix v3 run audit:export` using a short-lived `ADMIN_JWT`; exported JSON stays under ignored `evidence/`.
 - Operator can run `npm --prefix v3 run ops:status`; generated status JSON stays under ignored `evidence/`.
 - Operator can run `npm --prefix v3 run ops:gates` after `ops:status`; generated Markdown gate summary stays under ignored `evidence/`.
+- Operator can run `npm --prefix v3 run ops:evidence:scan` after `ops:gates`; generated evidence must pass secret-pattern scanning before sharing.
 - Restore drill helper can be dry-run with `RESTORE_DRY_RUN=1`, `BACKUP_FILE`, and non-production `RESTORE_DATABASE_URL`.
 - Non-admin user cannot read `/api/admin/audit-events`.
 - Admin can approve/reject contractor documents.

@@ -138,6 +138,7 @@ Audit trail progress, 2026-05-29:
 - Added a detailed `productionGates` ledger to `npm --prefix v3 run ops:status` so each major 99% production gate records its current status and exact blocker in ignored evidence JSON.
 - Added `npm --prefix v3 run ops:gates` to convert the latest ignored `production-status-*.json` into a human-readable ignored Markdown gate summary for daily review.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets. The workflow now uploads `production-status-evidence` with the generated status JSON and gate summary Markdown for review from the Actions run page.
+- Added `npm --prefix v3 run ops:evidence:scan` and CI validation so scheduled production evidence is scanned for secret-like values before artifact upload.
 - Added `DAILY-STATUS-RUNBOOK.md` to explain the morning decision flow for critical failures, warnings, blocked gates, and safe next actions.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
@@ -428,6 +429,7 @@ Day 4 CI notes, 2026-05-29:
 - Added CI validation for `npm --prefix v3 run test:production-gates-summary-script` and a scheduled `npm --prefix v3 run ops:gates` step after `ops:status`.
 - Added a scheduled `production-status-evidence` artifact upload containing `evidence/production-status-*.json` and `evidence/production-gates-*.md`.
 - Added CI validation for `npm --prefix v3 run test:daily-status-runbook` and repository guardrail coverage for `DAILY-STATUS-RUNBOOK.md`.
+- Added CI validation for `npm --prefix v3 run test:production-evidence-scan-script` and a scheduled `npm --prefix v3 run ops:evidence:scan` step before artifact upload, so the uploaded daily evidence fails closed if a secret-like value appears.
 
 Verification:
 
