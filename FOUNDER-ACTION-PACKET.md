@@ -10,6 +10,36 @@ Use `https://gcsc.store` as the canonical pilot URL.
 
 Do not enable real-money payments, contractor payouts, mainnet escrow settlement, lending, insurance, token sales, or real token movement until the launch gates in `PILOT-GO-NOGO.md` are passed.
 
+## Priority 0 - Resolve GitHub Actions Account Lock
+
+Why this matters:
+
+- The backend scheduled production smoke/status workflow is configured, but the latest push run failed before job execution.
+- GitHub reported: `The job was not started because your account is locked due to a billing issue.`
+- Until this is resolved, GitHub Actions cannot be used as the automated daily production evidence source.
+
+Founder action in GitHub:
+
+1. Open GitHub.
+2. Open account or organization billing/settings for `Melxisedek75`.
+3. Resolve the account lock or billing issue shown by GitHub.
+4. Re-run the latest `Backend Production Checks` workflow, or push a small docs-only commit after the account is unlocked.
+
+Codex verification after founder confirms it is fixed:
+
+```powershell
+npm --prefix v3 run smoke:production
+npm --prefix v3 run ops:status
+npm --prefix v3 run ops:gates
+npm --prefix v3 run ops:evidence:scan
+```
+
+Expected GitHub result:
+
+- `Backend Production Checks` starts normally.
+- The job reaches checkout/install/test steps.
+- `production-status-evidence` artifact is uploaded only after `ops:evidence:scan` passes.
+
 ## Priority 1 - Create First Admin Account
 
 Why this matters:

@@ -56,7 +56,7 @@ Latest full verification pass: 2026-05-29
 | PostgreSQL backup script | Pass | `db:backup` script exists and refuses missing `DATABASE_URL` |
 | PostgreSQL restore drill | Blocked | Requires non-production PostgreSQL target and founder approval to use production backup |
 | Monitoring plan | Pass as documentation | `MONITORING-RUNBOOK.md` exists |
-| Monitoring alerts configured | Blocked | Requires founder account setup in monitoring provider or Railway alert configuration |
+| Monitoring alerts configured | Blocked | Requires founder account setup in monitoring provider or Railway alert configuration; GitHub Actions scheduled smoke is also blocked until the GitHub account/billing lock is resolved |
 | Stripe test-mode API safety | Pass | Missing/non-test Stripe key returns safe 503; webhook signature tests pass |
 | Stripe real test payment | Blocked | Requires founder-provided Stripe test keys and dashboard webhook setup |
 | Stripe live payments | No-Go | Requires legal review, account verification, refund policy, Connect payout design, and founder approval |

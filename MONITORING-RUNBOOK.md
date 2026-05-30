@@ -95,6 +95,12 @@ Recommended starting point:
 
 The repository workflow `.github/workflows/backend-production-checks.yml` runs automatically every day at `14:00 UTC`.
 
+Current caveat:
+
+- Latest checked push run `26675045787` for commit `004bc80` failed before job execution because GitHub reported the account is locked due to a billing issue.
+- This is a founder-controlled GitHub account blocker. Until it is resolved, scheduled GitHub Actions smoke checks must not be counted as active monitoring.
+- Use the local smoke/status fallback commands in `DAILY-STATUS-RUNBOOK.md`.
+
 It performs:
 
 - backend syntax and smoke tests;

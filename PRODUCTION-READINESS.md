@@ -66,6 +66,7 @@ Go/no-go package:
 - `npm --prefix v3 run security:env:check` validates production env safety without printing JWT, database URL, or admin password values.
 - `npm --prefix v3 run smoke:production` now also verifies live backend security headers on `/health`.
 - GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets, validates the production env checker and evidence scanner scripts, scans generated evidence for secret-like values, and uploads the generated `production-status-evidence` artifact for review.
+- Current GitHub Actions caveat: push run `26675045787` for commit `004bc80` failed before job execution because GitHub reported the account is locked due to a billing issue. Until the founder resolves the GitHub account/billing lock, use the local fallback commands in `DAILY-STATUS-RUNBOOK.md` for daily status.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 
 ## Current Live Stack

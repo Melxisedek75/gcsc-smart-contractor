@@ -17,6 +17,8 @@ Primary automated run:
 
 The scheduled workflow scans generated evidence before uploading the artifact. If the artifact is missing because the evidence scan failed, treat that as a security stop and inspect the workflow log for the pattern name without copying any suspected secret into chat or docs.
 
+If the latest GitHub Actions run fails before any job steps start with an account/billing lock message, treat it as a founder-controlled GitHub account blocker, not a production code failure. Use the local fallback below until the GitHub account is unlocked.
+
 Local fallback:
 
 ```powershell
@@ -82,6 +84,7 @@ Next action: choose the first blocked gate that can be advanced without secrets 
 - Do not enable live payments, live payouts, live lending, insurance assignment, or mainnet token movement from this checklist.
 - No real money moves during daily status review.
 - Keep `gcsc.store` as the canonical pilot URL unless the deployment plan changes.
+- If GitHub Actions is blocked by account/billing status, do not mark scheduled monitoring as active; run local fallback checks and follow `FOUNDER-ACTION-PACKET.md` Priority 0.
 
 ## Daily Note Template
 
