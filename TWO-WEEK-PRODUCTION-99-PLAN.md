@@ -135,6 +135,7 @@ Audit trail progress, 2026-05-29:
 - Added `FOUNDER-ACTION-PACKET.md` to consolidate all founder-controlled blockers into exact next actions with verification commands and secret-safety rules.
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering repository guardrails, backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
+- Added a detailed `productionGates` ledger to `npm --prefix v3 run ops:status` so each major 99% production gate records its current status and exact blocker in ignored evidence JSON.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
@@ -397,6 +398,7 @@ Day 4 monitoring notes, 2026-05-29:
 - The status report writes non-secret JSON to ignored `evidence/` and fails on critical public-service failures while keeping Railway frontend staleness as a warning.
 - The status report now records backend security headers as a critical check.
 - The status report now records repository production guardrails as a critical check.
+- The status report now includes a production gate ledger for admin setup, live trust workflow, audit evidence, restore drill, monitoring alerts, XPR/WebAuth settlement, contract permissions, Stripe readiness, security review, legal review, and final founder approval.
 - Live run passed on 2026-05-29 with zero critical failures, one known Railway frontend freshness warning, and four founder/external blockers recorded in ignored evidence output.
 
 Verification:

@@ -1,5 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -54,6 +55,12 @@ for (const required of [
   'project.created',
   'evidence',
   'production-status-',
+  'productionGates',
+  'admin-account',
+  'live-trust-workflow',
+  'postgres-restore-drill',
+  'xpr-webauth-settlement',
+  'stripe-readiness',
   'critical',
   'warnings',
   'blocked',
@@ -65,6 +72,7 @@ const result = spawnSync(process.execPath, [scriptPath], {
   cwd: v3Root,
   env: {
     ...process.env,
+    STATUS_EVIDENCE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'gcsc-status-test-')),
     BACKEND_URL: 'http://127.0.0.1:9',
     MAIN_SITE_URL: 'http://127.0.0.1:9',
     RAILWAY_FRONTEND_URL: 'http://127.0.0.1:9',
@@ -75,5 +83,30 @@ const result = spawnSync(process.execPath, [scriptPath], {
 assert.notStrictEqual(result.status, 0, 'ops status report must fail when all monitored services are unreachable');
 assert.match(`${result.stdout}\n${result.stderr}`, /critical/i, 'ops status report must label critical failures');
 assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Bearer\s+[A-Za-z0-9._-]+/, 'script must not print bearer tokens');
+
+const evidenceDirMatch = result.stdout.match(/production status report: (.+production-status-[^\r\n]+\.json)/);
+assert.ok(evidenceDirMatch, 'ops status report must print the generated evidence path');
+const generatedReport = JSON.parse(fs.readFileSync(evidenceDirMatch[1], 'utf8'));
+assert.ok(Array.isArray(generatedReport.productionGates), 'ops status report must include productionGates array');
+assert.ok(generatedReport.productionGates.length >= 10, 'ops status report must track all major production gates');
+
+for (const gateId of [
+  'admin-account',
+  'live-trust-workflow',
+  'audit-log',
+  'postgres-restore-drill',
+  'monitoring-alerts',
+  'xpr-webauth-settlement',
+  'smart-contract-permissions',
+  'stripe-readiness',
+  'security-review',
+  'legal-review',
+  'founder-approval',
+]) {
+  const gate = generatedReport.productionGates.find((item) => item.id === gateId);
+  assert.ok(gate, `production gate ${gateId} must be present`);
+  assert.ok(gate.status, `production gate ${gateId} must have a status`);
+  assert.ok(gate.blocker, `production gate ${gateId} must have an explicit blocker or completion note`);
+}
 
 console.log('ops status report script validation passed');

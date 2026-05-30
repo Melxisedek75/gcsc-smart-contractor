@@ -55,7 +55,7 @@ Go/no-go package:
 - `PILOT-GO-NOGO.md` defines current pass/fail/blocked gates.
 - `FOUNDER-ACTION-PACKET.md` lists the founder-controlled actions needed to unblock admin setup, Railway frontend redeploy, monitoring, restore drill, Stripe test mode, XPR testnet settlement, contract permission verification, and legal/security review.
 - `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md` and `npm --prefix v3 run audit:export` prepare non-secret evidence capture after the first admin account exists.
-- `npm --prefix v3 run ops:status` prepares non-secret daily operations snapshots under ignored `evidence/`, including repository production guardrails and backend security header status.
+- `npm --prefix v3 run ops:status` prepares non-secret daily operations snapshots under ignored `evidence/`, including repository production guardrails, backend security header status, and a detailed `productionGates` ledger with each current blocker.
 - `npm --prefix v3 run admin:bootstrap:check` validates first-admin env presence without printing password, JWT secret, or database URL.
 - `npm --prefix v3 run db:migrations:check` validates production SQL migration file presence/order without using database credentials.
 - `npm --prefix v3 run db:restore:drill` prepares a secret-safe restore drill into a non-production database.

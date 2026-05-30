@@ -183,6 +183,7 @@ npm --prefix v3 run ops:status
 ```
 
 The command writes `evidence/production-status-*.json`, which is ignored by git. Use it for daily status review and copy only non-secret summaries into committed docs.
+The JSON includes a `productionGates` section that lists every major production gate, current status, and exact blocker.
 
 ## PostgreSQL Backups
 

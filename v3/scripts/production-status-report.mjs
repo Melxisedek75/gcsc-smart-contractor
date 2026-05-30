@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..', '..');
-const evidenceDir = path.join(repoRoot, 'evidence');
+const evidenceDir = process.env.STATUS_EVIDENCE_DIR
+  ? path.resolve(repoRoot, process.env.STATUS_EVIDENCE_DIR)
+  : path.join(repoRoot, 'evidence');
 
 const backendUrl = (process.env.BACKEND_URL || 'https://gcsc-backend-production.up.railway.app').replace(/\/+$/, '');
 const mainSiteUrl = (process.env.MAIN_SITE_URL || 'https://gcsc.store').replace(/\/+$/, '');
@@ -25,6 +27,75 @@ const requiredSecurityHeaders = [
   ['Strict-Transport-Security', 'max-age=31536000; includeSubDomains'],
   ['Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"],
   ['Permissions-Policy', 'geolocation=(), camera=(), microphone=()'],
+];
+
+const productionGates = [
+  {
+    id: 'admin-account',
+    label: 'Admin account and bootstrap disabled',
+    status: 'blocked',
+    blocker: 'Founder must set Railway ADMIN_BOOTSTRAP_ENABLED, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_FULL_NAME, verify login, then disable bootstrap.',
+  },
+  {
+    id: 'live-trust-workflow',
+    label: 'Live homeowner to verified contractor workflow',
+    status: 'blocked',
+    blocker: 'Requires first admin account and live role-by-role rehearsal with homeowner, contractor, and admin test users.',
+  },
+  {
+    id: 'audit-log',
+    label: 'Live audit log evidence',
+    status: 'blocked',
+    blocker: 'Automated audit coverage exists, but live audit evidence requires admin login and role-by-role pilot execution.',
+  },
+  {
+    id: 'postgres-restore-drill',
+    label: 'PostgreSQL backup and restore drill',
+    status: 'blocked',
+    blocker: 'Requires founder-approved production backup run and a non-production PostgreSQL restore target.',
+  },
+  {
+    id: 'monitoring-alerts',
+    label: 'Monitoring and alerting configured',
+    status: 'blocked',
+    blocker: 'Runbook and public smoke automation exist; external alert provider or Railway alert setup still requires founder action.',
+  },
+  {
+    id: 'xpr-webauth-settlement',
+    label: 'XPR/WebAuth signed escrow settlement',
+    status: 'blocked',
+    blocker: 'Requires testnet accounts, deployed contract/permission confirmation, and a real WebAuth-signed testnet transaction.',
+  },
+  {
+    id: 'smart-contract-permissions',
+    label: 'Smart contract deployment and permissions',
+    status: 'blocked',
+    blocker: 'Requires XPR account permission evidence and transfer notify/inline action verification on deployed accounts.',
+  },
+  {
+    id: 'stripe-readiness',
+    label: 'Stripe test-mode and payout readiness',
+    status: 'blocked',
+    blocker: 'Requires founder-provided Stripe test keys, webhook setup, one signed test-card run, and payout/legal review before live use.',
+  },
+  {
+    id: 'security-review',
+    label: 'Production security review',
+    status: 'partial',
+    blocker: 'Internal guardrails exist; external security review and any high-risk remediation remain required before real funds.',
+  },
+  {
+    id: 'legal-review',
+    label: 'Legal and compliance review',
+    status: 'blocked',
+    blocker: 'Requires legal review of escrow, token, financing, insurance, refund, cancellation, and contractor payout language.',
+  },
+  {
+    id: 'founder-approval',
+    label: 'Final real-money launch approval',
+    status: 'blocked',
+    blocker: 'Founder must explicitly approve real-money launch after all technical, legal, security, payment, and settlement gates pass.',
+  },
 ];
 
 function timestamp() {
@@ -283,16 +354,14 @@ const report = {
     mainSiteUrl,
     railwayFrontendUrl,
   },
+  productionGates,
   checks: [],
   summary: {
     critical: [],
     warnings: [],
-    blocked: [
-      'first admin account requires founder-set Railway variables',
-      'Railway frontend freshness requires manual redeploy or secret-safe Railway token',
-      'restore drill requires non-production PostgreSQL target',
-      'real XPR/Stripe/legal/security gates require founder or external approval',
-    ],
+    blocked: productionGates
+      .filter((gate) => gate.status !== 'pass')
+      .map((gate) => `${gate.id}: ${gate.blocker}`),
   },
 };
 
