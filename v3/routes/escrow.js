@@ -26,6 +26,7 @@ const express = require('express');
 const crypto  = require('crypto');
 const db      = require('../database/db');
 const { requireAuth } = require('../middleware/auth');
+const { settleMilestoneRelease } = require('../services/settlement');
 
 const router = express.Router();
 
@@ -427,6 +428,23 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
             // without a corresponding settlement record.
         });
 
+        // --- Real settlement (Stripe Connect transfer to contractor) ---
+        // Runs AFTER the release is committed so the DB lock is short-lived and an
+        // external payment failure can never roll back a confirmed release. Real
+        // money only moves when SETTLEMENT_ENABLED=true (see services/settlement.js).
+        const payout = await settleMilestoneRelease({
+            escrowId,
+            milestoneIndex,
+            amountCents: releasedAmount,
+            escrow,
+            requestId,
+        });
+
+        if (!payout.settled && payout.reason !== 'settlement_disabled') {
+            // eslint-disable-next-line no-console
+            console.warn(`[${requestId}] Milestone ${milestoneIndex} released but payout not completed (${payout.reason}). Retry via POST /api/stripe/create-payout.`);
+        }
+
         // eslint-disable-next-line no-console
         console.log(`[${requestId}] Milestone ${milestoneIndex} approved on escrow ${escrowId}`);
 
@@ -436,6 +454,7 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
             milestone_index: milestoneIndex,
             status: 'released',
             released_amount_cents: releasedAmount,
+            payout,
             escrow_status: finalEscrowStatus,
             next_step: finalEscrowStatus === 'released'
                 ? 'All milestones complete. Project is finished.'

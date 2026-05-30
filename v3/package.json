@@ -34,7 +34,7 @@
     "db:backup": "node scripts/backup-postgres.mjs",
     "db:restore:drill": "node scripts/restore-postgres-drill.mjs",
     "db:migrations:check": "node scripts/check-migration-readiness.mjs",
-    "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql && psql $DATABASE_URL -f database/escrow-audit-migration.sql"
+    "db:migrate": "psql $DATABASE_URL -f database/schema_v3_migration.sql && psql $DATABASE_URL -f database/escrow-audit-migration.sql && psql $DATABASE_URL -f database/settlement-binding-migration.sql"
   },
   "engines": {
     "node": ">=18.0.0"
