@@ -137,6 +137,7 @@ Audit trail progress, 2026-05-29:
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering repository guardrails, backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a detailed `productionGates` ledger to `npm --prefix v3 run ops:status` so each major 99% production gate records its current status and exact blocker in ignored evidence JSON.
 - Added `npm --prefix v3 run ops:gates` to convert the latest ignored `production-status-*.json` into a human-readable ignored Markdown gate summary for daily review.
+- Updated `npm --prefix v3 run ops:gates` to include `Next Actions` before the blocker/gate sections so daily status reports show immediate owner/action pairs for current warnings and blockers.
 - Updated `npm --prefix v3 run ops:gates` to include a `Blocked Items` section before the Gates table so dynamic blockers discovered by live checks, including `github-actions-account-lock`, are visible in the daily Markdown summary.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets. The workflow now uploads `production-status-evidence` with the generated status JSON and gate summary Markdown for review from the Actions run page.
 - Added `npm --prefix v3 run ops:evidence:scan` and CI validation so scheduled production evidence is scanned for secret-like values before artifact upload.
@@ -434,6 +435,7 @@ Day 4 CI notes, 2026-05-29:
 - Blocked, 2026-05-29: latest push run `26675045787` for commit `004bc80` did not start because GitHub reported the account is locked due to a billing issue. This is an external account blocker, not a code failure. Local fallback checks remain required until the founder resolves GitHub Actions billing/account status.
 - Added automatic GitHub Actions public status detection to `npm --prefix v3 run ops:status`; account/billing lock now appears as a warning plus `github-actions-account-lock` blocked item in local evidence.
 - Day 4 gate-summary note, 2026-05-30: `npm --prefix v3 run ops:gates` now renders dynamic `summary.blocked` entries under `Blocked Items` before the static Gates table, so founder/external blockers discovered by live checks are visible in the morning artifact.
+- Day 4 next-action note, 2026-05-30: `npm --prefix v3 run ops:gates` now renders `Next Actions` for critical failures, Railway frontend freshness, GitHub Actions account lock, admin bootstrap, restore drill, monitoring, XPR/WebAuth, Stripe, legal, and security blockers.
 
 Verification:
 

@@ -39,7 +39,7 @@ npm --prefix v3 run ops:status
 
 This writes a JSON report under `evidence/`, which is ignored by git. The report includes backend health, backend security headers, admin audit 401 guard, `gcsc.store` bundle freshness, Railway frontend freshness, and the current blocked founder/external items.
 
-After `ops:status`, run `npm --prefix v3 run ops:gates` and read the `Blocked Items` section before the Gates table. It surfaces dynamic blockers from the latest status run, including GitHub account/billing lock detection when scheduled smoke cannot start.
+After `ops:status`, run `npm --prefix v3 run ops:gates` and read the `Next Actions` section first, then `Blocked Items`, then the Gates table. `Next Actions` turns current warnings and blockers into owner/action pairs. `Blocked Items` surfaces dynamic blockers from the latest status run, including GitHub account/billing lock detection when scheduled smoke cannot start.
 
 For a public CORS/security smoke check, run:
 

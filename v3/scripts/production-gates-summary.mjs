@@ -48,6 +48,64 @@ function escapeTableCell(value) {
     .trim();
 }
 
+function addUnique(items, item) {
+  if (!items.includes(item)) {
+    items.push(item);
+  }
+}
+
+function buildNextActions(critical, warnings, blocked) {
+  const actions = [];
+
+  if (critical.length > 0) {
+    addUnique(actions, 'Codex/operator: treat critical failures as incident work; inspect production-status JSON and fix or rollback before feature work.');
+  }
+
+  for (const warning of warnings) {
+    const normalized = String(warning).toLowerCase();
+    if (normalized.includes('railway frontend freshness')) {
+      addUnique(actions, 'Founder/operator: Redeploy Railway frontend, then run STRICT_RAILWAY_FRONTEND=1 npm --prefix v3 run smoke:production.');
+    } else if (normalized.includes('github actions scheduled smoke')) {
+      addUnique(actions, 'Founder/operator: check GitHub Actions status; use local fallback smoke/status commands until scheduled monitoring is healthy.');
+    }
+  }
+
+  for (const item of blocked) {
+    const normalized = String(item).toLowerCase();
+    if (normalized.startsWith('github-actions-account-lock:')) {
+      addUnique(actions, 'Founder: Resolve GitHub account/billing lock, then rerun Backend Production Checks and confirm the daily artifact uploads.');
+    } else if (normalized.startsWith('admin-account:')) {
+      addUnique(actions, 'Founder: create first admin with Railway bootstrap variables, log in, disable bootstrap, redeploy, then verify admin UI.');
+    } else if (normalized.startsWith('live-trust-workflow:')) {
+      addUnique(actions, 'Founder/Codex: after first admin exists, run the role-by-role rehearsal in PILOT-RUNBOOK.md with homeowner, contractor, and admin test users.');
+    } else if (normalized.startsWith('audit-log:')) {
+      addUnique(actions, 'Founder/Codex: after the role-by-role rehearsal, export non-secret admin audit evidence with npm --prefix v3 run audit:export.');
+    } else if (normalized.startsWith('postgres-restore-drill:')) {
+      addUnique(actions, 'Founder/Codex: provide a non-production PostgreSQL restore target and approve a production backup run before any risky DB change.');
+    } else if (normalized.startsWith('monitoring-alerts:')) {
+      addUnique(actions, 'Founder: choose an alert provider or Railway alerts; Codex/operator verifies alert coverage with MONITORING-RUNBOOK.md.');
+    } else if (normalized.startsWith('xpr-webauth-settlement:')) {
+      addUnique(actions, 'Founder/Codex: use testnet accounts for one real WebAuth-signed escrow action; no mainnet funds without explicit approval.');
+    } else if (normalized.startsWith('smart-contract-permissions:')) {
+      addUnique(actions, 'Founder/Codex: verify deployed XPR contract permissions, transfer notify behavior, and inline action permissions before any settlement pilot.');
+    } else if (normalized.startsWith('stripe-readiness:')) {
+      addUnique(actions, 'Founder/Codex: add Stripe test-mode keys through secret-safe env handling and run a signed webhook/test-card smoke only in test mode.');
+    } else if (normalized.startsWith('legal-review:')) {
+      addUnique(actions, 'Founder: get legal review for escrow, token, financing, insurance, refund, cancellation, and payout language.');
+    } else if (normalized.startsWith('security-review:')) {
+      addUnique(actions, 'Founder/Codex: complete external or structured internal security review before real funds.');
+    } else if (normalized.startsWith('founder-approval:')) {
+      addUnique(actions, 'Founder: keep real-money status disabled until every technical, legal, security, payment, and settlement gate passes.');
+    }
+  }
+
+  if (actions.length === 0) {
+    actions.push('Operator: no immediate action from this report; continue with the first safe unchecked task in TWO-WEEK-PRODUCTION-99-PLAN.md.');
+  }
+
+  return actions;
+}
+
 function findLatestStatusReport() {
   if (!fs.existsSync(evidenceDir)) {
     return null;
@@ -82,6 +140,10 @@ function buildMarkdown(report, reportPath) {
   const warnings = Array.isArray(summary.warnings) ? summary.warnings : [];
   const blocked = Array.isArray(summary.blocked) ? summary.blocked : [];
   const gates = report.productionGates;
+  const gateBlockers = gates
+    .filter((gate) => gate.status !== 'pass')
+    .map((gate) => `${gate.id}: ${gate.blocker || ''}`);
+  const nextActions = buildNextActions(critical, warnings, [...blocked, ...gateBlockers]);
 
   const rows = gates.map((gate) => (
     `| \`${escapeTableCell(gate.id)}\` ${escapeTableCell(gate.label || '')} | ${escapeTableCell(gate.status)} | ${escapeTableCell(gate.blocker)} |`
@@ -100,6 +162,10 @@ function buildMarkdown(report, reportPath) {
     `- Critical failures: ${critical.length}`,
     `- Warnings: ${warnings.length}${warnings.length ? ` (${warnings.map(escapeTableCell).join(', ')})` : ''}`,
     `- Open/blocked gates: ${blocked.length}`,
+    '',
+    '## Next Actions',
+    '',
+    ...nextActions.map((item) => `- ${escapeTableCell(item)}`),
     '',
     '## Blocked Items',
     '',

@@ -83,6 +83,11 @@ const outputPath = result.stdout.match(/production gates summary: (.+production-
 const markdown = fs.readFileSync(outputPath, 'utf8');
 
 assert.match(markdown, /# Production Gate Summary/, 'summary must have a clear title');
+assert.match(markdown, /## Next Actions/, 'summary must include an actionable next actions section');
+assert.match(markdown, /Resolve GitHub account\/billing lock/, 'summary must include the GitHub account lock next action');
+assert.match(markdown, /Redeploy Railway frontend/, 'summary must include the Railway frontend freshness next action');
+assert.match(markdown, /PILOT-RUNBOOK\.md/, 'summary must include the live rehearsal next action');
+assert.match(markdown, /contract permissions/i, 'summary must include the smart contract permissions next action');
 assert.match(markdown, /## Blocked Items/, 'summary must include a blocked items section');
 assert.match(markdown, /\| Gate \| Status \| Blocker \|/, 'summary must include a gates table');
 assert.match(markdown, /admin-account/, 'summary must include admin account gate');

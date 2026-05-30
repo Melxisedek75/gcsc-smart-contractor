@@ -191,7 +191,7 @@ For a human-readable gate summary after `ops:status`:
 npm --prefix v3 run ops:gates
 ```
 
-This writes `evidence/production-gates-*.md`, which is also ignored by git. The Markdown includes a `Blocked Items` section before the Gates table so operators can see dynamic blockers discovered by live checks, such as `github-actions-account-lock`, alongside the static production launch gates.
+This writes `evidence/production-gates-*.md`, which is also ignored by git. The Markdown includes `Next Actions` and `Blocked Items` sections before the Gates table so operators can see the immediate owner/action list plus dynamic blockers discovered by live checks, such as `github-actions-account-lock`, alongside the static production launch gates.
 
 Before sharing or archiving generated production evidence, scan it for secret-like values:
 

@@ -433,7 +433,7 @@ npm --prefix v3 run ops:gates
 npm --prefix v3 run ops:evidence:scan
 ```
 
-The status report includes repository production guardrails, GitHub Actions scheduled smoke status, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown report with a `Blocked Items` section and the production gate table. The evidence scan checks generated status/gate files for secret-like values before they are shared or uploaded. The scheduled GitHub Actions workflow uploads both files as the `production-status-evidence` artifact after the scan passes. Use `DAILY-STATUS-RUNBOOK.md` to interpret the artifact each morning.
+The status report includes repository production guardrails, GitHub Actions scheduled smoke status, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown report with `Next Actions`, `Blocked Items`, and the production gate table. The evidence scan checks generated status/gate files for secret-like values before they are shared or uploaded. The scheduled GitHub Actions workflow uploads both files as the `production-status-evidence` artifact after the scan passes. Use `DAILY-STATUS-RUNBOOK.md` to interpret the artifact each morning.
 
 The GitHub Actions workflow also runs the public smoke/status checks daily at `14:00 UTC` without secrets.
 
