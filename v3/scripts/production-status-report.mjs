@@ -191,6 +191,10 @@ function checkRepositoryGuardrails(report) {
       'security:cors:smoke',
       'ops:status',
       'ops:gates',
+      'actions/upload-artifact@v4',
+      'production-status-evidence',
+      'evidence/production-status-*.json',
+      'evidence/production-gates-*.md',
     ]) {
       if (!workflow.includes(required)) {
         changed.push(`backend-production-checks.yml missing ${required}`);

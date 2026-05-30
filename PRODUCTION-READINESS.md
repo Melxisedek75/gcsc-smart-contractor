@@ -63,7 +63,7 @@ Go/no-go package:
 - `npm --prefix v3 run security:cors:smoke` verifies public production CORS allow/deny behavior and the admin audit HTTP 401 guard.
 - `npm --prefix v3 run security:env:check` validates production env safety without printing JWT, database URL, or admin password values.
 - `npm --prefix v3 run smoke:production` now also verifies live backend security headers on `/health`.
-- GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets and validates the production env checker script.
+- GitHub Actions runs public production smoke/status checks daily at `14:00 UTC` without secrets, validates the production env checker script, and uploads the generated `production-status-evidence` artifact for review.
 - Current decision: MVP demo can proceed with controls; controlled non-money pilot is conditional on first admin setup and live role-by-role rehearsal; real-money production remains no-go.
 
 ## Current Live Stack

@@ -101,3 +101,13 @@ jobs:
 
       - name: Production gates summary
         run: npm --prefix v3 run ops:gates
+
+      - name: Upload production evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-status-evidence
+          path: |
+            evidence/production-status-*.json
+            evidence/production-gates-*.md
+          if-no-files-found: error
+          retention-days: 14

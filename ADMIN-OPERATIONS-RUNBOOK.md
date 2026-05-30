@@ -193,6 +193,14 @@ npm --prefix v3 run ops:gates
 
 This writes `evidence/production-gates-*.md`, which is also ignored by git.
 
+Daily GitHub Actions runs upload both files as an artifact named `production-status-evidence`:
+
+1. Open GitHub repository `Melxisedek75/gcsc-smart-contractor`.
+2. Open Actions.
+3. Open the latest `Backend Production Checks` run.
+4. Download `production-status-evidence`.
+5. Review `production-gates-*.md` first, then `production-status-*.json` if more detail is needed.
+
 ## PostgreSQL Backups
 
 Before any risky operation, take a backup.

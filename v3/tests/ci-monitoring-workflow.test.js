@@ -39,6 +39,12 @@ for (const required of [
   'npm --prefix v3 run test:production-gates-summary-script',
   'Production gates summary',
   'npm --prefix v3 run ops:gates',
+  'Upload production evidence artifact',
+  'actions/upload-artifact@v4',
+  'production-status-evidence',
+  'evidence/production-status-*.json',
+  'evidence/production-gates-*.md',
+  'retention-days: 14',
   'SECURITY-PRODUCTION-CHECKLIST.md',
 ]) {
   assert.ok(workflow.includes(required), `workflow must include ${required}`);

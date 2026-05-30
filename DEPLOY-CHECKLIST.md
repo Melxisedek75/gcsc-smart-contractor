@@ -432,7 +432,7 @@ npm --prefix v3 run ops:status
 npm --prefix v3 run ops:gates
 ```
 
-The status report includes repository production guardrails, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown table.
+The status report includes repository production guardrails, backend health, backend security headers, admin audit guard, frontend freshness, Railway frontend freshness warning, and current blocked external/founder items. The gates summary converts the latest ignored JSON evidence into a human-readable Markdown table. The scheduled GitHub Actions workflow uploads both files as the `production-status-evidence` artifact.
 
 The GitHub Actions workflow also runs the public smoke/status checks daily at `14:00 UTC` without secrets.
 
