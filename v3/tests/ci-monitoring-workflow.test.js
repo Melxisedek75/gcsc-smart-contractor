@@ -35,6 +35,10 @@ for (const required of [
   'npm --prefix v3 run ops:status',
   'Operations status report script validation',
   'npm --prefix v3 run test:ops-status-report-script',
+  'Production gates summary script validation',
+  'npm --prefix v3 run test:production-gates-summary-script',
+  'Production gates summary',
+  'npm --prefix v3 run ops:gates',
   'SECURITY-PRODUCTION-CHECKLIST.md',
 ]) {
   assert.ok(workflow.includes(required), `workflow must include ${required}`);

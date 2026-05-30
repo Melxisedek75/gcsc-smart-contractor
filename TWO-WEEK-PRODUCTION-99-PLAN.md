@@ -136,6 +136,7 @@ Audit trail progress, 2026-05-29:
 - Added ignored `evidence/` output, `npm --prefix v3 run audit:export`, `ADMIN-OPERATIONS-EVIDENCE-TEMPLATE.md`, and CI validation for audit export tooling.
 - Added `npm --prefix v3 run ops:status` for non-secret daily operations snapshots covering repository guardrails, backend health, backend security headers, admin guard, frontend freshness, Railway frontend freshness warnings, and current blocked founder/external items.
 - Added a detailed `productionGates` ledger to `npm --prefix v3 run ops:status` so each major 99% production gate records its current status and exact blocker in ignored evidence JSON.
+- Added `npm --prefix v3 run ops:gates` to convert the latest ignored `production-status-*.json` into a human-readable ignored Markdown gate summary for daily review.
 - Added a daily GitHub Actions public smoke/status schedule at `14:00 UTC` with no repository secrets.
 - Added `npm --prefix v3 run admin:bootstrap:check` to validate first-admin Railway env presence without printing password, JWT secret, or database URL.
 - Added `npm --prefix v3 run db:migrations:check` to validate production SQL migration file presence/order without database credentials.
@@ -423,6 +424,7 @@ Day 4 CI notes, 2026-05-29:
 - Added CI validation for `npm --prefix v3 run test:security-env-check-script` so the secret-safe production env checker cannot be removed silently.
 - Added repository guardrail verification to `npm --prefix v3 run ops:status`; daily status now fails critically if the production env checker, CI smoke workflow, or no-secrets guardrail is removed.
 - Added CI validation for `npm --prefix v3 run test:restore-drill-script` so restore drill helper behavior is protected without database credentials.
+- Added CI validation for `npm --prefix v3 run test:production-gates-summary-script` and a scheduled `npm --prefix v3 run ops:gates` step after `ops:status`.
 
 Verification:
 

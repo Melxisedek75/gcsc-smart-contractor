@@ -66,6 +66,9 @@ jobs:
       - name: Operations status report script validation
         run: npm --prefix v3 run test:ops-status-report-script
 
+      - name: Production gates summary script validation
+        run: npm --prefix v3 run test:production-gates-summary-script
+
       - name: CI monitoring workflow validation
         run: npm --prefix v3 run test:ci-monitoring-workflow
 
@@ -95,3 +98,6 @@ jobs:
 
       - name: Production status report
         run: npm --prefix v3 run ops:status
+
+      - name: Production gates summary
+        run: npm --prefix v3 run ops:gates

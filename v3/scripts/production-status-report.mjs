@@ -124,6 +124,7 @@ function checkRepositoryGuardrails(report) {
   const packageJsonPath = path.join(repoRoot, 'v3', 'package.json');
   const securityEnvScriptPath = path.join(repoRoot, 'v3', 'scripts', 'check-security-env.mjs');
   const restoreDrillScriptPath = path.join(repoRoot, 'v3', 'scripts', 'restore-postgres-drill.mjs');
+  const productionGatesSummaryScriptPath = path.join(repoRoot, 'v3', 'scripts', 'production-gates-summary.mjs');
   const workflowPath = path.join(repoRoot, '.github', 'workflows', 'backend-production-checks.yml');
   const missing = [];
   const changed = [];
@@ -131,6 +132,7 @@ function checkRepositoryGuardrails(report) {
   const packageJsonRaw = readTextIfExists(packageJsonPath);
   const securityEnvScript = readTextIfExists(securityEnvScriptPath);
   const restoreDrillScript = readTextIfExists(restoreDrillScriptPath);
+  const productionGatesSummaryScript = readTextIfExists(productionGatesSummaryScriptPath);
   const workflow = readTextIfExists(workflowPath);
 
   if (!packageJsonRaw) {
@@ -141,6 +143,9 @@ function checkRepositoryGuardrails(report) {
   }
   if (!restoreDrillScript) {
     missing.push('v3/scripts/restore-postgres-drill.mjs');
+  }
+  if (!productionGatesSummaryScript) {
+    missing.push('v3/scripts/production-gates-summary.mjs');
   }
   if (!workflow) {
     missing.push('.github/workflows/backend-production-checks.yml');
@@ -161,6 +166,12 @@ function checkRepositoryGuardrails(report) {
     if (scripts['test:restore-drill-script'] !== 'node tests/restore-drill-script.test.js') {
       changed.push('test:restore-drill-script package script');
     }
+    if (scripts['ops:gates'] !== 'node scripts/production-gates-summary.mjs') {
+      changed.push('ops:gates package script');
+    }
+    if (scripts['test:production-gates-summary-script'] !== 'node tests/production-gates-summary-script.test.js') {
+      changed.push('test:production-gates-summary-script package script');
+    }
   }
 
   if (securityEnvScript) {
@@ -175,9 +186,11 @@ function checkRepositoryGuardrails(report) {
     for (const required of [
       'test:security-env-check-script',
       'test:restore-drill-script',
+      'test:production-gates-summary-script',
       'smoke:production',
       'security:cors:smoke',
       'ops:status',
+      'ops:gates',
     ]) {
       if (!workflow.includes(required)) {
         changed.push(`backend-production-checks.yml missing ${required}`);
