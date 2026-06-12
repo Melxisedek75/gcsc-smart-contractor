@@ -1844,6 +1844,29 @@ async function updateStoredMilestoneStatus(milestone, status, verifiedBy = '') {
   return milestone;
 }
 
+// Atomic compare-and-set transition: updates status only if the current status
+// is in fromStatuses. Returns null when another request already moved the
+// milestone (prevents double-release race between check and update).
+async function transitionStoredMilestoneStatus(milestone, fromStatuses, status, verifiedBy = '') {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `UPDATE milestones SET status = $1, verified_by = $2, updated_at = NOW()
+       WHERE id = $3 AND status = ANY($4)
+       RETURNING *`,
+      [status, verifiedBy, milestone.id, fromStatuses]
+    );
+    if (!result.rows.length) return null;
+    return normalizeMilestone(result.rows[0]);
+  }
+
+  if (!fromStatuses.includes(milestone.status)) return null;
+  milestone.status = status;
+  milestone.verified_by = verifiedBy;
+  milestone.updated_at = new Date().toISOString();
+  saveDatabase();
+  return milestone;
+}
+
 async function updateStoredEscrowStatus(escrow, status) {
   if (USE_POSTGRES) {
     const result = await queryPostgres(
@@ -3124,7 +3147,8 @@ const routes = {
     if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
     if (milestone.status !== 'pending') return json(res, 400, { error: 'Milestone must be pending' });
 
-    const updated = await updateStoredMilestoneStatus(milestone, 'submitted', `contractor:${user.userId}`);
+    const updated = await transitionStoredMilestoneStatus(milestone, ['pending'], 'submitted', `contractor:${user.userId}`);
+    if (!updated) return json(res, 409, { error: 'Milestone status changed concurrently, refresh and retry' });
     await recordAuditEvent(req, {
       actorId: user.userId,
       targetUserId: escrow.homeowner_id,
@@ -3154,7 +3178,8 @@ const routes = {
     if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
     if (milestone.status !== 'submitted') return json(res, 400, { error: 'Milestone must be submitted' });
 
-    const updated = await updateStoredMilestoneStatus(milestone, 'approved', `homeowner:${user.userId}`);
+    const updated = await transitionStoredMilestoneStatus(milestone, ['submitted'], 'approved', `homeowner:${user.userId}`);
+    if (!updated) return json(res, 409, { error: 'Milestone status changed concurrently, refresh and retry' });
     await recordAuditEvent(req, {
       actorId: user.userId,
       targetUserId: escrow.contractor_id,
@@ -3184,7 +3209,8 @@ const routes = {
     if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
     if (milestone.status !== 'approved') return json(res, 400, { error: 'Milestone must be approved before release' });
 
-    const updated = await updateStoredMilestoneStatus(milestone, 'released', `homeowner:${user.userId}`);
+    const updated = await transitionStoredMilestoneStatus(milestone, ['approved'], 'released', `homeowner:${user.userId}`);
+    if (!updated) return json(res, 409, { error: 'Milestone status changed concurrently, refresh and retry' });
     const releasedTotal = await getReleasedMilestoneAmountTotal(escrow.id);
     const updatedEscrow = releasedTotal >= escrow.total_amount
       ? await updateStoredEscrowStatus(escrow, 'completed')
@@ -3221,7 +3247,8 @@ const routes = {
     }
     if (milestone.status === 'released') return json(res, 400, { error: 'Released milestone cannot be disputed' });
 
-    const updated = await updateStoredMilestoneStatus(milestone, 'disputed', `user:${user.userId}`);
+    const updated = await transitionStoredMilestoneStatus(milestone, ['pending', 'submitted', 'approved', 'disputed'], 'disputed', `user:${user.userId}`);
+    if (!updated) return json(res, 409, { error: 'Milestone status changed concurrently, refresh and retry' });
     const updatedEscrow = await updateStoredEscrowStatus(escrow, 'disputed');
     await recordAuditEvent(req, {
       actorId: user.userId,
