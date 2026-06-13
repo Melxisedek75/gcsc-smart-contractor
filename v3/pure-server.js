@@ -1466,12 +1466,30 @@ async function enrichBidsWithContractors(bids) {
 
 async function acceptStoredBid(bid, project, homeownerId) {
   if (USE_POSTGRES) {
+    // Atomically claim the project (open -> in_progress) so concurrent accepts
+    // of any bid on the same project cannot create a second escrow.
+    const claimed = await queryPostgres(
+      `UPDATE projects SET status = 'in_progress', updated_at = NOW()
+       WHERE id = $1 AND status = 'open'
+       RETURNING id`,
+      [project.id]
+    );
+    if (!claimed.rows.length) return null;
+
     const accepted = await queryPostgres(
       `UPDATE bids SET status = $1, updated_at = NOW()
-       WHERE id = $2
+       WHERE id = $2 AND status = 'pending'
        RETURNING *`,
       ['accepted', bid.id]
     );
+    if (!accepted.rows.length) {
+      // Compensate: this bid was not pending anymore, release the project claim.
+      await queryPostgres(
+        `UPDATE projects SET status = 'open', updated_at = NOW() WHERE id = $1`,
+        [project.id]
+      );
+      return null;
+    }
     await queryPostgres(
       `UPDATE bids SET status = 'rejected', updated_at = NOW()
        WHERE project_id = $1 AND id <> $2`,
@@ -1484,14 +1502,15 @@ async function acceptStoredBid(bid, project, homeownerId) {
       [bid.project_id, homeownerId, bid.contractor_id, bid.amount]
     );
     await queryPostgres(
-      `UPDATE projects SET status = $1, escrow_id = $2, updated_at = NOW()
-       WHERE id = $3
+      `UPDATE projects SET escrow_id = $1, updated_at = NOW()
+       WHERE id = $2
        RETURNING *`,
-      ['in_progress', escrow.rows[0].id, project.id]
+      [escrow.rows[0].id, project.id]
     );
     return { bid: normalizeBid(accepted.rows[0]), escrow: normalizeEscrow(escrow.rows[0]) };
   }
 
+  if (project.status !== 'open' || bid.status !== 'pending') return null;
   bid.status = 'accepted';
   db.bids.filter(b => b.project_id === bid.project_id && b.id !== bid.id).forEach(b => b.status = 'rejected');
   const escrowId = db.nextId('escrow_contracts');
@@ -3065,7 +3084,14 @@ const routes = {
       });
     }
 
-    const { escrow } = await acceptStoredBid(bid, project, user.userId);
+    if (bid.status !== 'pending') return json(res, 400, { error: 'Bid is not pending' });
+    if (project.status !== 'open' || project.escrow_id) {
+      return json(res, 400, { error: 'Project already has an accepted bid' });
+    }
+
+    const result = await acceptStoredBid(bid, project, user.userId);
+    if (!result) return json(res, 409, { error: 'Bid or project changed concurrently, refresh and retry' });
+    const { escrow } = result;
     await recordAuditEvent(req, {
       actorId: user.userId,
       targetUserId: bid.contractor_id,

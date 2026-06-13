@@ -266,6 +266,9 @@ class Pool {
       const [status, id] = params;
       const bid = state.bids.find((row) => row.id === Number(id));
       if (!bid) return { rows: [], rowCount: 0 };
+      if (sql.includes("and status = 'pending'") && bid.status !== 'pending') {
+        return { rows: [], rowCount: 0 };
+      }
       bid.status = status;
       bid.updated_at = new Date().toISOString();
       save(state);
@@ -287,6 +290,34 @@ class Pool {
       state.escrow_contracts.push(escrow);
       save(state);
       return { rows: [escrow], rowCount: 1 };
+    }
+
+    if (sql.startsWith("update projects set status = 'in_progress'") && sql.includes("status = 'open'")) {
+      const project = state.projects.find((row) => row.id === Number(params[0]));
+      if (!project || project.status !== 'open') return { rows: [], rowCount: 0 };
+      project.status = 'in_progress';
+      project.updated_at = new Date().toISOString();
+      save(state);
+      return { rows: [{ id: project.id }], rowCount: 1 };
+    }
+
+    if (sql.startsWith("update projects set status = 'open'")) {
+      const project = state.projects.find((row) => row.id === Number(params[0]));
+      if (!project) return { rows: [], rowCount: 0 };
+      project.status = 'open';
+      project.updated_at = new Date().toISOString();
+      save(state);
+      return { rows: [project], rowCount: 1 };
+    }
+
+    if (sql.startsWith('update projects set escrow_id')) {
+      const [escrowId, id] = params;
+      const project = state.projects.find((row) => row.id === Number(id));
+      if (!project) return { rows: [], rowCount: 0 };
+      project.escrow_id = Number(escrowId);
+      project.updated_at = new Date().toISOString();
+      save(state);
+      return { rows: [project], rowCount: 1 };
     }
 
     if (sql.startsWith('update projects set status')) {
