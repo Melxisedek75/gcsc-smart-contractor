@@ -732,6 +732,12 @@ async function waitForServer(child) {
     assert.strictEqual(accepted.status, 200);
     assert.ok(accepted.data.escrow_id);
 
+    // Regression: re-accepting the same bid must not create a second escrow.
+    const reAccept = await request('POST', `/api/bids/${bid.data.bid.id}/accept`, null, owner.data.token);
+    assert.strictEqual(reAccept.status, 400);
+    const escrowCountAfterReAccept = JSON.parse(fs.readFileSync(statePath, 'utf8')).escrow_contracts.length;
+    assert.strictEqual(escrowCountAfterReAccept, 1);
+
     const adminToken = (() => {
       const crypto = require('crypto');
       const base64Url = (value) => Buffer.from(value).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -854,6 +860,12 @@ async function waitForServer(child) {
     const released = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
     assert.strictEqual(released.status, 200);
     assert.strictEqual(released.data.milestone.status, 'released');
+
+    // Regression: re-releasing an already-released milestone must be rejected so
+    // it cannot emit a second release event / double payout (audit count below
+    // must stay at 1).
+    const reRelease = await request('POST', `/api/milestones/${milestone.data.milestone.id}/release`, null, login.data.token);
+    assert.strictEqual(reRelease.status, 400);
 
     const milestoneReleasedAudit = await request('GET', '/api/admin/audit-events?action=escrow.milestone.released', null, adminToken);
     assert.strictEqual(milestoneReleasedAudit.status, 200);
