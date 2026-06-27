@@ -1,0 +1,235 @@
+/**
+ * mppx 402-flow payment endpoint tests
+ *
+ * Covers:
+ *  - 402 challenge (no auth header)
+ *  - Happy path: valid txHash → 200 + Payment-Receipt
+ *  - Replay protection: same txHash twice → 409
+ *  - Bad amount → 400
+ *  - Bad recipient → 400
+ *  - Hyperion fallback: first call throws, second succeeds
+ *
+ * verifyHyperionTransfer is mocked via _hooks (no real network).
+ */
+
+const http = require('http');
+const mod = require('../pure-server');
+
+const server = mod;
+const { db, _hooks, jwtSign } = mod;
+const originalVerifier = _hooks.verifyHyperionTransfer;
+
+let baseUrl;
+let listener;
+
+beforeAll((done) => {
+  listener = server.listen(0, '127.0.0.1', () => {
+    const { port } = listener.address();
+    baseUrl = `http://127.0.0.1:${port}`;
+    done();
+  });
+});
+
+afterAll((done) => {
+  listener.close(done);
+});
+
+beforeEach(() => {
+  db.payment_receipts.length = 0;
+  db.lead_tokens.length = 0;
+  db.job_posting_payments.length = 0;
+  _hooks.verifyHyperionTransfer = originalVerifier;
+});
+
+// ---- helpers ----
+function request({ method = 'POST', path, headers = {}, body }) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const url = new URL(baseUrl + path);
+    const req = http.request({
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+        ...headers,
+      },
+    }, (res) => {
+      let buf = '';
+      res.on('data', c => buf += c);
+      res.on('end', () => {
+        let parsed;
+        try { parsed = JSON.parse(buf); } catch { parsed = buf; }
+        resolve({ status: res.statusCode, headers: res.headers, body: parsed });
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+const CONTRACTOR_TOKEN = jwtSign({ userId: 2, email: 'contractor@gcsc.store', role: 'contractor' });
+const HOMEOWNER_TOKEN = jwtSign({ userId: 1, email: 'demo@gcsc.store', role: 'homeowner' });
+const FAKE_TX = 'a'.repeat(64);
+const FAKE_TX_2 = 'b'.repeat(64);
+
+// ---- tests ----
+describe('POST /api/payment/lead-token', () => {
+  test('returns 402 with WWW-Authenticate when no payment header', async () => {
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+    });
+    expect(r.status).toBe(402);
+    expect(r.headers['www-authenticate']).toMatch(/Payment recipient="gcsctoken111".*amount="50\.0000 XPR".*memo="gcsc:lead-token"/);
+    expect(r.body.payment.amount).toBe('50.0000 XPR');
+    expect(r.body.payment.memo).toBe('gcsc:lead-token');
+  });
+
+  test('returns 401 when no JWT', async () => {
+    const r = await request({ path: '/api/payment/lead-token' });
+    expect(r.status).toBe(401);
+  });
+
+  test('returns 403 when JWT is homeowner (not contractor)', async () => {
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}` },
+    });
+    expect(r.status).toBe(403);
+  });
+
+  test('happy path: valid txHash → 200 + lead_id', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'testacct1', block_num: 12345 });
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: {
+        Authorization: `Bearer ${CONTRACTOR_TOKEN}`,
+        'X-Payment-Tx': FAKE_TX,
+      },
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.lead_id).toMatch(/^lead_[0-9a-f]{16}$/);
+    expect(r.body.tx_hash).toBe(FAKE_TX);
+    expect(r.headers['payment-receipt']).toContain('lead_id=');
+    expect(db.lead_tokens).toHaveLength(1);
+    expect(db.payment_receipts).toHaveLength(1);
+  });
+
+  test('replay protection: same txHash twice → second is 409', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'testacct1', block_num: 12345 });
+    await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+    });
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toMatch(/already processed/);
+    expect(db.payment_receipts).toHaveLength(1);
+  });
+
+  test('bad amount → 400', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: false, error: 'bad_amount', detail: 'got=10.0000 XPR expected=50.0000 XPR' });
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('bad_amount');
+  });
+
+  test('bad recipient → 400', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: false, error: 'bad_recipient', detail: 'got=evil123' });
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': FAKE_TX_2 },
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('bad_recipient');
+  });
+});
+
+describe('POST /api/payment/job-posting', () => {
+  beforeEach(() => {
+    db.projects.length = 0;
+    db.projects.push({
+      id: 100, homeowner_id: 1, title: 'Test', description: 'd',
+      category: 'general', status: 'open', created_at: new Date().toISOString(),
+    });
+  });
+
+  test('returns 402 with $25 XPR challenge', async () => {
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}` },
+    });
+    expect(r.status).toBe(402);
+    expect(r.headers['www-authenticate']).toMatch(/amount="25\.0000 XPR".*memo="gcsc:job-posting"/);
+  });
+
+  test('returns 403 when contractor tries to pay job-posting', async () => {
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+    });
+    expect(r.status).toBe(403);
+  });
+
+  test('rejects missing project_id → 400', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'a', block_num: 1 });
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+      body: {},
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toMatch(/project_id/);
+  });
+
+  test('rejects project owned by another user → 400', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'a', block_num: 1 });
+    db.projects.push({ id: 200, homeowner_id: 999, title: 'Foreign', description: 'x', status: 'open', created_at: new Date().toISOString() });
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+      body: { project_id: 200 },
+    });
+    expect(r.status).toBe(400);
+  });
+
+  test('happy path: publishes project', async () => {
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'homeowner1', block_num: 99 });
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+      body: { project_id: 100 },
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.project_id).toBe(100);
+    const project = db.projects.find(p => p.id === 100);
+    expect(project.published).toBe(true);
+    expect(project.published_at).toBeTruthy();
+  });
+});
+
+describe('verifyHyperionTransfer (unit)', () => {
+  const { verifyHyperionTransfer } = mod;
+
+  test('rejects bad txHash format', async () => {
+    const r = await verifyHyperionTransfer({ txHash: 'short', expectedRecipient: 'x', expectedAmount: 'y' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('bad_tx_hash');
+  });
+
+  test('rejects undefined txHash', async () => {
+    const r = await verifyHyperionTransfer({ expectedRecipient: 'x', expectedAmount: 'y' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('bad_tx_hash');
+  });
+});

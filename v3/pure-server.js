@@ -205,6 +205,9 @@ function createEmptyDatabase() {
     audit_events: [],
     financing_prechecks: [],
     reviews: [],
+    payment_receipts: [],
+    lead_tokens: [],
+    job_posting_payments: [],
   };
 }
 
@@ -1218,6 +1221,60 @@ function getXprHyperionUrls() {
 function normalizeEndpoint(url) {
   return String(url || '').replace(/\/+$/, '');
 }
+
+// ===== mppx 402-flow PAYMENT VERIFIER (independent of chainTx async loop — Variant B) =====
+const PAYMENT_RECIPIENT = process.env.XPR_PAYMENT_RECIPIENT || 'gcsctoken111';
+const PAYMENT_TX_MAX_AGE_MS = parseInt(process.env.XPR_PAYMENT_MAX_AGE_MS || '600000', 10);
+
+const _hooks = {
+  verifyHyperionTransfer: null, // wired below after function defined
+};
+
+async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo }) {
+  if (!txHash || typeof txHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(txHash)) {
+    return { ok: false, error: 'bad_tx_hash' };
+  }
+  const nodes = getXprHyperionUrls();
+  let lastError = null;
+  for (const node of nodes) {
+    const result = await fetchHyperionTransaction(node, txHash);
+    if (!result.found) {
+      lastError = result.error || `no_tx@${node}`;
+      continue;
+    }
+    const payload = result.payload || {};
+    const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    const transfer = actions.find(a => {
+      const act = getActionAct(a);
+      return act && act.name === 'transfer' && act.account === 'eosio.token';
+    });
+    if (!transfer) {
+      lastError = `no_transfer_action@${node}`;
+      continue;
+    }
+    const data = getActionAct(transfer).data || {};
+    if (data.to !== expectedRecipient) {
+      return { ok: false, error: 'bad_recipient', detail: `got=${data.to} expected=${expectedRecipient}` };
+    }
+    if (String(data.quantity).trim() !== expectedAmount) {
+      return { ok: false, error: 'bad_amount', detail: `got=${data.quantity} expected=${expectedAmount}` };
+    }
+    if (expectedMemo && data.memo !== expectedMemo) {
+      return { ok: false, error: 'bad_memo', detail: `got=${data.memo} expected=${expectedMemo}` };
+    }
+    const tsRaw = transfer.timestamp || transfer['@timestamp'];
+    if (tsRaw) {
+      const txTime = new Date(/Z$/.test(tsRaw) ? tsRaw : (tsRaw + 'Z'));
+      const ageMs = Date.now() - txTime.getTime();
+      if (ageMs > PAYMENT_TX_MAX_AGE_MS) return { ok: false, error: 'tx_too_old', detail: `age_ms=${ageMs}` };
+      if (ageMs < -60000) return { ok: false, error: 'tx_in_future', detail: `age_ms=${ageMs}` };
+    }
+    return { ok: true, from: data.from, block_num: transfer.block_num, node };
+  }
+  return { ok: false, error: 'all_nodes_failed', detail: String(lastError) };
+}
+
+_hooks.verifyHyperionTransfer = verifyHyperionTransfer;
 
 async function getProjectCount() {
   if (USE_POSTGRES) {
@@ -3383,6 +3440,165 @@ const routes = {
     const escrows = await listStoredEscrowsForUser(user.userId);
     json(res, 200, { escrows });
   },
+
+  // ===== mppx 402-flow PAYMENT ROUTES (independent verifier — Variant B) =====
+
+  // Lead Token purchase ($50 XPR) — Contractor pays for a project lead
+  'POST /api/payment/lead-token': async (req, res) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+    if (user.role !== 'contractor') return json(res, 403, { error: 'Contractors only' });
+
+    const amount = '50.0000 XPR';
+    const memo = 'gcsc:lead-token';
+    const auth = req.headers['authorization'] || '';
+    const paymentHeader = req.headers['x-payment-tx'] || (auth.startsWith('Payment ') ? auth.slice(8).trim() : '');
+
+    if (!paymentHeader) {
+      res.writeHead(402, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': `Payment recipient="${PAYMENT_RECIPIENT}" amount="${amount}" memo="${memo}"`,
+      });
+      res.end(JSON.stringify({
+        error: 'Payment required',
+        payment: { recipient: PAYMENT_RECIPIENT, amount, memo },
+      }));
+      return;
+    }
+
+    const txHash = paymentHeader.trim();
+
+    const existing = db.payment_receipts.find(p => p.tx_hash === txHash);
+    if (existing) {
+      const existingLead = db.lead_tokens.find(l => l.tx_hash === txHash);
+      return json(res, 409, { error: 'Payment already processed', tx_hash: txHash, lead_id: existingLead && existingLead.id });
+    }
+
+    const verify = await _hooks.verifyHyperionTransfer({
+      txHash,
+      expectedRecipient: PAYMENT_RECIPIENT,
+      expectedAmount: amount,
+      expectedMemo: memo,
+    });
+
+    if (!verify.ok) {
+      return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
+    }
+
+    db.payment_receipts.push({
+      id: db.nextId('payment_receipts'),
+      tx_hash: txHash,
+      kind: 'lead-token',
+      user_id: user.userId,
+      from_account: verify.from,
+      amount,
+      block_num: verify.block_num,
+      created_at: new Date().toISOString(),
+    });
+
+    const leadId = `lead_${crypto.randomBytes(8).toString('hex')}`;
+    db.lead_tokens.push({
+      id: leadId,
+      user_id: user.userId,
+      tx_hash: txHash,
+      status: 'active',
+      created_at: new Date().toISOString(),
+    });
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Payment-Receipt': `lead_id=${leadId}; tx=${txHash}`,
+    });
+    res.end(JSON.stringify({
+      message: 'Payment confirmed',
+      lead_id: leadId,
+      tx_hash: txHash,
+      block_num: verify.block_num,
+    }));
+  },
+
+  // Job posting fee ($25 XPR) — Homeowner publishes a project
+  'POST /api/payment/job-posting': async (req, res) => {
+    const user = getUser(req);
+    if (!user) return json(res, 401, { error: 'Unauthorized' });
+    if (user.role !== 'homeowner') return json(res, 403, { error: 'Homeowners only' });
+
+    const amount = '25.0000 XPR';
+    const memo = 'gcsc:job-posting';
+    const auth = req.headers['authorization'] || '';
+    const paymentHeader = req.headers['x-payment-tx'] || (auth.startsWith('Payment ') ? auth.slice(8).trim() : '');
+
+    if (!paymentHeader) {
+      res.writeHead(402, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': `Payment recipient="${PAYMENT_RECIPIENT}" amount="${amount}" memo="${memo}"`,
+      });
+      res.end(JSON.stringify({
+        error: 'Payment required',
+        payment: { recipient: PAYMENT_RECIPIENT, amount, memo },
+      }));
+      return;
+    }
+
+    const body = await parseBody(req);
+    const projectId = body.project_id ? parseInt(body.project_id, 10) : null;
+    if (!projectId || !db.projects.find(p => p.id === projectId && p.homeowner_id === user.userId)) {
+      return json(res, 400, { error: 'Valid project_id required (must be your own project)' });
+    }
+
+    const txHash = paymentHeader.trim();
+
+    if (db.payment_receipts.find(p => p.tx_hash === txHash)) {
+      return json(res, 409, { error: 'Payment already processed', tx_hash: txHash });
+    }
+
+    const verify = await _hooks.verifyHyperionTransfer({
+      txHash,
+      expectedRecipient: PAYMENT_RECIPIENT,
+      expectedAmount: amount,
+      expectedMemo: memo,
+    });
+
+    if (!verify.ok) {
+      return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
+    }
+
+    db.payment_receipts.push({
+      id: db.nextId('payment_receipts'),
+      tx_hash: txHash,
+      kind: 'job-posting',
+      user_id: user.userId,
+      from_account: verify.from,
+      amount,
+      block_num: verify.block_num,
+      project_id: projectId,
+      created_at: new Date().toISOString(),
+    });
+
+    const paymentId = db.nextId('job_posting_payments');
+    db.job_posting_payments.push({
+      id: paymentId,
+      user_id: user.userId,
+      project_id: projectId,
+      tx_hash: txHash,
+      created_at: new Date().toISOString(),
+    });
+
+    const project = db.projects.find(p => p.id === projectId);
+    project.published = true;
+    project.published_at = new Date().toISOString();
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Payment-Receipt': `project_id=${projectId}; tx=${txHash}`,
+    });
+    res.end(JSON.stringify({
+      message: 'Payment confirmed, project published',
+      project_id: projectId,
+      tx_hash: txHash,
+      block_num: verify.block_num,
+    }));
+  },
 };
 
 // ===== SERVER =====
@@ -3455,20 +3671,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-initStorage().then(() => {
-  server.listen(PORT, '0.0.0.0', () => {
-    startChainTxVerifier();
-    console.log(`╔══════════════════════════════════════════╗`);
-    console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
-    console.log(`║   Port: ${PORT}                            ║`);
-    console.log(`║   Health: http://0.0.0.0:${PORT}/health      ║`);
-    console.log(`║   JWT: custom (zero deps)                ║`);
-    console.log(`║   DB: ${USE_POSTGRES ? 'postgres' : 'json-file'}                         ║`);
-    console.log(`╚══════════════════════════════════════════╝`);
+if (require.main === module) {
+  initStorage().then(() => {
+    server.listen(PORT, '0.0.0.0', () => {
+      startChainTxVerifier();
+      console.log(`╔══════════════════════════════════════════╗`);
+      console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
+      console.log(`║   Port: ${PORT}                            ║`);
+      console.log(`║   Health: http://0.0.0.0:${PORT}/health      ║`);
+      console.log(`║   JWT: custom (zero deps)                ║`);
+      console.log(`║   DB: ${USE_POSTGRES ? 'postgres' : 'json-file'}                         ║`);
+      console.log(`║   XPR: ${PAYMENT_RECIPIENT}                       ║`);
+      console.log(`╚══════════════════════════════════════════╝`);
+    });
+  }).catch((err) => {
+    console.error('[STARTUP] Storage initialization failed:', err.message);
+    process.exit(1);
   });
-}).catch((err) => {
-  console.error('[STARTUP] Storage initialization failed:', err.message);
-  process.exit(1);
-});
+}
 
 module.exports = server;
+module.exports.db = db;
+module.exports._hooks = _hooks;
+module.exports.verifyHyperionTransfer = verifyHyperionTransfer;
+module.exports.jwtSign = jwtSign;
