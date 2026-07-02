@@ -1230,7 +1230,7 @@ const _hooks = {
   verifyHyperionTransfer: null, // wired below after function defined
 };
 
-async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo }) {
+async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo, expectedFrom }) {
   if (!txHash || typeof txHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(txHash)) {
     return { ok: false, error: 'bad_tx_hash' };
   }
@@ -1261,6 +1261,11 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
     }
     if (expectedMemo && data.memo !== expectedMemo) {
       return { ok: false, error: 'bad_memo', detail: `got=${data.memo} expected=${expectedMemo}` };
+    }
+    // P1-1: bind the on-chain sender to the authenticated user's wallet so a
+    // logged-in user cannot claim someone else's public tx hash.
+    if (expectedFrom && String(data.from).trim() !== String(expectedFrom).trim()) {
+      return { ok: false, error: 'bad_sender', detail: `got=${data.from} expected=${expectedFrom}` };
     }
     const tsRaw = transfer.timestamp || transfer['@timestamp'];
     if (tsRaw) {
@@ -2269,6 +2274,28 @@ function updateProfileFromBody(user, body) {
     profile.logoDataUrl = body.logoDataUrl || '';
   }
 
+  // P1-2: accept a wallet binding sent by the mobile client via PUT /api/auth/profile.
+  // Persist { accountName, permission } so it can be matched against the on-chain
+  // sender at payment time (see P1-1). Full challenge/signature ownership proof is
+  // a follow-up; until then payment sender-binding is the practical guard.
+  if (body.wallet && typeof body.wallet === 'object') {
+    const accountName = cleanString(body.wallet.account || body.wallet.accountName || '', 12).toLowerCase();
+    const permission = cleanString(body.wallet.permission || 'active', 12).toLowerCase();
+    if (/^[a-z1-5.]{1,12}$/.test(accountName) && /^[a-z1-5]{1,12}$/.test(permission)) {
+      user.wallet = {
+        ...(user.wallet || {}),
+        accountName,
+        permission,
+        walletType: cleanString(body.wallet.walletType || 'webauth', 40),
+        connectedAt: new Date().toISOString(),
+      };
+    } else if (body.wallet === null) {
+      user.wallet = null;
+    }
+  } else if (body.wallet === null) {
+    user.wallet = null;
+  }
+
   profile.accountType = user.role;
   profile.updatedAt = new Date().toISOString();
   user.profile = profile;
@@ -2577,11 +2604,15 @@ const routes = {
       role,
       full_name: cleanString(body.fullName || body.full_name || email.split('@')[0], 120),
       phone: cleanString(body.phone, 40),
-      is_verified: 1,
+      // P1-5: do not mark a freshly-registered user as verified when neither
+      // email nor phone has actually been confirmed. Preserves the meaning of a
+      // "verified contractor/homeowner" identity. Verified state is set later by
+      // the /api/auth/verification/check (OTP) path.
+      is_verified: 0,
       is_active: 1,
       email_verified: false,
       phone_verified: false,
-      verification_status: verificationMode === 'preferred' ? 'verification_provider_pending' : 'legacy_unverified',
+      verification_status: verificationMode === 'preferred' ? 'verification_provider_pending' : 'unverified',
       verification_channel: channel,
       profile: defaultProfile(role),
       wallet: null,
@@ -3474,11 +3505,19 @@ const routes = {
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash, lead_id: existingLead && existingLead.id });
     }
 
+    // P1-1: resolve the caller's bound wallet and require the on-chain sender to match.
+    const leadUser = await findUserById(user.userId);
+    const leadWallet = leadUser && leadUser.wallet && leadUser.wallet.accountName;
+    if (!leadWallet) {
+      return json(res, 409, { error: 'Wallet not connected', code: 'wallet_required' });
+    }
+
     const verify = await _hooks.verifyHyperionTransfer({
       txHash,
       expectedRecipient: PAYMENT_RECIPIENT,
       expectedAmount: amount,
       expectedMemo: memo,
+      expectedFrom: leadWallet,
     });
 
     if (!verify.ok) {
@@ -3552,11 +3591,19 @@ const routes = {
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash });
     }
 
+    // P1-1: bind the on-chain sender to the homeowner's connected wallet.
+    const jobUser = await findUserById(user.userId);
+    const jobWallet = jobUser && jobUser.wallet && jobUser.wallet.accountName;
+    if (!jobWallet) {
+      return json(res, 409, { error: 'Wallet not connected', code: 'wallet_required' });
+    }
+
     const verify = await _hooks.verifyHyperionTransfer({
       txHash,
       expectedRecipient: PAYMENT_RECIPIENT,
       expectedAmount: amount,
       expectedMemo: memo,
+      expectedFrom: jobWallet,
     });
 
     if (!verify.ok) {
