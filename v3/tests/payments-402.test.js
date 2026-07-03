@@ -134,6 +134,22 @@ describe('POST /api/payment/lead-token', () => {
     expect(db.payment_receipts).toHaveLength(1);
   });
 
+  test('replay protection treats txHash hex casing as identical', async () => {
+    const mixedCaseTx = 'aB'.repeat(32);
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'testacct1', block_num: 12345 });
+    const first = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': mixedCaseTx },
+    });
+    const replay = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': mixedCaseTx.toLowerCase() },
+    });
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(409);
+    expect(db.payment_receipts).toHaveLength(1);
+  });
+
   test('bad amount → 400', async () => {
     _hooks.verifyHyperionTransfer = async () => ({ ok: false, error: 'bad_amount', detail: 'got=10.0000 XPR expected=50.0000 XPR' });
     const r = await request({

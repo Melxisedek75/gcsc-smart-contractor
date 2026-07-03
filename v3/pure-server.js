@@ -260,6 +260,30 @@ async function queryPostgres(text, params = []) {
   return pool.query(text, params);
 }
 
+async function closeStorage() {
+  if (!pgPool) return;
+  const pool = pgPool;
+  pgPool = null;
+  await pool.end();
+}
+
+async function withPostgresTransaction(work) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('PostgreSQL is not configured');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function initStorage() {
   if (!USE_POSTGRES) return;
 
@@ -407,6 +431,8 @@ async function initStorage() {
   `);
 
   await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS escrow_id INTEGER`);
+  await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT FALSE`);
+  await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ`);
   await queryPostgres(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
   await queryPostgres(`ALTER TABLE escrow_contracts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
@@ -441,6 +467,43 @@ async function initStorage() {
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_milestone ON milestone_chain_txs (milestone_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_escrow ON milestone_chain_txs (escrow_id)`);
   await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_milestone_chain_txs_status ON milestone_chain_txs (status)`);
+
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS payment_receipts (
+      id SERIAL PRIMARY KEY,
+      tx_hash TEXT UNIQUE NOT NULL,
+      kind TEXT NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      from_account TEXT NOT NULL DEFAULT '',
+      amount TEXT NOT NULL,
+      block_num BIGINT,
+      project_id INTEGER REFERENCES projects(id) ON DELETE RESTRICT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS lead_tokens (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      tx_hash TEXT UNIQUE NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`
+    CREATE TABLE IF NOT EXISTS job_posting_payments (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+      tx_hash TEXT UNIQUE NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_receipts_tx_hash ON payment_receipts (tx_hash)`);
+  await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_lead_tokens_tx_hash ON lead_tokens (tx_hash)`);
+  await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_job_posting_payments_tx_hash ON job_posting_payments (tx_hash)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_payment_receipts_user ON payment_receipts (user_id)`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_job_posting_payments_project ON job_posting_payments (project_id)`);
 
   await queryPostgres(`
     CREATE TABLE IF NOT EXISTS stripe_payment_intents (
@@ -1275,6 +1338,145 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
 }
 
 _hooks.verifyHyperionTransfer = verifyHyperionTransfer;
+
+function paymentReplayError(txHash) {
+  const err = new Error('Payment already processed');
+  err.status = 409;
+  err.code = 'payment_already_processed';
+  err.tx_hash = txHash;
+  return err;
+}
+
+async function findStoredPaymentReceiptByTxHash(txHash) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM payment_receipts WHERE tx_hash = $1 LIMIT 1', [txHash]);
+    return result.rows[0] || null;
+  }
+  return db.payment_receipts.find(receipt => receipt.tx_hash === txHash) || null;
+}
+
+async function findStoredLeadTokenByTxHash(txHash) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres('SELECT * FROM lead_tokens WHERE tx_hash = $1 LIMIT 1', [txHash]);
+    return result.rows[0] || null;
+  }
+  return db.lead_tokens.find(lead => lead.tx_hash === txHash) || null;
+}
+
+async function recordLeadTokenPayment({ txHash, userId, fromAccount, amount, blockNum, leadId }) {
+  if (USE_POSTGRES) {
+    try {
+      return await withPostgresTransaction(async (client) => {
+        const receiptResult = await client.query(
+          `INSERT INTO payment_receipts
+            (tx_hash, kind, user_id, from_account, amount, block_num)
+           VALUES ($1, 'lead-token', $2, $3, $4, $5)
+           RETURNING *`,
+          [txHash, userId, fromAccount || '', amount, blockNum || null]
+        );
+        const leadResult = await client.query(
+          `INSERT INTO lead_tokens (id, user_id, tx_hash, status)
+           VALUES ($1, $2, $3, 'active')
+           RETURNING *`,
+          [leadId, userId, txHash]
+        );
+        return { receipt: receiptResult.rows[0], lead: leadResult.rows[0] };
+      });
+    } catch (err) {
+      if (err && err.code === '23505') throw paymentReplayError(txHash);
+      throw err;
+    }
+  }
+
+  if (db.payment_receipts.find(receipt => receipt.tx_hash === txHash)) {
+    throw paymentReplayError(txHash);
+  }
+  const receipt = {
+    id: db.nextId('payment_receipts'),
+    tx_hash: txHash,
+    kind: 'lead-token',
+    user_id: userId,
+    from_account: fromAccount,
+    amount,
+    block_num: blockNum,
+    created_at: new Date().toISOString(),
+  };
+  const lead = {
+    id: leadId,
+    user_id: userId,
+    tx_hash: txHash,
+    status: 'active',
+    created_at: new Date().toISOString(),
+  };
+  db.payment_receipts.push(receipt);
+  db.lead_tokens.push(lead);
+  return { receipt, lead };
+}
+
+async function recordJobPostingPayment({ txHash, userId, fromAccount, amount, blockNum, project }) {
+  if (USE_POSTGRES) {
+    try {
+      return await withPostgresTransaction(async (client) => {
+        const receiptResult = await client.query(
+          `INSERT INTO payment_receipts
+            (tx_hash, kind, user_id, from_account, amount, block_num, project_id)
+           VALUES ($1, 'job-posting', $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [txHash, userId, fromAccount || '', amount, blockNum || null, project.id]
+        );
+        const paymentResult = await client.query(
+          `INSERT INTO job_posting_payments (user_id, project_id, tx_hash)
+           VALUES ($1, $2, $3)
+           RETURNING *`,
+          [userId, project.id, txHash]
+        );
+        const projectResult = await client.query(
+          `UPDATE projects
+           SET published = TRUE, published_at = NOW(), updated_at = NOW()
+           WHERE id = $1 AND homeowner_id = $2
+           RETURNING *`,
+          [project.id, userId]
+        );
+        if (!projectResult.rows[0]) throw new Error('Project disappeared during payment processing');
+        return {
+          receipt: receiptResult.rows[0],
+          payment: paymentResult.rows[0],
+          project: normalizeProject(projectResult.rows[0]),
+        };
+      });
+    } catch (err) {
+      if (err && err.code === '23505') throw paymentReplayError(txHash);
+      throw err;
+    }
+  }
+
+  if (db.payment_receipts.find(receipt => receipt.tx_hash === txHash)) {
+    throw paymentReplayError(txHash);
+  }
+  const receipt = {
+    id: db.nextId('payment_receipts'),
+    tx_hash: txHash,
+    kind: 'job-posting',
+    user_id: userId,
+    from_account: fromAccount,
+    amount,
+    block_num: blockNum,
+    project_id: project.id,
+    created_at: new Date().toISOString(),
+  };
+  const payment = {
+    id: db.nextId('job_posting_payments'),
+    user_id: userId,
+    project_id: project.id,
+    tx_hash: txHash,
+    created_at: new Date().toISOString(),
+  };
+  project.published = true;
+  project.published_at = new Date().toISOString();
+  db.payment_receipts.push(receipt);
+  db.job_posting_payments.push(payment);
+  return { receipt, payment, project };
+}
 
 async function getProjectCount() {
   if (USE_POSTGRES) {
@@ -3466,11 +3668,11 @@ const routes = {
       return;
     }
 
-    const txHash = paymentHeader.trim();
+    const txHash = paymentHeader.trim().toLowerCase();
 
-    const existing = db.payment_receipts.find(p => p.tx_hash === txHash);
+    const existing = await findStoredPaymentReceiptByTxHash(txHash);
     if (existing) {
-      const existingLead = db.lead_tokens.find(l => l.tx_hash === txHash);
+      const existingLead = await findStoredLeadTokenByTxHash(txHash);
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash, lead_id: existingLead && existingLead.id });
     }
 
@@ -3485,25 +3687,23 @@ const routes = {
       return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
     }
 
-    db.payment_receipts.push({
-      id: db.nextId('payment_receipts'),
-      tx_hash: txHash,
-      kind: 'lead-token',
-      user_id: user.userId,
-      from_account: verify.from,
-      amount,
-      block_num: verify.block_num,
-      created_at: new Date().toISOString(),
-    });
-
     const leadId = `lead_${crypto.randomBytes(8).toString('hex')}`;
-    db.lead_tokens.push({
-      id: leadId,
-      user_id: user.userId,
-      tx_hash: txHash,
-      status: 'active',
-      created_at: new Date().toISOString(),
-    });
+    try {
+      await recordLeadTokenPayment({
+        txHash,
+        userId: user.userId,
+        fromAccount: verify.from,
+        amount,
+        blockNum: verify.block_num,
+        leadId,
+      });
+    } catch (err) {
+      if (err && err.status === 409) {
+        const existingLead = await findStoredLeadTokenByTxHash(txHash);
+        return json(res, 409, { error: err.message, tx_hash: txHash, lead_id: existingLead && existingLead.id });
+      }
+      throw err;
+    }
 
     res.writeHead(200, {
       'Content-Type': 'application/json',
@@ -3542,13 +3742,14 @@ const routes = {
 
     const body = await parseBody(req);
     const projectId = body.project_id ? parseInt(body.project_id, 10) : null;
-    if (!projectId || !db.projects.find(p => p.id === projectId && p.homeowner_id === user.userId)) {
+    const project = projectId ? await findStoredProjectById(projectId) : null;
+    if (!project || project.homeowner_id !== user.userId) {
       return json(res, 400, { error: 'Valid project_id required (must be your own project)' });
     }
 
-    const txHash = paymentHeader.trim();
+    const txHash = paymentHeader.trim().toLowerCase();
 
-    if (db.payment_receipts.find(p => p.tx_hash === txHash)) {
+    if (await findStoredPaymentReceiptByTxHash(txHash)) {
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash });
     }
 
@@ -3563,30 +3764,21 @@ const routes = {
       return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
     }
 
-    db.payment_receipts.push({
-      id: db.nextId('payment_receipts'),
-      tx_hash: txHash,
-      kind: 'job-posting',
-      user_id: user.userId,
-      from_account: verify.from,
-      amount,
-      block_num: verify.block_num,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-    });
-
-    const paymentId = db.nextId('job_posting_payments');
-    db.job_posting_payments.push({
-      id: paymentId,
-      user_id: user.userId,
-      project_id: projectId,
-      tx_hash: txHash,
-      created_at: new Date().toISOString(),
-    });
-
-    const project = db.projects.find(p => p.id === projectId);
-    project.published = true;
-    project.published_at = new Date().toISOString();
+    try {
+      await recordJobPostingPayment({
+        txHash,
+        userId: user.userId,
+        fromAccount: verify.from,
+        amount,
+        blockNum: verify.block_num,
+        project,
+      });
+    } catch (err) {
+      if (err && err.status === 409) {
+        return json(res, 409, { error: err.message, tx_hash: txHash });
+      }
+      throw err;
+    }
 
     res.writeHead(200, {
       'Content-Type': 'application/json',
@@ -3695,3 +3887,5 @@ module.exports.db = db;
 module.exports._hooks = _hooks;
 module.exports.verifyHyperionTransfer = verifyHyperionTransfer;
 module.exports.jwtSign = jwtSign;
+module.exports.initStorage = initStorage;
+module.exports.closeStorage = closeStorage;
