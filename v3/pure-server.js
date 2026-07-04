@@ -9,6 +9,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { parse } = require('url');
+// P1-2/P1-4: XPR (Antelope/EOSIO) K1 signature verification for wallet ownership proof.
+const { ec: EllipticEC } = require('elliptic');
+const { Numeric: XprNumeric } = require('@proton/js');
+const xprSecp256k1 = new EllipticEC('secp256k1');
 
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gcsc-dev-secret-256-bits-minimum-length';
@@ -554,10 +558,15 @@ async function findUserById(id) {
 
 async function createStoredUser(input) {
   if (USE_POSTGRES) {
+    // P1-5: honor the caller-supplied is_verified/is_active instead of forcing
+    // TRUE. A freshly-registered user passes is_verified: 0 and must NOT be
+    // stored as verified. Undefined defaults to true to preserve legacy rows.
+    const isVerified = input.is_verified === undefined ? true : !!input.is_verified;
+    const isActive = input.is_active === undefined ? true : !!input.is_active;
     const result = await queryPostgres(
       `INSERT INTO users
         (email, password_hash, role, full_name, phone, profile, wallet, is_verified, is_active, email_verified, phone_verified, verification_status, verification_channel)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         input.email,
@@ -567,6 +576,8 @@ async function createStoredUser(input) {
         input.phone || '',
         input.profile || defaultProfile(input.role),
         input.wallet || null,
+        isVerified,
+        isActive,
         !!input.email_verified,
         !!input.phone_verified,
         input.verification_status || 'legacy_unverified',
@@ -626,11 +637,14 @@ async function updateStoredProfile(user, body) {
   updateProfileFromBody(user, body);
 
   if (USE_POSTGRES) {
+    // P1-2: persist wallet alongside the profile. updateProfileFromBody() can
+    // update user.wallet (metadata only, unverified), and dropping it here left
+    // the binding silently lost after a profile edit.
     const result = await queryPostgres(
-      `UPDATE users SET profile = $3, full_name = $1, phone = $2, updated_at = NOW()
+      `UPDATE users SET profile = $3, full_name = $1, phone = $2, wallet = $5, updated_at = NOW()
        WHERE id = $4
        RETURNING *`,
-      [user.full_name, user.phone || '', user.profile, user.id]
+      [user.full_name, user.phone || '', user.profile, user.id, user.wallet || null]
     );
     return normalizeStoredUser(result.rows[0]);
   }
@@ -1280,6 +1294,115 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
 }
 
 _hooks.verifyHyperionTransfer = verifyHyperionTransfer;
+
+// ===== P1-4: WALLET OWNERSHIP PROOF (nonce/challenge + XPR signature) =====
+// Binding an XPR account to a user must prove control of that account's key.
+// Flow: client asks for a challenge (server-issued single-use nonce), signs the
+// challenge message with the account key, then submits { publicKey, signature }.
+// The server recovers the signing key from the signature and (by default) checks
+// that the key is authorized on-chain for the account permission.
+const WALLET_CHALLENGE_TTL_MS = parseInt(process.env.WALLET_CHALLENGE_TTL_MS || '300000', 10);
+const WALLET_ONCHAIN_KEY_ENFORCED = process.env.WALLET_ONCHAIN_KEY_ENFORCED !== 'false';
+const walletChallenges = new Map(); // userId -> { nonce, accountName, message, expiresAt }
+
+function walletChallengeMessage({ userId, accountName, nonce }) {
+  return `GCSC wallet ownership proof\naccount:${accountName}\nuser:${userId}\nnonce:${nonce}`;
+}
+
+function issueWalletChallenge(userId, accountName) {
+  const nonce = crypto.randomBytes(32).toString('hex');
+  const message = walletChallengeMessage({ userId, accountName, nonce });
+  const expiresAt = Date.now() + WALLET_CHALLENGE_TTL_MS;
+  walletChallenges.set(String(userId), { nonce, accountName, message, expiresAt });
+  return { nonce, message, expiresAt };
+}
+
+function consumeWalletChallenge(userId, accountName) {
+  const key = String(userId);
+  const challenge = walletChallenges.get(key);
+  // Single-use: remove regardless of validation outcome to prevent replay.
+  walletChallenges.delete(key);
+  if (!challenge) return { ok: false, error: 'no_challenge' };
+  if (challenge.accountName !== accountName) return { ok: false, error: 'account_mismatch' };
+  if (Date.now() > challenge.expiresAt) return { ok: false, error: 'challenge_expired' };
+  return { ok: true, message: challenge.message };
+}
+
+// Recover the PUB_K1 key that produced an EOSIO/Antelope K1 recoverable signature.
+function recoverXprPublicKey(message, signatureString) {
+  const sig = XprNumeric.stringToSignature(String(signatureString));
+  if (sig.type !== XprNumeric.KeyType.k1) throw new Error('unsupported_key_type');
+  const data = Buffer.from(sig.data);
+  if (data.length !== 65) throw new Error('bad_signature_length');
+  const recid = data[0] - 31; // K1 compressed header = recid + 27 + 4
+  if (recid < 0 || recid > 3) throw new Error('bad_recovery_param');
+  const r = data.slice(1, 33);
+  const s = data.slice(33, 65);
+  const digest = crypto.createHash('sha256').update(Buffer.from(message, 'utf8')).digest();
+  const point = xprSecp256k1.recoverPubKey(digest, { r, s }, recid);
+  const compressed = Buffer.from(xprSecp256k1.keyFromPublic(point).getPublic(true, 'array'));
+  return XprNumeric.publicKeyToString({ type: XprNumeric.KeyType.k1, data: new Uint8Array(compressed) });
+}
+
+// Verify a signature over the challenge message. If publicKey is supplied it must
+// match the recovered key. Returns the canonical recovered PUB_K1 on success.
+function verifyWalletSignature({ message, signature, publicKey }) {
+  if (!message || !signature) return { ok: false, error: 'missing_signature' };
+  let recovered;
+  try {
+    recovered = recoverXprPublicKey(message, signature);
+  } catch (err) {
+    return { ok: false, error: 'bad_signature', detail: err.message };
+  }
+  if (publicKey) {
+    let normExpected;
+    try {
+      normExpected = XprNumeric.publicKeyToString(XprNumeric.stringToPublicKey(String(publicKey)));
+    } catch {
+      return { ok: false, error: 'bad_public_key' };
+    }
+    if (normExpected !== recovered) return { ok: false, error: 'signature_key_mismatch' };
+  }
+  return { ok: true, publicKey: recovered };
+}
+
+// Default on-chain check: confirm the recovered key is authorized for the given
+// permission of the account. Mockable via _hooks.verifyAccountKey.
+async function verifyXprAccountKey({ accountName, permission, publicKey }) {
+  const normKey = XprNumeric.publicKeyToString(XprNumeric.stringToPublicKey(String(publicKey)));
+  let lastError = 'no_nodes';
+  for (const node of getXprHyperionUrls()) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const resp = await fetch(`${normalizeEndpoint(node)}/v1/chain/get_account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_name: accountName }),
+        signal: controller.signal,
+      });
+      if (!resp.ok) { lastError = `http_${resp.status}@${node}`; continue; }
+      const payload = await resp.json();
+      const perms = Array.isArray(payload.permissions) ? payload.permissions : [];
+      const perm = perms.find(p => p.perm_name === permission);
+      if (!perm) { lastError = 'permission_not_found'; continue; }
+      const keys = (perm.required_auth && Array.isArray(perm.required_auth.keys)) ? perm.required_auth.keys : [];
+      const match = keys.some(k => {
+        try { return XprNumeric.publicKeyToString(XprNumeric.stringToPublicKey(String(k.key))) === normKey; }
+        catch { return false; }
+      });
+      if (match) return { ok: true };
+      return { ok: false, error: 'account_key_unauthorized' };
+    } catch (err) {
+      lastError = err.name === 'AbortError' ? `timeout@${node}` : `${err.message}@${node}`;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return { ok: false, error: 'account_lookup_failed', detail: String(lastError) };
+}
+
+_hooks.verifyAccountKey = verifyXprAccountKey;
 
 async function getProjectCount() {
   if (USE_POSTGRES) {
@@ -2276,21 +2399,23 @@ function updateProfileFromBody(user, body) {
 
   // P1-2: accept a wallet binding sent by the mobile client via PUT /api/auth/profile.
   // Persist { accountName, permission } so it can be matched against the on-chain
-  // sender at payment time (see P1-1). Full challenge/signature ownership proof is
-  // a follow-up; until then payment sender-binding is the practical guard.
+  // sender at payment time (see P1-1). This path stores UNVERIFIED metadata only;
+  // proven ownership (verified:true) is set exclusively by POST /api/wallet/connect
+  // after a signed challenge (P1-4). Payment sender-binding still guards funds.
   if (body.wallet && typeof body.wallet === 'object') {
     const accountName = cleanString(body.wallet.account || body.wallet.accountName || '', 12).toLowerCase();
     const permission = cleanString(body.wallet.permission || 'active', 12).toLowerCase();
     if (/^[a-z1-5.]{1,12}$/.test(accountName) && /^[a-z1-5]{1,12}$/.test(permission)) {
+      const prev = user.wallet || {};
+      const keepVerified = prev.accountName === accountName && prev.verified === true;
       user.wallet = {
-        ...(user.wallet || {}),
+        ...prev,
         accountName,
         permission,
         walletType: cleanString(body.wallet.walletType || 'webauth', 40),
-        connectedAt: new Date().toISOString(),
+        verified: keepVerified,
+        connectedAt: prev.connectedAt || new Date().toISOString(),
       };
-    } else if (body.wallet === null) {
-      user.wallet = null;
     }
   } else if (body.wallet === null) {
     user.wallet = null;
@@ -2806,6 +2931,26 @@ const routes = {
     });
   },
 
+  'POST /api/wallet/challenge': async (req, res) => {
+    const auth = getUser(req);
+    if (!auth) return json(res, 401, { error: 'Unauthorized' });
+    const user = await findUserById(auth.userId);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (!user.is_active) return json(res, 403, { error: 'Account is inactive' });
+
+    const body = await parseBody(req);
+    const accountName = cleanString(body.accountName || body.account || body.actor, 12).toLowerCase();
+    if (!/^[a-z1-5.]{1,12}$/.test(accountName)) return json(res, 400, { error: 'Valid XPR account name required' });
+
+    const challenge = issueWalletChallenge(user.id, accountName);
+    json(res, 200, {
+      accountName,
+      nonce: challenge.nonce,
+      message: challenge.message,
+      expiresAt: new Date(challenge.expiresAt).toISOString(),
+    });
+  },
+
   'POST /api/wallet/connect': async (req, res) => {
     const auth = getUser(req);
     if (!auth) return json(res, 401, { error: 'Unauthorized' });
@@ -2819,11 +2964,43 @@ const routes = {
     if (!/^[a-z1-5.]{1,12}$/.test(accountName)) return json(res, 400, { error: 'Valid XPR account name required' });
     if (!/^[a-z1-5]{1,12}$/.test(permission)) return json(res, 400, { error: 'Valid XPR permission required' });
 
+    // P1-4: require a signed challenge before binding the wallet. Without this,
+    // any authenticated user could claim an XPR account they do not control.
+    const publicKey = cleanString(body.publicKey || '', 128);
+    const signature = cleanString(body.signature || '', 200);
+    if (!publicKey || !signature) {
+      return json(res, 400, { error: 'Wallet ownership proof required', code: 'wallet_proof_required' });
+    }
+
+    const consumed = consumeWalletChallenge(user.id, accountName);
+    if (!consumed.ok) {
+      return json(res, 400, { error: 'Wallet challenge invalid or expired', code: consumed.error });
+    }
+
+    const sigCheck = verifyWalletSignature({ message: consumed.message, signature, publicKey });
+    if (!sigCheck.ok) {
+      return json(res, 400, { error: 'Wallet signature verification failed', code: sigCheck.error });
+    }
+
+    if (WALLET_ONCHAIN_KEY_ENFORCED) {
+      let keyCheck;
+      try {
+        keyCheck = await _hooks.verifyAccountKey({ accountName, permission, publicKey: sigCheck.publicKey });
+      } catch (err) {
+        keyCheck = { ok: false, error: 'account_lookup_failed', detail: err.message };
+      }
+      if (!keyCheck.ok) {
+        return json(res, 400, { error: 'Wallet key not authorized on-chain', code: keyCheck.error || 'account_key_unverified' });
+      }
+    }
+
     const wallet = {
       accountName,
       permission,
-      publicKey: cleanString(body.publicKey || '', 80),
+      publicKey: sigCheck.publicKey,
       walletType: cleanString(body.walletType || 'webauth', 40),
+      verified: true,
+      verifiedAt: new Date().toISOString(),
       connectedAt: new Date().toISOString(),
     };
     const updatedUser = await updateStoredWallet(user, wallet);
@@ -2837,6 +3014,7 @@ const routes = {
         accountName: wallet.accountName,
         permission: wallet.permission,
         walletType: wallet.walletType,
+        verified: true,
       },
     });
 
@@ -3742,3 +3920,8 @@ module.exports.db = db;
 module.exports._hooks = _hooks;
 module.exports.verifyHyperionTransfer = verifyHyperionTransfer;
 module.exports.jwtSign = jwtSign;
+module.exports.verifyWalletSignature = verifyWalletSignature;
+module.exports.recoverXprPublicKey = recoverXprPublicKey;
+module.exports.issueWalletChallenge = issueWalletChallenge;
+module.exports.consumeWalletChallenge = consumeWalletChallenge;
+module.exports.walletChallengeMessage = walletChallengeMessage;

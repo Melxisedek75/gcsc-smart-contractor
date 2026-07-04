@@ -1,9 +1,33 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+
+// P1-4: offline XPR K1 signing helper for the wallet ownership-proof flow.
+const EC = require('elliptic').ec;
+const { Numeric } = require('@proton/js');
+const ec = new EC('secp256k1');
+function makeXprKeypair() {
+  const kp = ec.genKeyPair();
+  const pub = Numeric.publicKeyToString({
+    type: Numeric.KeyType.k1,
+    data: new Uint8Array(Buffer.from(kp.getPublic(true, 'array'))),
+  });
+  return { kp, pub };
+}
+function signK1(message, kp) {
+  const digest = crypto.createHash('sha256').update(Buffer.from(message, 'utf8')).digest();
+  const s = ec.sign(digest, kp, { canonical: true });
+  const data = Buffer.concat([
+    Buffer.from([s.recoveryParam + 31]),
+    s.r.toArrayLike(Buffer, 'be', 32),
+    s.s.toArrayLike(Buffer, 'be', 32),
+  ]);
+  return Numeric.signatureToString({ type: Numeric.KeyType.k1, data: new Uint8Array(data) });
+}
 
 const v3Root = path.resolve(__dirname, '..');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gcsc-fake-pg-'));
@@ -294,6 +318,10 @@ async function waitForServer(child) {
       ADMIN_EMAIL: 'admin-smoke@gcsc.store',
       ADMIN_PASSWORD: 'AdminSmokePass123!',
       ADMIN_FULL_NAME: 'Smoke Admin',
+      // P1-4: the fake in-process Postgres cannot perform a real on-chain key
+      // lookup, so disable that defense-in-depth check here. Signature-over-nonce
+      // ownership proof is still fully exercised below.
+      WALLET_ONCHAIN_KEY_ENFORCED: 'false',
       NODE_OPTIONS: `--require ${registerPath}`,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -501,13 +529,24 @@ async function waitForServer(child) {
     assert.strictEqual(resubmittedCompliance.status, 200);
     assert.strictEqual(resubmittedCompliance.data.overall_status, 'pending_review');
 
+    // P1-4: wallet binding now requires a signed ownership challenge.
+    const walletKeypair = makeXprKeypair();
+    const walletChallenge = await request('POST', '/api/wallet/challenge', {
+      accountName: 'gcscacct111',
+    }, token);
+    assert.strictEqual(walletChallenge.status, 200);
+    assert.ok(walletChallenge.data.message.includes('nonce:'));
+    const walletSignature = signK1(walletChallenge.data.message, walletKeypair.kp);
     const wallet = await request('POST', '/api/wallet/connect', {
       accountName: 'gcscacct111',
       permission: 'active',
       walletType: 'webauth',
+      publicKey: walletKeypair.pub,
+      signature: walletSignature,
     }, token);
     assert.strictEqual(wallet.status, 200);
     assert.strictEqual(wallet.data.wallet.accountName, 'gcscacct111');
+    assert.strictEqual(wallet.data.wallet.verified, true);
 
     const documentsForApproval = await request('GET', '/api/auth/documents', null, token);
     assert.strictEqual(documentsForApproval.status, 200);
