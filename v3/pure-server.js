@@ -1293,7 +1293,7 @@ const _hooks = {
   verifyHyperionTransfer: null, // wired below after function defined
 };
 
-async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo }) {
+async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo, expectedFrom }) {
   if (!txHash || typeof txHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(txHash)) {
     return { ok: false, error: 'bad_tx_hash' };
   }
@@ -1324,6 +1324,9 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
     }
     if (expectedMemo && data.memo !== expectedMemo) {
       return { ok: false, error: 'bad_memo', detail: `got=${data.memo} expected=${expectedMemo}` };
+    }
+    if (expectedFrom && String(data.from).trim() !== String(expectedFrom).trim()) {
+      return { ok: false, error: 'bad_sender', detail: `got=${data.from} expected=${expectedFrom}` };
     }
     const tsRaw = transfer.timestamp || transfer['@timestamp'];
     if (tsRaw) {
@@ -3676,11 +3679,18 @@ const routes = {
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash, lead_id: existingLead && existingLead.id });
     }
 
+    const leadUser = await findUserById(user.userId);
+    const leadWallet = leadUser && leadUser.wallet && leadUser.wallet.accountName;
+    if (!leadWallet) {
+      return json(res, 409, { error: 'Wallet not connected', code: 'wallet_required' });
+    }
+
     const verify = await _hooks.verifyHyperionTransfer({
       txHash,
       expectedRecipient: PAYMENT_RECIPIENT,
       expectedAmount: amount,
       expectedMemo: memo,
+      expectedFrom: leadWallet,
     });
 
     if (!verify.ok) {
@@ -3753,11 +3763,18 @@ const routes = {
       return json(res, 409, { error: 'Payment already processed', tx_hash: txHash });
     }
 
+    const jobUser = await findUserById(user.userId);
+    const jobWallet = jobUser && jobUser.wallet && jobUser.wallet.accountName;
+    if (!jobWallet) {
+      return json(res, 409, { error: 'Wallet not connected', code: 'wallet_required' });
+    }
+
     const verify = await _hooks.verifyHyperionTransfer({
       txHash,
       expectedRecipient: PAYMENT_RECIPIENT,
       expectedAmount: amount,
       expectedMemo: memo,
+      expectedFrom: jobWallet,
     });
 
     if (!verify.ok) {

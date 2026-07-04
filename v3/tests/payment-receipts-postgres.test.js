@@ -77,10 +77,10 @@ beforeEach(async () => {
     RESTART IDENTITY CASCADE
   `);
   await pool.query(`
-    INSERT INTO users (id, email, password_hash, role, full_name, is_verified, is_active)
+    INSERT INTO users (id, email, password_hash, role, full_name, wallet, is_verified, is_active)
     VALUES
-      (1, 'homeowner@gcsc.store', 'test-hash', 'homeowner', 'Test Homeowner', TRUE, TRUE),
-      (2, 'contractor@gcsc.store', 'test-hash', 'contractor', 'Test Contractor', TRUE, TRUE)
+      (1, 'homeowner@gcsc.store', 'test-hash', 'homeowner', 'Test Homeowner', '{"accountName":"homeowner1","permission":"active"}'::jsonb, TRUE, TRUE),
+      (2, 'contractor@gcsc.store', 'test-hash', 'contractor', 'Test Contractor', '{"accountName":"contractor1","permission":"active"}'::jsonb, TRUE, TRUE)
   `);
   await pool.query(`
     INSERT INTO projects (id, homeowner_id, title, description, category, status)
@@ -91,11 +91,11 @@ beforeEach(async () => {
   db.lead_tokens.length = 0;
   db.job_posting_payments.length = 0;
   db.projects.length = 0;
-  _hooks.verifyHyperionTransfer = async () => ({
-    ok: true,
-    from: 'verifiedpayer',
-    block_num: 12345,
-  });
+  _hooks.verifyHyperionTransfer = async (input) => {
+    const expectedByRole = input.expectedAmount === '50.0000 XPR' ? 'contractor1' : 'homeowner1';
+    expect(input.expectedFrom).toBe(expectedByRole);
+    return { ok: true, from: expectedByRole, block_num: 12345 };
+  };
 });
 
 afterAll(async () => {
