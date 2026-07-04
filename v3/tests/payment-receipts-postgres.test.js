@@ -69,7 +69,7 @@ beforeAll(async () => {
   listener = mod.listen(0, '127.0.0.1');
   await new Promise(resolve => listener.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${listener.address().port}`;
-});
+}, 30000);
 
 beforeEach(async () => {
   await pool.query(`
