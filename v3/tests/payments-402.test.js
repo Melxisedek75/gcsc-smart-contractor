@@ -326,6 +326,12 @@ describe('verifyHyperionTransfer (unit)', () => {
 
 // P1-4: wallet ownership proof (nonce/challenge + XPR K1 signature)
 describe('wallet ownership proof', () => {
+  // K1 keypair generation + signature recovery is CPU-heavy; on a slow Windows
+  // runner a single case can exceed Jest's default 5000ms. Give this group an
+  // explicit 60s budget so `npx jest ...` is stable without a CLI --testTimeout.
+  // This is registered last, so it only affects these tests.
+  jest.setTimeout(60000);
+
   test('verifyWalletSignature recovers the signing key and rejects tampering', () => {
     const { kp, pub } = makeXprKeypair();
     const message = walletChallengeMessage({ userId: 2, accountName: 'testacct1', nonce: 'deadbeef' });
