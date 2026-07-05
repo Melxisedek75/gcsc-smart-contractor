@@ -290,7 +290,10 @@ async function waitForServer(child) {
   const started = Date.now();
   let lastError;
 
-  while (Date.now() - started < 8000) {
+  // Cold node start + loading pure-server.js (now also elliptic + @proton/js for
+  // wallet ownership proof) can exceed 8s on a slow Windows runner. Use a 30s
+  // budget so the smoke test does not flake before the server binds.
+  while (Date.now() - started < 30000) {
     try {
       const health = await request('GET', '/health');
       if (health.status === 200) return health.data;

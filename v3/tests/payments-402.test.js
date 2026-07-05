@@ -83,8 +83,12 @@ function request({ method = 'POST', path, headers = {}, body }) {
       port: url.port,
       path: url.pathname,
       method,
+      // Fresh socket per request + explicit close: after the CPU-heavy K1 tests a
+      // reused keep-alive socket can be reset on a slow Windows runner (ECONNRESET).
+      agent: false,
       headers: {
         'Content-Type': 'application/json',
+        Connection: 'close',
         ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
         ...headers,
       },
