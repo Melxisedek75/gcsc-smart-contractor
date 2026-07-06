@@ -457,3 +457,70 @@ describe('wallet ownership proof', () => {
     expect(r.body.code).toBe('account_key_unauthorized');
   });
 });
+
+describe('sensitive endpoint rate limits', () => {
+  async function requestThreeTimes(input) {
+    const responses = [];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      responses.push(await request(input));
+    }
+    return responses;
+  }
+
+  test('rate limits login attempts', async () => {
+    const previousMax = process.env.AUTH_RATE_LIMIT_MAX;
+    process.env.AUTH_RATE_LIMIT_MAX = '2';
+    try {
+      const responses = await requestThreeTimes({
+        path: '/api/auth/login',
+        headers: { 'X-Forwarded-For': '203.0.113.201' },
+        body: { email: 'missing-rate-limit@gcsc.store', password: 'WrongPass123' },
+      });
+      expect(responses.map(response => response.status)).toEqual([401, 401, 429]);
+    } finally {
+      if (previousMax === undefined) delete process.env.AUTH_RATE_LIMIT_MAX;
+      else process.env.AUTH_RATE_LIMIT_MAX = previousMax;
+    }
+  });
+
+  test('rate limits wallet challenge creation', async () => {
+    const previousMax = process.env.WALLET_RATE_LIMIT_MAX;
+    process.env.WALLET_RATE_LIMIT_MAX = '2';
+    try {
+      const responses = await requestThreeTimes({
+        path: '/api/wallet/challenge',
+        headers: {
+          Authorization: `Bearer ${CONTRACTOR_TOKEN}`,
+          'X-Forwarded-For': '203.0.113.202',
+        },
+        body: { accountName: 'testacct1' },
+      });
+      expect(responses.map(response => response.status)).toEqual([200, 200, 429]);
+    } finally {
+      if (previousMax === undefined) delete process.env.WALLET_RATE_LIMIT_MAX;
+      else process.env.WALLET_RATE_LIMIT_MAX = previousMax;
+    }
+  });
+
+  test.each([
+    ['lead-token', CONTRACTOR_TOKEN, undefined],
+    ['job-posting', HOMEOWNER_TOKEN, { project_id: 100 }],
+  ])('rate limits payment endpoint %s', async (endpoint, token, body) => {
+    const previousMax = process.env.PAYMENT_RATE_LIMIT_MAX;
+    process.env.PAYMENT_RATE_LIMIT_MAX = '2';
+    try {
+      const responses = await requestThreeTimes({
+        path: `/api/payment/${endpoint}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-For': endpoint === 'lead-token' ? '203.0.113.203' : '203.0.113.204',
+        },
+        body,
+      });
+      expect(responses.map(response => response.status)).toEqual([402, 402, 429]);
+    } finally {
+      if (previousMax === undefined) delete process.env.PAYMENT_RATE_LIMIT_MAX;
+      else process.env.PAYMENT_RATE_LIMIT_MAX = previousMax;
+    }
+  });
+});

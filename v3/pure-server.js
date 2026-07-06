@@ -2683,6 +2683,10 @@ function rateLimitConfigForRoute(pattern) {
       max: envInt('WALLET_RATE_LIMIT_MAX', 45),
       windowMs: envInt('WALLET_RATE_LIMIT_WINDOW_MS', windowMs),
     },
+    payment: {
+      max: envInt('PAYMENT_RATE_LIMIT_MAX', 30),
+      windowMs: envInt('PAYMENT_RATE_LIMIT_WINDOW_MS', windowMs),
+    },
     bid_accept: {
       max: envInt('BID_ACCEPT_RATE_LIMIT_MAX', 30),
       windowMs: envInt('BID_ACCEPT_RATE_LIMIT_WINDOW_MS', windowMs),
@@ -2692,7 +2696,8 @@ function rateLimitConfigForRoute(pattern) {
   if (pattern === 'POST /api/auth/register' || pattern === 'POST /api/auth/login') return { name: 'auth', ...configs.auth };
   if (pattern === 'GET /api/auth/profile' || pattern === 'PUT /api/auth/profile') return { name: 'profile', ...configs.profile };
   if (pattern === 'GET /api/auth/documents' || pattern === 'POST /api/auth/documents') return { name: 'documents', ...configs.documents };
-  if (pattern === 'POST /api/wallet/connect') return { name: 'wallet', ...configs.wallet };
+  if (pattern === 'POST /api/wallet/challenge' || pattern === 'POST /api/wallet/connect') return { name: 'wallet', ...configs.wallet };
+  if (pattern === 'POST /api/payment/lead-token' || pattern === 'POST /api/payment/job-posting') return { name: 'payment', ...configs.payment };
   if (pattern === 'POST /api/bids/:id/accept') return { name: 'bid_accept', ...configs.bid_accept };
   return null;
 }
