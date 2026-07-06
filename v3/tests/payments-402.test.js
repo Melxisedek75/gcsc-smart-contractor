@@ -18,6 +18,7 @@ const mod = require('../pure-server');
 const server = mod;
 const { db, _hooks, jwtSign } = mod;
 const originalVerifier = _hooks.verifyHyperionTransfer;
+const originalFetch = global.fetch;
 
 let baseUrl;
 let listener;
@@ -38,7 +39,13 @@ beforeEach(() => {
   db.payment_receipts.length = 0;
   db.lead_tokens.length = 0;
   db.job_posting_payments.length = 0;
+  db.users.length = 0;
+  db.users.push(
+    { id: 1, email: 'demo@gcsc.store', role: 'homeowner', is_active: 1, wallet: { accountName: 'homeowner1', permission: 'active' } },
+    { id: 2, email: 'contractor@gcsc.store', role: 'contractor', is_active: 1, wallet: { accountName: 'testacct1', permission: 'active' } },
+  );
   _hooks.verifyHyperionTransfer = originalVerifier;
+  global.fetch = originalFetch;
 });
 
 // ---- helpers ----
@@ -103,7 +110,10 @@ describe('POST /api/payment/lead-token', () => {
   });
 
   test('happy path: valid txHash → 200 + lead_id', async () => {
-    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'testacct1', block_num: 12345 });
+    _hooks.verifyHyperionTransfer = async (input) => {
+      expect(input.expectedFrom).toBe('testacct1');
+      return { ok: true, from: 'testacct1', block_num: 12345 };
+    };
     const r = await request({
       path: '/api/payment/lead-token',
       headers: {
@@ -131,6 +141,34 @@ describe('POST /api/payment/lead-token', () => {
     });
     expect(r.status).toBe(409);
     expect(r.body.error).toMatch(/already processed/);
+    expect(db.payment_receipts).toHaveLength(1);
+  });
+
+  test('requires a connected contractor wallet before verification', async () => {
+    db.users.find(user => user.id === 2).wallet = null;
+    _hooks.verifyHyperionTransfer = jest.fn();
+    const r = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('wallet_required');
+    expect(_hooks.verifyHyperionTransfer).not.toHaveBeenCalled();
+  });
+
+  test('replay protection treats txHash hex casing as identical', async () => {
+    const mixedCaseTx = 'aB'.repeat(32);
+    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'testacct1', block_num: 12345 });
+    const first = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': mixedCaseTx },
+    });
+    const replay = await request({
+      path: '/api/payment/lead-token',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}`, 'X-Payment-Tx': mixedCaseTx.toLowerCase() },
+    });
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(409);
     expect(db.payment_receipts).toHaveLength(1);
   });
 
@@ -204,7 +242,10 @@ describe('POST /api/payment/job-posting', () => {
   });
 
   test('happy path: publishes project', async () => {
-    _hooks.verifyHyperionTransfer = async () => ({ ok: true, from: 'homeowner1', block_num: 99 });
+    _hooks.verifyHyperionTransfer = async (input) => {
+      expect(input.expectedFrom).toBe('homeowner1');
+      return { ok: true, from: 'homeowner1', block_num: 99 };
+    };
     const r = await request({
       path: '/api/payment/job-posting',
       headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
@@ -215,6 +256,19 @@ describe('POST /api/payment/job-posting', () => {
     const project = db.projects.find(p => p.id === 100);
     expect(project.published).toBe(true);
     expect(project.published_at).toBeTruthy();
+  });
+
+  test('requires a connected homeowner wallet before verification', async () => {
+    db.users.find(user => user.id === 1).wallet = null;
+    _hooks.verifyHyperionTransfer = jest.fn();
+    const r = await request({
+      path: '/api/payment/job-posting',
+      headers: { Authorization: `Bearer ${HOMEOWNER_TOKEN}`, 'X-Payment-Tx': FAKE_TX },
+      body: { project_id: 100 },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('wallet_required');
+    expect(_hooks.verifyHyperionTransfer).not.toHaveBeenCalled();
   });
 });
 
@@ -231,5 +285,37 @@ describe('verifyHyperionTransfer (unit)', () => {
     const r = await verifyHyperionTransfer({ expectedRecipient: 'x', expectedAmount: 'y' });
     expect(r.ok).toBe(false);
     expect(r.error).toBe('bad_tx_hash');
+  });
+
+  test('rejects a transfer whose sender does not match expectedFrom', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        actions: [{
+          act: {
+            account: 'eosio.token',
+            name: 'transfer',
+            data: {
+              from: 'attacker1111',
+              to: 'gcsctoken111',
+              quantity: '50.0000 XPR',
+              memo: 'gcsc:lead-token',
+            },
+          },
+          block_num: 12345,
+          timestamp: new Date().toISOString(),
+        }],
+      }),
+    });
+    const r = await verifyHyperionTransfer({
+      txHash: FAKE_TX,
+      expectedRecipient: 'gcsctoken111',
+      expectedAmount: '50.0000 XPR',
+      expectedMemo: 'gcsc:lead-token',
+      expectedFrom: 'testacct1',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('bad_sender');
   });
 });
