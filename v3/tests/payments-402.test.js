@@ -16,9 +16,33 @@ const http = require('http');
 const mod = require('../pure-server');
 
 const server = mod;
-const { db, _hooks, jwtSign } = mod;
+const { db, _hooks, jwtSign, verifyWalletSignature, walletChallengeMessage } = mod;
 const originalVerifier = _hooks.verifyHyperionTransfer;
+const originalVerifyAccountKey = _hooks.verifyAccountKey;
 const originalFetch = global.fetch;
+
+// ---- EOSIO/XPR K1 signing helper (offline, for wallet-ownership-proof tests) ----
+const EC = require('elliptic').ec;
+const { Numeric } = require('@proton/js');
+const ec = new EC('secp256k1');
+function makeXprKeypair() {
+  const kp = ec.genKeyPair();
+  const pub = Numeric.publicKeyToString({
+    type: Numeric.KeyType.k1,
+    data: new Uint8Array(Buffer.from(kp.getPublic(true, 'array'))),
+  });
+  return { kp, pub };
+}
+function signK1(message, kp) {
+  const digest = require('crypto').createHash('sha256').update(Buffer.from(message, 'utf8')).digest();
+  const s = ec.sign(digest, kp, { canonical: true });
+  const data = Buffer.concat([
+    Buffer.from([s.recoveryParam + 31]),
+    s.r.toArrayLike(Buffer, 'be', 32),
+    s.s.toArrayLike(Buffer, 'be', 32),
+  ]);
+  return Numeric.signatureToString({ type: Numeric.KeyType.k1, data: new Uint8Array(data) });
+}
 
 let baseUrl;
 let listener;
@@ -45,6 +69,7 @@ beforeEach(() => {
     { id: 2, email: 'contractor@gcsc.store', role: 'contractor', is_active: 1, wallet: { accountName: 'testacct1', permission: 'active' } },
   );
   _hooks.verifyHyperionTransfer = originalVerifier;
+  _hooks.verifyAccountKey = originalVerifyAccountKey;
   global.fetch = originalFetch;
 });
 
@@ -58,8 +83,12 @@ function request({ method = 'POST', path, headers = {}, body }) {
       port: url.port,
       path: url.pathname,
       method,
+      // Fresh socket per request + explicit close: after the CPU-heavy K1 tests a
+      // reused keep-alive socket can be reset on a slow Windows runner (ECONNRESET).
+      agent: false,
       headers: {
         'Content-Type': 'application/json',
+        Connection: 'close',
         ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
         ...headers,
       },
@@ -296,12 +325,7 @@ describe('verifyHyperionTransfer (unit)', () => {
           act: {
             account: 'eosio.token',
             name: 'transfer',
-            data: {
-              from: 'attacker1111',
-              to: 'gcsctoken111',
-              quantity: '50.0000 XPR',
-              memo: 'gcsc:lead-token',
-            },
+            data: { from: 'attacker1111', to: 'gcsctoken111', quantity: '50.0000 XPR', memo: 'gcsc:lead-token' },
           },
           block_num: 12345,
           timestamp: new Date().toISOString(),
@@ -317,5 +341,119 @@ describe('verifyHyperionTransfer (unit)', () => {
     });
     expect(r.ok).toBe(false);
     expect(r.error).toBe('bad_sender');
+  });
+});
+
+// P1-4: wallet ownership proof (nonce/challenge + XPR K1 signature)
+describe('wallet ownership proof', () => {
+  // K1 keypair generation + signature recovery is CPU-heavy; on a slow Windows
+  // runner a single case can exceed Jest's default 5000ms. Give this group an
+  // explicit 60s budget so `npx jest ...` is stable without a CLI --testTimeout.
+  // This is registered last, so it only affects these tests.
+  jest.setTimeout(60000);
+
+  test('verifyWalletSignature recovers the signing key and rejects tampering', () => {
+    const { kp, pub } = makeXprKeypair();
+    const message = walletChallengeMessage({ userId: 2, accountName: 'testacct1', nonce: 'deadbeef' });
+    const signature = signK1(message, kp);
+
+    const ok = verifyWalletSignature({ message, signature, publicKey: pub });
+    expect(ok.ok).toBe(true);
+    expect(ok.publicKey).toBe(pub);
+
+    // Wrong declared public key → mismatch
+    const other = makeXprKeypair();
+    const mismatch = verifyWalletSignature({ message, signature, publicKey: other.pub });
+    expect(mismatch.ok).toBe(false);
+    expect(mismatch.error).toBe('signature_key_mismatch');
+
+    // Tampered message → recovered key differs from declared key
+    const tampered = verifyWalletSignature({ message: message + 'x', signature, publicKey: pub });
+    expect(tampered.ok).toBe(false);
+  });
+
+  test('rejects a wallet connect without ownership proof', async () => {
+    const r = await request({
+      path: '/api/wallet/connect',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1' },
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('wallet_proof_required');
+  });
+
+  test('rejects a wallet connect with no prior challenge', async () => {
+    const { kp, pub } = makeXprKeypair();
+    const signature = signK1('anything', kp);
+    const r = await request({
+      path: '/api/wallet/connect',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1', publicKey: pub, signature },
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('no_challenge');
+  });
+
+  test('challenge → sign → connect binds a verified wallet', async () => {
+    _hooks.verifyAccountKey = async () => ({ ok: true });
+    const { kp, pub } = makeXprKeypair();
+
+    const challenge = await request({
+      path: '/api/wallet/challenge',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1' },
+    });
+    expect(challenge.status).toBe(200);
+    expect(challenge.body.message).toContain('nonce:');
+
+    const signature = signK1(challenge.body.message, kp);
+    const r = await request({
+      path: '/api/wallet/connect',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1', permission: 'active', publicKey: pub, signature },
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.wallet.accountName).toBe('testacct1');
+    expect(r.body.wallet.verified).toBe(true);
+    expect(r.body.wallet.publicKey).toBe(pub);
+  });
+
+  test('rejects when signature does not match the issued challenge', async () => {
+    _hooks.verifyAccountKey = async () => ({ ok: true });
+    const { kp } = makeXprKeypair();
+
+    await request({
+      path: '/api/wallet/challenge',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1' },
+    });
+    // Sign a different message than the issued challenge
+    const signature = signK1('not-the-challenge', kp);
+    const r = await request({
+      path: '/api/wallet/connect',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1', publicKey: makeXprKeypair().pub, signature },
+    });
+    expect(r.status).toBe(400);
+    expect(['signature_key_mismatch', 'bad_signature']).toContain(r.body.code);
+  });
+
+  test('rejects when the key is not authorized on-chain', async () => {
+    _hooks.verifyAccountKey = async () => ({ ok: false, error: 'account_key_unauthorized' });
+    const { kp, pub } = makeXprKeypair();
+
+    const challenge = await request({
+      path: '/api/wallet/challenge',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1' },
+    });
+    const signature = signK1(challenge.body.message, kp);
+    const r = await request({
+      path: '/api/wallet/connect',
+      headers: { Authorization: `Bearer ${CONTRACTOR_TOKEN}` },
+      body: { accountName: 'testacct1', publicKey: pub, signature },
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('account_key_unauthorized');
   });
 });
