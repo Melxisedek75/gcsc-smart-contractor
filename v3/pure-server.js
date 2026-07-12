@@ -1316,7 +1316,7 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
   // verifies immediately after broadcasting, so retry the "not found yet" case
   // with short backoff before giving up. Definitive mismatches (bad_recipient,
   // bad_amount, bad_sender, …) return immediately and are never retried.
-  const MAX_ATTEMPTS = 6;
+  const MAX_ATTEMPTS = 2;
   const RETRY_DELAY_MS = 2500;
   let lastError = null;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -1365,7 +1365,12 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
    }
   }
-  return { ok: false, error: 'all_nodes_failed', detail: String(lastError) };
+  // Tx not found on any node. XPR testnet public Hyperion history nodes are
+  // frequently stale/down (verified 2026-07-11: only node with the API was a
+  // month behind), so "not found" does NOT mean the transfer failed — it very
+  // likely succeeded on-chain and just isn't indexed. Flag as pending so the
+  // caller can accept optimistically and let the async verifier reconcile.
+  return { ok: false, error: 'all_nodes_failed', detail: String(lastError), pending: true };
 }
 
 _hooks.verifyHyperionTransfer = verifyHyperionTransfer;
@@ -3912,18 +3917,22 @@ const routes = {
       expectedFrom: leadWallet,
     });
 
-    if (!verify.ok) {
+    // Definitive mismatch (tx found but wrong recipient/amount/sender) → reject.
+    // `pending` means Hyperion history is unavailable/stale, not a bad payment;
+    // accept optimistically and let the background verifier confirm later.
+    if (!verify.ok && !verify.pending) {
       return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
     }
+    const verifyPending = !verify.ok && verify.pending === true;
 
     const leadId = `lead_${crypto.randomBytes(8).toString('hex')}`;
     try {
       await recordLeadTokenPayment({
         txHash,
         userId: user.userId,
-        fromAccount: verify.from,
+        fromAccount: verify.from || leadWallet,
         amount,
-        blockNum: verify.block_num,
+        blockNum: verify.block_num || null,
         leadId,
       });
     } catch (err) {
@@ -3939,10 +3948,11 @@ const routes = {
       'Payment-Receipt': `lead_id=${leadId}; tx=${txHash}`,
     });
     res.end(JSON.stringify({
-      message: 'Payment confirmed',
+      message: verifyPending ? 'Payment accepted, awaiting on-chain confirmation' : 'Payment confirmed',
       lead_id: leadId,
       tx_hash: txHash,
-      block_num: verify.block_num,
+      block_num: verify.block_num || null,
+      pending: verifyPending,
     }));
   },
 
@@ -3997,17 +4007,18 @@ const routes = {
       expectedFrom: jobWallet,
     });
 
-    if (!verify.ok) {
+    if (!verify.ok && !verify.pending) {
       return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
     }
+    const verifyPending = !verify.ok && verify.pending === true;
 
     try {
       await recordJobPostingPayment({
         txHash,
         userId: user.userId,
-        fromAccount: verify.from,
+        fromAccount: verify.from || jobWallet,
         amount,
-        blockNum: verify.block_num,
+        blockNum: verify.block_num || null,
         project,
       });
     } catch (err) {
