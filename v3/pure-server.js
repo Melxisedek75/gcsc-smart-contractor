@@ -1312,8 +1312,15 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
     return { ok: false, error: 'bad_tx_hash' };
   }
   const nodes = getXprHyperionUrls();
+  // Hyperion needs a few seconds to index a freshly-broadcast transfer. The app
+  // verifies immediately after broadcasting, so retry the "not found yet" case
+  // with short backoff before giving up. Definitive mismatches (bad_recipient,
+  // bad_amount, bad_sender, …) return immediately and are never retried.
+  const MAX_ATTEMPTS = 6;
+  const RETRY_DELAY_MS = 2500;
   let lastError = null;
-  for (const node of nodes) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+   for (const node of nodes) {
     const result = await fetchHyperionTransaction(node, txHash);
     if (!result.found) {
       lastError = result.error || `no_tx@${node}`;
@@ -1352,6 +1359,11 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
       if (ageMs < -60000) return { ok: false, error: 'tx_in_future', detail: `age_ms=${ageMs}` };
     }
     return { ok: true, from: data.from, block_num: transfer.block_num, node };
+   }
+   // Not found on any node this pass — likely still indexing. Wait and retry.
+   if (attempt < MAX_ATTEMPTS - 1) {
+     await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+   }
   }
   return { ok: false, error: 'all_nodes_failed', detail: String(lastError) };
 }
