@@ -2920,16 +2920,63 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
+const DEV_ROUTES_ENABLED = process.env.NODE_ENV !== 'production';
+
+function requireDevRoutes(res) {
+  if (DEV_ROUTES_ENABLED) return true;
+  json(res, 404, { error: 'Not found' });
+  return false;
+}
+
 // ===== ROUTER =====
 const routes = {
   // Dev helper: get latest OTP for testing
   'GET /api/dev/otp': async (req, res) => {
+    if (!requireDevRoutes(res)) return;
     const url = new URL(req.url, `http://${req.headers.host}`);
     const email = url.searchParams.get('email');
     if (!email) return json(res, 400, { error: 'Email required' });
     const record = db.otp_verifications.filter(o => o.email === email).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
     if (!record) return json(res, 404, { error: 'No OTP found' });
     json(res, 200, { email, otp: record.otp, expires_at: record.expires_at });
+  },
+
+  // Dev helper: fabricate a "verified" contractor (profile complete + docs
+  // approved + a fake wallet) so the escrow/milestone cycle can be exercised
+  // end to end before an admin panel exists to do real document review.
+  // Gated by NODE_ENV so it never runs in production.
+  'POST /api/dev/verify-contractor': async (req, res) => {
+    if (!requireDevRoutes(res)) return;
+    const body = await parseBody(req);
+    const user = await findUserByEmail(body.email);
+    if (!user) return json(res, 404, { error: 'User not found' });
+    if (user.role !== 'contractor') return json(res, 400, { error: 'User is not a contractor' });
+
+    updateProfileFromBody(user, {
+      fullName: user.full_name || 'Test Contractor',
+      phone: '2065550100',
+      companyName: 'Dev Test Construction LLC',
+      ein: '12-3456789',
+      licenseNumber: 'DEV-LIC-0001',
+      serviceArea: 'Seattle, WA',
+    });
+    user.profile = { ...user.profile, specialties: ['general'] };
+    await updateStoredProfile(user, {});
+    await updateStoredWallet(user, { accountName: `devtest${user.id}`, chain: 'proton-testnet' });
+
+    for (const documentType of getRequiredDocumentTypes(user.role)) {
+      const document = await upsertStoredUserDocument(user, {
+        documentType,
+        fileName: `${documentType}.pdf`,
+        mimeType: 'application/pdf',
+        fileDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      });
+      await reviewStoredUserDocument(document, 'approved', 'auto-approved by dev route', 0);
+    }
+
+    const documents = await listStoredUserDocuments(user.id);
+    const compliance = complianceForUser(user, documents);
+    json(res, 200, { message: 'Contractor auto-verified for dev testing', verification: compliance });
   },
 
   // Health
