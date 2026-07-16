@@ -21,11 +21,20 @@ const USE_POSTGRES = !!process.env.DATABASE_URL;
 const XPR_TESTNET_CHAIN_ID = '71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd';
 const XPR_TX_VERIFIER_ENABLED = process.env.XPR_TX_VERIFIER_ENABLED !== 'false';
 const XPR_TX_VERIFIER_INTERVAL_MS = parseInt(process.env.XPR_TX_VERIFIER_INTERVAL_MS || '300000', 10);
+// Verified 2026-07-15 against the live testnet. Health-checked by real tx lookup,
+// not by /v2/health (a node's health endpoint reports "OK" while its Elasticsearch
+// index is weeks behind — saltant answered OK with total_indexed_blocks:0).
+// Order matters: first node that answers authoritatively wins.
 const DEFAULT_XPR_TESTNET_HYPERION_URLS = [
-  'https://api-xprnetwork-test.saltant.io',
-  'https://testnet-api.xprdata.org',
-  'https://testnet-api.xprcore.com',
+  'https://test.proton.eosusa.io',            // current: index tracks head (~1 block lag)
+  'https://api-xprnetwork-test.saltant.io',   // fallback: was 6 weeks stale on 2026-07-15,
+                                              // kept because staleness is now detected per-query
 ];
+// A Hyperion node answers `executed:false` BOTH when a tx genuinely does not exist
+// and when its own index is too far behind to know. The only reliable discriminator
+// is last_indexed_block vs the chain's last irreversible block (lib), which nodeos
+// reports correctly even on a stale node. Tolerance covers normal indexing jitter.
+const HYPERION_STALE_TOLERANCE_BLOCKS = 200;
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
   'https://gcsc.store',
   'https://www.gcsc.store',
@@ -503,6 +512,12 @@ async function initStorage() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  // Verification state lives on the receipt so a payment accepted during a history
+  // outage stays visibly unproven until the reconciler settles it.
+  await queryPostgres(`ALTER TABLE payment_receipts ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'confirmed'`);
+  await queryPostgres(`ALTER TABLE payment_receipts ADD COLUMN IF NOT EXISTS verify_error TEXT NOT NULL DEFAULT ''`);
+  await queryPostgres(`ALTER TABLE payment_receipts ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`);
+  await queryPostgres(`CREATE INDEX IF NOT EXISTS idx_payment_receipts_verification ON payment_receipts (verification_status)`);
   await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_receipts_tx_hash ON payment_receipts (tx_hash)`);
   await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_lead_tokens_tx_hash ON lead_tokens (tx_hash)`);
   await queryPostgres(`CREATE UNIQUE INDEX IF NOT EXISTS idx_job_posting_payments_tx_hash ON job_posting_payments (tx_hash)`);
@@ -1307,7 +1322,11 @@ const _hooks = {
   verifyHyperionTransfer: null, // wired below after function defined
 };
 
-async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo, expectedFrom }) {
+// `nowMs` anchors the freshness window. At request time it is simply now; when the
+// reconciler revisits a payment hours later it passes the receipt's creation time,
+// so a tx that was fresh when submitted stays valid without reopening the replay
+// window that PAYMENT_TX_MAX_AGE_MS exists to close.
+async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmount, expectedMemo, expectedFrom, nowMs }) {
   if (!txHash || typeof txHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(txHash)) {
     return { ok: false, error: 'bad_tx_hash' };
   }
@@ -1319,11 +1338,16 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
   const MAX_ATTEMPTS = 2;
   const RETRY_DELAY_MS = 2500;
   let lastError = null;
+  // Tracks whether any node with a current index gave us a trustworthy answer.
+  // Without one we cannot tell "no such transfer" from "nobody has indexed it yet",
+  // and must not hand out goods on an unverified hash.
+  let sawAuthoritativeNode = false;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
    for (const node of nodes) {
     const result = await fetchHyperionTransaction(node, txHash);
+    if (result.authoritative) sawAuthoritativeNode = true;
     if (!result.found) {
-      lastError = result.error || `no_tx@${node}`;
+      lastError = `${result.error || 'no_tx'}@${node}`;
       continue;
     }
     const payload = result.payload || {};
@@ -1333,8 +1357,9 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
       return act && act.name === 'transfer' && act.account === 'eosio.token';
     });
     if (!transfer) {
-      lastError = `no_transfer_action@${node}`;
-      continue;
+      // The node executed the lookup and the tx carries no eosio.token::transfer:
+      // that is a definitive answer about a real transaction, not an outage.
+      return { ok: false, error: 'no_transfer_action', detail: `tx=${txHash} node=${node}` };
     }
     const data = getActionAct(transfer).data || {};
     if (data.to !== expectedRecipient) {
@@ -1354,23 +1379,27 @@ async function verifyHyperionTransfer({ txHash, expectedRecipient, expectedAmoun
     const tsRaw = transfer.timestamp || transfer['@timestamp'];
     if (tsRaw) {
       const txTime = new Date(/Z$/.test(tsRaw) ? tsRaw : (tsRaw + 'Z'));
-      const ageMs = Date.now() - txTime.getTime();
+      const ageMs = (Number.isFinite(nowMs) ? nowMs : Date.now()) - txTime.getTime();
       if (ageMs > PAYMENT_TX_MAX_AGE_MS) return { ok: false, error: 'tx_too_old', detail: `age_ms=${ageMs}` };
       if (ageMs < -60000) return { ok: false, error: 'tx_in_future', detail: `age_ms=${ageMs}` };
     }
     return { ok: true, from: data.from, block_num: transfer.block_num, node };
    }
-   // Not found on any node this pass — likely still indexing. Wait and retry.
+   // Not found on any node this pass — a freshly broadcast tx may still be
+   // indexing even on a current node. Wait and retry before ruling.
    if (attempt < MAX_ATTEMPTS - 1) {
      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
    }
   }
-  // Tx not found on any node. XPR testnet public Hyperion history nodes are
-  // frequently stale/down (verified 2026-07-11: only node with the API was a
-  // month behind), so "not found" does NOT mean the transfer failed — it very
-  // likely succeeded on-chain and just isn't indexed. Flag as pending so the
-  // caller can accept optimistically and let the async verifier reconcile.
-  return { ok: false, error: 'all_nodes_failed', detail: String(lastError), pending: true };
+  if (sawAuthoritativeNode) {
+    // A node whose index tracks the chain head looked and did not find it, twice.
+    // That is a real verdict: the transfer is not on chain. Reject.
+    return { ok: false, error: 'tx_not_found', detail: String(lastError) };
+  }
+  // No node with a current index could be reached, so we genuinely do not know.
+  // Accept as pending and let the reconciler settle it — never treat this as proof
+  // of payment: the receipt stays unverified and the lead is withheld until confirmed.
+  return { ok: false, error: 'no_authoritative_node', detail: String(lastError), pending: true };
 }
 
 _hooks.verifyHyperionTransfer = verifyHyperionTransfer;
@@ -1399,22 +1428,27 @@ async function findStoredLeadTokenByTxHash(txHash) {
   return db.lead_tokens.find(lead => lead.tx_hash === txHash) || null;
 }
 
-async function recordLeadTokenPayment({ txHash, userId, fromAccount, amount, blockNum, leadId }) {
+async function recordLeadTokenPayment({ txHash, userId, fromAccount, amount, blockNum, leadId, verificationStatus }) {
+  // An unproven payment must not yield a usable lead. 'pending' receipts hand out a
+  // withheld lead that the reconciler either activates or revokes.
+  const verifyStatus = verificationStatus === 'pending' ? 'pending' : 'confirmed';
+  const leadStatus = verifyStatus === 'confirmed' ? 'active' : 'pending_verification';
   if (USE_POSTGRES) {
     try {
       return await withPostgresTransaction(async (client) => {
         const receiptResult = await client.query(
           `INSERT INTO payment_receipts
-            (tx_hash, kind, user_id, from_account, amount, block_num)
-           VALUES ($1, 'lead-token', $2, $3, $4, $5)
+            (tx_hash, kind, user_id, from_account, amount, block_num, verification_status, verified_at)
+           VALUES ($1, 'lead-token', $2, $3, $4, $5, $6, $7)
            RETURNING *`,
-          [txHash, userId, fromAccount || '', amount, blockNum || null]
+          [txHash, userId, fromAccount || '', amount, blockNum || null, verifyStatus,
+           verifyStatus === 'confirmed' ? new Date() : null]
         );
         const leadResult = await client.query(
           `INSERT INTO lead_tokens (id, user_id, tx_hash, status)
-           VALUES ($1, $2, $3, 'active')
+           VALUES ($1, $2, $3, $4)
            RETURNING *`,
-          [leadId, userId, txHash]
+          [leadId, userId, txHash, leadStatus]
         );
         return { receipt: receiptResult.rows[0], lead: leadResult.rows[0] };
       });
@@ -1435,13 +1469,16 @@ async function recordLeadTokenPayment({ txHash, userId, fromAccount, amount, blo
     from_account: fromAccount,
     amount,
     block_num: blockNum,
+    verification_status: verifyStatus,
+    verify_error: '',
+    verified_at: verifyStatus === 'confirmed' ? new Date().toISOString() : null,
     created_at: new Date().toISOString(),
   };
   const lead = {
     id: leadId,
     user_id: userId,
     tx_hash: txHash,
-    status: 'active',
+    status: leadStatus,
     created_at: new Date().toISOString(),
   };
   db.payment_receipts.push(receipt);
@@ -2116,20 +2153,50 @@ function hyperionTransactionHasExpectedAction(payload, chainTx) {
   });
 }
 
+// True when the node's own index is current enough that "I don't have this tx"
+// means "this tx does not exist" rather than "I haven't caught up yet".
+function isHyperionPayloadAuthoritative(payload) {
+  const lastIndexed = Number(payload?.last_indexed_block);
+  const lib = Number(payload?.lib);
+  if (!Number.isFinite(lastIndexed) || !Number.isFinite(lib) || lib <= 0) return false;
+  return lastIndexed >= lib - HYPERION_STALE_TOLERANCE_BLOCKS;
+}
+
 async function fetchHyperionTransaction(endpoint, txId) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const url = `${normalizeEndpoint(endpoint)}/v2/history/get_transaction?id=${encodeURIComponent(txId)}`;
     const response = await fetch(url, { signal: controller.signal });
-    if (response.status === 404) return { found: false, error: 'transaction not found' };
+    if (response.status === 404) return { found: false, authoritative: false, error: 'transaction not found' };
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return { found: false, error: payload?.message || payload?.error || `hyperion ${response.status}` };
+      return {
+        found: false,
+        authoritative: false,
+        error: payload?.message || payload?.error || `hyperion ${response.status}`,
+      };
     }
-    return { found: true, payload };
+    const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    if (payload.executed === false || !actions.length) {
+      // Hyperion answers HTTP 200 + executed:false for an absent tx AND for a tx it
+      // simply hasn't indexed. Only a current index makes this answer trustworthy.
+      const authoritative = isHyperionPayloadAuthoritative(payload);
+      return {
+        found: false,
+        authoritative,
+        error: authoritative ? 'tx_not_found' : 'node_stale',
+        last_indexed_block: payload?.last_indexed_block,
+        lib: payload?.lib,
+      };
+    }
+    return { found: true, authoritative: true, payload };
   } catch (err) {
-    return { found: false, error: err.name === 'AbortError' ? 'hyperion timeout' : (err.message || 'hyperion request failed') };
+    return {
+      found: false,
+      authoritative: false,
+      error: err.name === 'AbortError' ? 'hyperion timeout' : (err.message || 'hyperion request failed'),
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -2137,8 +2204,10 @@ async function fetchHyperionTransaction(endpoint, txId) {
 
 async function verifyStoredChainTx(chainTx) {
   let lastError = '';
+  let sawAuthoritativeNode = false;
   for (const endpoint of getXprHyperionUrls()) {
     const result = await fetchHyperionTransaction(endpoint, chainTx.tx_id);
+    if (result.authoritative) sawAuthoritativeNode = true;
     if (!result.found) {
       lastError = result.error || 'transaction not found';
       continue;
@@ -2155,6 +2224,11 @@ async function verifyStoredChainTx(chainTx) {
     );
   }
 
+  if (!sawAuthoritativeNode) {
+    // Every node was stale or unreachable. Previously this condemned a perfectly
+    // good tx to 'failed' permanently; leave it pending for the next sweep instead.
+    return updateStoredChainTxVerification(chainTx.tx_id, 'pending', lastError || 'no authoritative Hyperion node');
+  }
   return updateStoredChainTxVerification(chainTx.tx_id, 'failed', lastError || 'transaction not found on XPR testnet');
 }
 
@@ -2175,6 +2249,94 @@ function startChainTxVerifier() {
 
   const timer = setInterval(() => {
     verifyBroadcastChainTxs().catch(err => console.error('[CHAIN_TX_VERIFY]', err.message || err));
+  }, XPR_TX_VERIFIER_INTERVAL_MS);
+
+  if (typeof timer.unref === 'function') timer.unref();
+}
+
+// ===== PENDING PAYMENT RECONCILER =====
+// Settles payments accepted while no current-index Hyperion node was reachable.
+// Until this runs the payer holds a receipt but no usable lead, so this loop is
+// what makes the optimistic-accept path safe rather than a giveaway.
+
+const PAYMENT_KIND_MEMOS = {
+  'lead-token': 'gcsc:lead-token',
+  'job-posting': 'gcsc:job-posting',
+};
+
+async function listPendingPaymentReceipts(limit = 25) {
+  if (USE_POSTGRES) {
+    const result = await queryPostgres(
+      `SELECT * FROM payment_receipts WHERE verification_status = 'pending' ORDER BY created_at ASC LIMIT $1`,
+      [limit]
+    );
+    return result.rows || [];
+  }
+  return db.payment_receipts.filter(receipt => receipt.verification_status === 'pending').slice(0, limit);
+}
+
+async function applyPaymentVerdict(receipt, status, error) {
+  const leadStatus = status === 'confirmed' ? 'active' : 'revoked';
+  if (USE_POSTGRES) {
+    await withPostgresTransaction(async (client) => {
+      await client.query(
+        `UPDATE payment_receipts SET verification_status = $1, verify_error = $2, verified_at = NOW() WHERE tx_hash = $3`,
+        [status, error || '', receipt.tx_hash]
+      );
+      if (receipt.kind === 'lead-token') {
+        await client.query(`UPDATE lead_tokens SET status = $1 WHERE tx_hash = $2`, [leadStatus, receipt.tx_hash]);
+      }
+    });
+    return;
+  }
+  const stored = db.payment_receipts.find(r => r.tx_hash === receipt.tx_hash);
+  if (stored) {
+    stored.verification_status = status;
+    stored.verify_error = error || '';
+    stored.verified_at = new Date().toISOString();
+  }
+  if (receipt.kind === 'lead-token') {
+    const lead = db.lead_tokens.find(l => l.tx_hash === receipt.tx_hash);
+    if (lead) lead.status = leadStatus;
+  }
+  saveDatabase();
+}
+
+async function reconcilePendingPayments() {
+  const receipts = await listPendingPaymentReceipts();
+  for (const receipt of receipts) {
+    try {
+      const verify = await _hooks.verifyHyperionTransfer({
+        txHash: receipt.tx_hash,
+        expectedRecipient: PAYMENT_RECIPIENT,
+        expectedAmount: receipt.amount,
+        expectedMemo: PAYMENT_KIND_MEMOS[receipt.kind] || '',
+        expectedFrom: receipt.from_account,
+        // Judge freshness as of acceptance, not now — the tx was submitted back then,
+        // and re-anchoring to now would reject every payment older than the window.
+        nowMs: new Date(receipt.created_at).getTime(),
+      });
+      if (verify.ok) {
+        await applyPaymentVerdict(receipt, 'confirmed', '');
+        console.log(`[PAYMENT_RECONCILE] confirmed ${receipt.kind} ${receipt.tx_hash}`);
+      } else if (verify.pending) {
+        continue; // still no authoritative node — retry on a later sweep
+      } else {
+        await applyPaymentVerdict(receipt, 'rejected', verify.error || 'verification failed');
+        console.warn(`[PAYMENT_RECONCILE] rejected ${receipt.kind} ${receipt.tx_hash}: ${verify.error}`);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_RECONCILE]', err.message || err);
+    }
+  }
+}
+
+function startPaymentReconciler() {
+  if (!XPR_TX_VERIFIER_ENABLED) return;
+  if (!Number.isFinite(XPR_TX_VERIFIER_INTERVAL_MS) || XPR_TX_VERIFIER_INTERVAL_MS < 30000) return;
+
+  const timer = setInterval(() => {
+    reconcilePendingPayments().catch(err => console.error('[PAYMENT_RECONCILE]', err.message || err));
   }, XPR_TX_VERIFIER_INTERVAL_MS);
 
   if (typeof timer.unref === 'function') timer.unref();
@@ -3917,9 +4079,10 @@ const routes = {
       expectedFrom: leadWallet,
     });
 
-    // Definitive mismatch (tx found but wrong recipient/amount/sender) → reject.
-    // `pending` means Hyperion history is unavailable/stale, not a bad payment;
-    // accept optimistically and let the background verifier confirm later.
+    // Any definitive verdict from a current-index node — wrong recipient/amount/
+    // sender/memo, or simply no such tx — is a rejection.
+    // `pending` means no node with a current index could be reached, so the payment
+    // is unproven rather than bad: record it, withhold the lead, let the reconciler rule.
     if (!verify.ok && !verify.pending) {
       return json(res, 400, { error: 'Payment verification failed', code: verify.error, detail: verify.detail });
     }
@@ -3934,6 +4097,7 @@ const routes = {
         amount,
         blockNum: verify.block_num || null,
         leadId,
+        verificationStatus: verifyPending ? 'pending' : 'confirmed',
       });
     } catch (err) {
       if (err && err.status === 409) {
@@ -3948,11 +4112,14 @@ const routes = {
       'Payment-Receipt': `lead_id=${leadId}; tx=${txHash}`,
     });
     res.end(JSON.stringify({
-      message: verifyPending ? 'Payment accepted, awaiting on-chain confirmation' : 'Payment confirmed',
+      message: verifyPending
+        ? 'Payment recorded, awaiting on-chain confirmation — lead unlocks once verified'
+        : 'Payment confirmed',
       lead_id: leadId,
       tx_hash: txHash,
       block_num: verify.block_num || null,
       pending: verifyPending,
+      lead_status: verifyPending ? 'pending_verification' : 'active',
     }));
   },
 
@@ -4115,6 +4282,7 @@ if (require.main === module) {
   initStorage().then(() => {
     server.listen(PORT, '0.0.0.0', () => {
       startChainTxVerifier();
+      startPaymentReconciler();
       console.log(`╔══════════════════════════════════════════╗`);
       console.log(`║   GCSC Backend v3.0 — RUNNING            ║`);
       console.log(`║   Port: ${PORT}                            ║`);
@@ -4134,6 +4302,8 @@ module.exports = server;
 module.exports.db = db;
 module.exports._hooks = _hooks;
 module.exports.verifyHyperionTransfer = verifyHyperionTransfer;
+module.exports.reconcilePendingPayments = reconcilePendingPayments;
+module.exports.isHyperionPayloadAuthoritative = isHyperionPayloadAuthoritative;
 module.exports.jwtSign = jwtSign;
 module.exports.initStorage = initStorage;
 module.exports.closeStorage = closeStorage;
