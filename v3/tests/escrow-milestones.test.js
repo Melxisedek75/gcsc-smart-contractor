@@ -13,6 +13,14 @@
  * same mode as payments-402.test.js.
  */
 
+// The bid-accept route is rate-limited per client identity (IP+token), and the
+// limiter store is module-level state that outlives individual tests. This file
+// alone now makes ~40+ accept calls across its describes, which crossed the
+// threshold once the chain-tx coverage below was added. Disable rate limiting
+// for this suite the same way tests/security-env-check-script.test.js documents
+// as the sanctioned test-only escape hatch (never valid in production).
+process.env.RATE_LIMITS_DISABLED = 'true';
+
 const http = require('http');
 const mod = require('../pure-server');
 
@@ -65,6 +73,7 @@ beforeEach(() => {
   db.milestones.length = 0;
   db.user_documents.length = 0;
   db.audit_events.length = 0;
+  db.milestone_chain_txs.length = 0;
 
   db.users.push(
     { id: HOMEOWNER_ID, email: 'ho@test.io', role: 'homeowner', is_active: 1, full_name: 'Home Owner', phone: '2065550100', profile: {}, wallet: null },
@@ -495,5 +504,194 @@ describe('GET /api/escrow/:id and /api/escrow/my/escrows', () => {
     const notMine = await request({ method: 'GET', path: '/api/escrow/my/escrows', token: OTHER_HOMEOWNER_TOKEN });
     expect(mine.body.escrows.map(e => e.id)).toContain(escrowId);
     expect(notMine.body.escrows.length).toBe(0);
+  });
+});
+
+// ==================== chain-tx evidence recording + verification ====================
+//
+// POST /api/milestones/:id/chain-txs and its /verify sibling record and confirm
+// on-chain XPR testnet evidence for a milestone action (submitms/approvems/
+// releasems/disputems). Previously uncovered (see 2026-07-16 review record,
+// "Known gaps"). fetchHyperionTransaction (shared with the payment verifier)
+// is exercised here through global.fetch mocks, same technique as
+// tests/payment-reconciler.test.js.
+
+const originalFetch = global.fetch;
+const TX_ID = 'a'.repeat(64);
+
+// responses matched positionally to DEFAULT_XPR_TESTNET_HYPERION_URLS (2 nodes);
+// extra calls beyond the array length repeat the last entry.
+function mockChainNodes(responses) {
+  let call = 0;
+  global.fetch = jest.fn(async () => {
+    const payload = responses[Math.min(call++, responses.length - 1)];
+    if (payload === 'network-error') throw new Error('connect ECONNREFUSED');
+    return { ok: true, status: 200, json: async () => payload };
+  });
+}
+
+const LIB = 400000000;
+const AUTHORITATIVE_NOT_FOUND = { executed: false, lib: LIB, last_indexed_block: LIB };
+const STALE_NOT_FOUND = { executed: false, lib: LIB, last_indexed_block: LIB - 10000 };
+
+function foundWithAction({ account = 'gcscrow1111', name = 'submitms' } = {}) {
+  return {
+    executed: true,
+    lib: LIB,
+    last_indexed_block: LIB,
+    actions: [{ act: { account, name, data: {} } }],
+  };
+}
+
+async function recordChainTx({ msId, token = CONTRACTOR_TOKEN, overrides = {} } = {}) {
+  return request({
+    path: `/api/milestones/${msId}/chain-txs`,
+    token,
+    body: { action: 'submitms', tx_id: TX_ID, chain_id: 'testnet', actor: 'contractor1', ...overrides },
+  });
+}
+
+afterEach(() => {
+  global.fetch = originalFetch;
+});
+
+describe('POST /api/milestones/:id/chain-txs', () => {
+  test('contractor records submitms evidence -> 201, status broadcast', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId });
+    expect(r.status).toBe(201);
+    expect(r.body.chain_tx.status).toBe('broadcast');
+    expect(r.body.chain_tx.action).toBe('submitms');
+    expect(r.body.chain_tx.tx_id).toBe(TX_ID);
+    expect(db.milestone_chain_txs.length).toBe(1);
+  });
+
+  test('homeowner records approvems evidence -> 201', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, token: HOMEOWNER_TOKEN, overrides: { action: 'approvems', tx_id: 'b'.repeat(64) } });
+    expect(r.status).toBe(201);
+  });
+
+  test('wrong role for the action -> 403 (contractor cannot record approvems)', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, token: CONTRACTOR_TOKEN, overrides: { action: 'approvems' } });
+    expect(r.status).toBe(403);
+    expect(db.milestone_chain_txs.length).toBe(0);
+  });
+
+  test('non-participant -> 403, no existence leak beyond that', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, token: OTHER_HOMEOWNER_TOKEN });
+    expect(r.status).toBe(403);
+  });
+
+  test('invalid action string -> 400, nothing stored', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, overrides: { action: 'notaraction' } });
+    expect(r.status).toBe(400);
+    expect(db.milestone_chain_txs.length).toBe(0);
+  });
+
+  test('invalid/short tx_id -> 400', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, overrides: { tx_id: 'short' } });
+    expect(r.status).toBe(400);
+  });
+
+  test('wrong escrow contract account -> 400', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, overrides: { contract_account: 'notgcscrow1111' } });
+    expect(r.status).toBe(400);
+  });
+
+  test('duplicate tx_id -> 409, only one row stored', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const first = await recordChainTx({ msId });
+    expect(first.status).toBe(201);
+    const second = await recordChainTx({ msId, overrides: { tx_id: TX_ID } });
+    expect(second.status).toBe(409);
+    expect(db.milestone_chain_txs.length).toBe(1);
+  });
+
+  test('unknown milestone id -> 404', async () => {
+    const r = await recordChainTx({ msId: 999999 });
+    expect(r.status).toBe(404);
+  });
+
+  test('no auth -> 401', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await recordChainTx({ msId, token: null });
+    expect(r.status).toBe(401);
+  });
+});
+
+describe('POST /api/milestones/:id/chain-txs/:txId/verify', () => {
+  async function setupChainTx(overrides = {}) {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const record = await recordChainTx({ msId, overrides });
+    return { msId, txId: record.body.chain_tx.tx_id };
+  }
+
+  test('healthy node finds matching action -> 200, status confirmed', async () => {
+    const { msId, txId } = await setupChainTx();
+    mockChainNodes([foundWithAction({ name: 'submitms' })]);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify`, token: CONTRACTOR_TOKEN });
+    expect(r.status).toBe(200);
+    expect(r.body.chain_tx.status).toBe('confirmed');
+    expect(db.milestone_chain_txs.find(t => t.tx_id === txId).status).toBe('confirmed');
+  });
+
+  test('healthy node finds the tx but with the wrong action -> 200, status failed', async () => {
+    const { msId, txId } = await setupChainTx();
+    mockChainNodes([foundWithAction({ name: 'approvems' })]);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify`, token: CONTRACTOR_TOKEN });
+    expect(r.status).toBe(200);
+    expect(r.body.chain_tx.status).toBe('failed');
+  });
+
+  test('authoritative node reports tx not found -> 200, status failed', async () => {
+    const { msId, txId } = await setupChainTx();
+    mockChainNodes([AUTHORITATIVE_NOT_FOUND, AUTHORITATIVE_NOT_FOUND]);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify`, token: CONTRACTOR_TOKEN });
+    expect(r.status).toBe(200);
+    expect(r.body.chain_tx.status).toBe('failed');
+  });
+
+  test('all nodes stale/unreachable -> 200, status pending (not condemned)', async () => {
+    const { msId, txId } = await setupChainTx();
+    mockChainNodes([STALE_NOT_FOUND, 'network-error']);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify`, token: CONTRACTOR_TOKEN });
+    expect(r.status).toBe(200);
+    expect(r.body.chain_tx.status).toBe('pending');
+  });
+
+  test('non-participant cannot verify -> 403', async () => {
+    const { msId, txId } = await setupChainTx();
+    mockChainNodes([foundWithAction()]);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify`, token: OTHER_HOMEOWNER_TOKEN });
+    expect(r.status).toBe(403);
+  });
+
+  test('unknown tx id -> 404', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${'f'.repeat(64)}/verify`, token: CONTRACTOR_TOKEN });
+    expect(r.status).toBe(404);
+  });
+
+  test('no auth -> 401', async () => {
+    const { msId, txId } = await setupChainTx();
+    const r = await request({ path: `/api/milestones/${msId}/chain-txs/${txId}/verify` });
+    expect(r.status).toBe(401);
   });
 });
