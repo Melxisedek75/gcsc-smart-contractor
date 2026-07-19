@@ -56,7 +56,7 @@ and it had no automated regression protection at all.
 
 ## 2026-07-17 addendum: chain-tx evidence coverage
 
-Added 23 tests (26→49 in this file) for the previously-flagged gap:
+Added 25 tests (26→51 in this file) for the previously-flagged gap:
 
 - `POST /api/milestones/:id/chain-txs` (10 tests): role gating per action
   (`canUserRecordChainTx`), invalid action/tx_id/contract_account, duplicate
@@ -68,6 +68,10 @@ Added 23 tests (26→49 in this file) for the previously-flagged gap:
   unknown tx id, no auth. Uses the same `global.fetch` mock technique as
   `tests/payment-reconciler.test.js` since `verifyStoredChainTx` shares
   `fetchHyperionTransaction` with the payment verifier.
+- Embedded read path (2 tests): `GET /api/escrow/:id` attaches each
+  milestone's `chain_txs` (`attachChainTxsToMilestones`) — evidence appears
+  under the right milestone only, and the embedded status flips to
+  `confirmed` after `/verify`. This is the view the mobile client consumes.
 
 Found and fixed one test-infra issue while doing this: the bid-accept route is
 rate-limited per client identity, and the limiter's `Map` is module-level state
@@ -81,9 +85,9 @@ never be `true` in production).
 
 | Check | Result |
 |---|---|
-| `npx jest tests/escrow-milestones.test.js` | PASS 49/49 |
+| `npx jest tests/escrow-milestones.test.js` | PASS 51/51 |
 | Same, 3x consecutively | PASS all 3 runs, stable (7–15s each) |
-| Run with payment-reconciler + payments-402, `--runInBand` | PASS 85/85 |
+| Run with payment-reconciler + payments-402, `--runInBand` | PASS 87/87 |
 
 No production code (`pure-server.js`) touched by this addendum — test file only.
 

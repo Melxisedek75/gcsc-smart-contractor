@@ -695,3 +695,37 @@ describe('POST /api/milestones/:id/chain-txs/:txId/verify', () => {
     expect(r.status).toBe(401);
   });
 });
+
+// The read path the client actually consumes: GET /api/escrow/:id embeds each
+// milestone's chain_txs (attachChainTxsToMilestones), including status changes
+// made by /verify.
+
+describe('chain_txs embedded in GET /api/escrow/:id', () => {
+  test('recorded evidence appears under its milestone; other milestones stay empty', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msA = await addMilestone(escrowId, 1000);
+    const msB = await addMilestone(escrowId, 500);
+    await recordChainTx({ msId: msA });
+
+    const r = await request({ method: 'GET', path: `/api/escrow/${escrowId}`, token: HOMEOWNER_TOKEN });
+    expect(r.status).toBe(200);
+    const a = r.body.milestones.find(m => m.id === msA);
+    const b = r.body.milestones.find(m => m.id === msB);
+    expect(a.chain_txs.length).toBe(1);
+    expect(a.chain_txs[0].tx_id).toBe(TX_ID);
+    expect(a.chain_txs[0].status).toBe('broadcast');
+    expect(b.chain_txs).toEqual([]);
+  });
+
+  test('status flips to confirmed in the embedded view after /verify', async () => {
+    const { escrowId } = await acceptedEscrow();
+    const msId = await addMilestone(escrowId, 1000);
+    await recordChainTx({ msId });
+    mockChainNodes([foundWithAction({ name: 'submitms' })]);
+    await request({ path: `/api/milestones/${msId}/chain-txs/${TX_ID}/verify`, token: CONTRACTOR_TOKEN });
+
+    const r = await request({ method: 'GET', path: `/api/escrow/${escrowId}`, token: CONTRACTOR_TOKEN });
+    const ms = r.body.milestones.find(m => m.id === msId);
+    expect(ms.chain_txs[0].status).toBe('confirmed');
+  });
+});
