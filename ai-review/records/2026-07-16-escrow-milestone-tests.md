@@ -93,5 +93,5 @@ No production code (`pure-server.js`) touched by this addendum — test file onl
 
 ## Reviewer decision
 
-- Reviewer decision: `PENDING`
-- Reviewed at (UTC): `PENDING`
+- Reviewer decision: `WAIVED_BY_FOUNDER` (founder approved merge without Codex review, 2026-07-19)
+- Reviewed at (UTC): `2026-07-19` (founder waiver)
