@@ -92,6 +92,7 @@ const xprRoutes     = require('./routes/xpr');
 const projectRoutes = require('./routes/projects');
 const bidRoutes     = require('./routes/bids');
 const escrowRoutes  = require('./routes/escrow');
+const agentRoutes   = require('./agent/router');
 
 // ---------------------------------------------------------------------------
 // SECTION 3: ENVIRONMENT VARIABLE VALIDATION
@@ -935,6 +936,7 @@ app.use('/api/bids', bidRoutes);
 
 // Escrow workflow routes
 app.use('/api/escrow', escrowRoutes);
+app.use('/api/agent', agentRoutes);
 
 // ---------------------------------------------------------------------------
 // SECTION 17: V2 REGISTRATION ENDPOINTS

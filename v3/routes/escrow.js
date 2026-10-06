@@ -355,6 +355,18 @@ router.post('/:id/milestone/:index/approve', requireAuth, async (req, res) => {
 
             const lockedMilestone = lockResult.rows[0];
 
+            if (req.agentApproval) {
+                const currentEscrow = await client.query('SELECT * FROM escrow_contracts WHERE id=$1 FOR UPDATE', [escrowId]);
+                const current = currentEscrow.rows[0];
+                if (!current || current.status !== 'funded' || current.status !== req.agentApproval.escrowStatus ||
+                    Number(lockedMilestone.amount) !== req.agentApproval.amountCents ||
+                    lockedMilestone.id !== req.agentApproval.milestoneId || current.project_id !== req.agentApproval.projectId ||
+                    lockedMilestone.status !== req.agentApproval.milestoneStatus ||
+                    current.homeowner_id !== user.id || current.contractor_id !== req.agentApproval.contractorId) {
+                    throw new Error('Approved milestone snapshot changed');
+                }
+            }
+
             if (lockedMilestone.status !== 'completed') {
                 throw new Error(
                     `Milestone must be completed by the contractor before approval. ` +

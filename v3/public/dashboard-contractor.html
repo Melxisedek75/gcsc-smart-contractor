@@ -556,6 +556,7 @@
                         </div>
                         <button onclick="openBidModal(${p.id})" class="btn-primary btn-sm">Place Bid</button>
                     </div>
+                    <gcsc-project-agent project-id="${Number(p.id)}"></gcsc-project-agent>
                 </div>
             `).join('');
             lucide.createIcons();
@@ -631,7 +632,7 @@
 
             tbody.innerHTML = myBids.map(b => `
                 <tr class="hover:bg-surface/50 transition-colors">
-                    <td class="px-5 py-4 font-semibold text-text-primary">${escapeHtml(b.project_title || b.project?.title || '-')}</td>
+                    <td class="px-5 py-4 font-semibold text-text-primary">${escapeHtml(b.project_title || b.project?.title || '-')}<gcsc-project-agent project-id="${Number(b.project_id || b.project?.id)}"></gcsc-project-agent></td>
                     <td class="px-5 py-4 font-bold text-accent">$${(b.amount || 0).toLocaleString()}</td>
                     <td class="px-5 py-4 text-text-secondary">${escapeHtml(b.timeline || '-')} days</td>
                     <td class="px-5 py-4"><span class="status-badge status-${b.status}">${escapeHtml(b.status)}</span></td>
@@ -702,6 +703,7 @@
                 const progress = total ? Math.round((completed / total) * 100) : 0;
                 return `
                 <div class="card p-6">
+                    <gcsc-project-agent project-id="${Number(j.project_id || j.id)}"></gcsc-project-agent>
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                         <div>
                             <h3 class="font-bold text-text-primary text-lg">${escapeHtml(j.title)}</h3>
@@ -778,5 +780,6 @@
             loadProjectFeed();
         });
     </script>
+    <script src="agent-chat.js"></script>
 </body>
 </html>

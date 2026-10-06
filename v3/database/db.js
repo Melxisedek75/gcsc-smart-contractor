@@ -75,6 +75,11 @@ function buildPoolConfig() {
         application_name: 'gcsc_v3_api',
     };
 
+    // Use the same managed database as the production pure-server when provided.
+    if (process.env.DATABASE_URL) {
+        config.connectionString = process.env.DATABASE_URL;
+    }
+
     // SSL configuration for production
     if (process.env.PGSSL === 'true') {
         config.ssl = {
@@ -100,6 +105,7 @@ function getPool() {
         const safeConfig = {
             ...config,
             password: config.password ? '***REDACTED***' : '',
+            connectionString: config.connectionString ? '***REDACTED***' : undefined,
         };
         // eslint-disable-next-line no-console
         console.log('[DB] Creating connection pool:', JSON.stringify(safeConfig));

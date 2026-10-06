@@ -13,6 +13,7 @@ const expectedOrder = [
   'v3/database/stripe-payments-migration.sql',
   'v3/database/escrow-audit-migration.sql',
   'v3/database/bid-audit-migration.sql',
+  'v3/database/agent-migration.sql',
 ];
 
 const incompatibleMigration = 'database/migrations/001-add-contractor-verifications.sql';
