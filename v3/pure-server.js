@@ -2432,8 +2432,23 @@ async function updateStoredMilestoneStatus(milestone, status, verifiedBy = '') {
 // Atomic compare-and-set transition: updates status only if the current status
 // is in fromStatuses. Returns null when another request already moved the
 // milestone (prevents double-release race between check and update).
-async function transitionStoredMilestoneStatus(milestone, fromStatuses, status, verifiedBy = '') {
+async function transitionStoredMilestoneStatus(milestone, fromStatuses, status, verifiedBy = '', agentApproval = null) {
   if (USE_POSTGRES) {
+    if (agentApproval) {
+      return withPostgresTransaction(async client => {
+        const escrowResult = await client.query('SELECT * FROM escrow_contracts WHERE id=$1 FOR UPDATE', [milestone.escrow_id]);
+        const escrow = escrowResult.rows[0];
+        if (!escrow || escrow.status !== 'funded' || escrow.status !== agentApproval.escrowStatus ||
+            escrow.project_id !== agentApproval.projectId ||
+            escrow.homeowner_id !== agentApproval.homeownerId || escrow.contractor_id !== agentApproval.contractorId) return null;
+        const result = await client.query(
+          `UPDATE milestones SET status=$1, verified_by=$2, updated_at=NOW()
+           WHERE id=$3 AND status=ANY($4) AND amount=$5 AND escrow_id=$6 RETURNING *`,
+          [status, verifiedBy, milestone.id, fromStatuses, agentApproval.amountCents, agentApproval.escrowId]
+        );
+        return result.rows.length ? normalizeMilestone(result.rows[0]) : null;
+      });
+    }
     const result = await queryPostgres(
       `UPDATE milestones SET status = $1, verified_by = $2, updated_at = NOW()
        WHERE id = $3 AND status = ANY($4)
@@ -3898,7 +3913,7 @@ const routes = {
     if (escrow.status === 'disputed') return json(res, 400, { error: 'Escrow is disputed' });
     if (milestone.status !== 'submitted') return json(res, 400, { error: 'Milestone must be submitted' });
 
-    const updated = await transitionStoredMilestoneStatus(milestone, ['submitted'], 'approved', `homeowner:${user.userId}`);
+    const updated = await transitionStoredMilestoneStatus(milestone, ['submitted'], 'approved', `homeowner:${user.userId}`, req.agentApproval || null);
     if (!updated) return json(res, 409, { error: 'Milestone status changed concurrently, refresh and retry' });
     await recordAuditEvent(req, {
       actorId: user.userId,
@@ -4256,6 +4271,8 @@ const routes = {
 };
 
 // ===== SERVER =====
+const handleAgent = require('./agent/pure').attachPureAgent({ query: queryPostgres, transaction: withPostgresTransaction, routes, json });
+
 const server = http.createServer(async (req, res) => {
   setSecurityHeaders(res);
   const corsAllowed = setCORS(req, res);
@@ -4274,6 +4291,11 @@ const server = http.createServer(async (req, res) => {
   const parsed = parse(req.url, true);
   const method = req.method;
   const pathname = parsed.pathname;
+
+  if (pathname.startsWith('/api/agent/')) {
+    await handleAgent(req, res);
+    return;
+  }
   
   // Match routes
   let matched = false;

@@ -36,6 +36,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: agent-ci-test-only
+          POSTGRES_DB: gcsc_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,6 +67,14 @@ jobs:
 
       - name: Syntax check
         run: node --check v3/pure-server.js
+
+      - name: Agent security and UI tests
+        run: npm --prefix v3 test -- --runInBand tests/agent.test.js tests/agent-ui.test.js
+
+      - name: Agent PostgreSQL integration
+        env:
+          AGENT_TEST_PG_URL: postgresql://postgres:agent-ci-test-only@127.0.0.1:5432/gcsc_agent_test
+        run: npm --prefix v3 run test:agent-postgres
 
       - name: PostgreSQL storage smoke
         run: npm --prefix v3 run test:pg-storage

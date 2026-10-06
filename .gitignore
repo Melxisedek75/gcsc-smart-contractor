@@ -12,3 +12,4 @@ evidence/
 # OS
 .DS_Store
 Thumbs.db
+/v3/gcsc.db
